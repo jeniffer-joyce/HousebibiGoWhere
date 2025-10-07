@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* :root {
+    --primary-color: #00B8D9;
+    --secondary-color: #F4F4F4;
+    --accent-color: #FF5C8D;
+    --background-color: #fcfcfc;
+    --background-dark: #121320;
+
+
+} */
+
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
