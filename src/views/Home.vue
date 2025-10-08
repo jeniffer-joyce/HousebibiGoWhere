@@ -1,5 +1,4 @@
 <template>
-
     <div class="bg-background dark:bg-background-dark font-display text-slate-800 dark:text-slate-200">
         <div class="flex min-h-screen w-full flex-col">
             <header
