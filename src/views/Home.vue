@@ -205,41 +205,4 @@
     </div>
 </template>
 <script>
-    import { db, loadCategories, loadBusinesses, filterByCategory } from "/src/firebase_config.js";
-
-    export default {
-    data() {
-        return {
-        categories: [],
-        businesses: [],
-        currentCategory: null,
-        activeClass: "rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors",
-        inactiveClass: "rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 transition-colors",
-        };
-    },
-    computed: {
-        filteredBusinesses() {
-        if (!this.currentCategory) return this.businesses;
-        return this.businesses.filter(biz => biz.category === this.currentCategory);
-        },
-    },
-    methods: {
-        async loadCategories() {
-        const q = query(collection(db, "button_categories"), orderBy("order"));
-        const snapshot = await getDocs(q);
-        this.categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        },
-        async loadBusinesses() {
-        const snapshot = await getDocs(collection(db, "businesses"));
-        this.businesses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        },
-        filterByCategory(slug) {
-        this.currentCategory = slug;
-        },
-    },
-    mounted() {
-        this.loadCategories();
-        this.loadBusinesses();
-    },
-    };
 </script>
