@@ -117,3 +117,5 @@ window.addEventListener("DOMContentLoaded", () => {
   loadCategories();
   loadBusinesses();
 });
+
+export { db, loadCategories, loadBusinesses, filterByCategory };
