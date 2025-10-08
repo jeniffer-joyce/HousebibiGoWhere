@@ -1,292 +1,201 @@
 <template>
-    <div
-        class="bg-background-light dark:bg-background-dark font-display text-foreground-light dark:text-foreground-dark">
-        <div class="flex h-screen flex-col">
-            <header
-                class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200/80 bg-background-light/80 px-4 py-3 backdrop-blur-sm dark:border-slate-800/80 dark:bg-background-dark/80 sm:px-6 lg:px-8">
-                <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-2">
-                        <svg class="h-8 w-8 text-primary" fill="none" viewBox="0 0 48 48"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z"
-                                fill="currentColor"></path>
-                        </svg>
-                        <h1 class="text-xl font-bold text-slate-900 dark:text-white">HousebibiGoWhere</h1>
-                    </div>
-                    <nav class="hidden items-center gap-6 md:flex">
-                        <RouterLink to="/"
-                            class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary"
-                            href="#">Home</RouterLink>
-                        <RouterLink to="/categories/"
-                            class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary"
-                            href="#">Categories</RouterLink>
-                        <RouterLink to="/about/"
-                            class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary"
-                            href="#">About Us</RouterLink>
-                        <RouterLink to="/for-sellers"
-                            class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary"
-                            href="#">For Sellers</RouterLink>
+    <main class="flex-1 overflow-y-auto">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                    <h2 class="text-3xl font-extrabold tracking-tight text-foreground-light dark:text-foreground-dark">
+                        Orders</h2>
+                    <p class="text-muted-light dark:text-muted-dark mt-1">Manage your incoming and pending
+                        orders.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button
+                        class="flex items-center gap-2 rounded-lg bg-accent-light dark:bg-accent-dark px-4 py-2 text-sm font-medium text-muted-light dark:text-muted-dark hover:bg-primary/10 dark:hover:bg-primary/20 hover:text-primary dark:hover:text-primary transition-colors">
+                        <span class="material-symbols-outlined text-base">filter_list</span>
+                        Filter
+                    </button>
+                    <button
+                        class="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90">
+                        <span class="material-symbols-outlined text-base">add</span>
+                        New Order
+                    </button>
+                </div>
+            </div>
+            <div class="flex flex-col gap-6">
+                <div class="relative">
+                    <span
+                        class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-light dark:text-muted-dark">search</span>
+                    <input
+                        class="form-input w-full rounded-lg border-accent-light dark:border-accent-dark bg-background-light dark:bg-accent-dark pl-10 pr-4 py-2.5 text-foreground-light dark:text-foreground-dark focus:border-primary focus:ring-primary placeholder:text-muted-light dark:placeholder:text-muted-dark"
+                        placeholder="Search orders by ID or buyer name" type="search" />
+                </div>
+                <div class="border-b border-accent-light dark:border-accent-dark">
+                    <nav aria-label="Tabs" class="-mb-px flex space-x-6">
+                        <a class="whitespace-nowrap py-3 px-1 border-b-2 font-semibold text-sm text-primary border-primary"
+                            href="#">All Orders</a>
+                        <a class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-muted-light dark:text-muted-dark border-transparent hover:text-primary hover:border-primary/50 dark:hover:text-primary dark:hover:border-primary/50 transition-colors"
+                            href="#">Pending</a>
+                        <a class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-muted-light dark:text-muted-dark border-transparent hover:text-primary hover:border-primary/50 dark:hover:text-primary dark:hover:border-primary/50 transition-colors"
+                            href="#">Processing</a>
+                        <a class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-muted-light dark:text-muted-dark border-transparent hover:text-primary hover:border-primary/50 dark:hover:text-primary dark:hover:border-primary/50 transition-colors"
+                            href="#">Shipped</a>
+                        <a class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-muted-light dark:text-muted-dark border-transparent hover:text-primary hover:border-primary/50 dark:hover:text-primary dark:hover:border-primary/50 transition-colors"
+                            href="#">Delivered</a>
                     </nav>
                 </div>
-                <div class="flex items-center gap-4">
-                    <div class="relative hidden lg:block">
-                        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
-                            <svg fill="currentColor" height="20" viewBox="0 0 256 256" width="20"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z">
-                                </path>
-                            </svg>
-                        </span>
-                        <input
-                            class="h-10 w-48 rounded-lg border-slate-300 bg-slate-100 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-500 focus:border-primary focus:ring-primary"
-                            placeholder="Search..." type="text" />
-                    </div>
-                    <RouterLink to="/signup/"
-                        class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-accent text-white text-sm font-bold leading-normal tracking-wide hover:bg-accent/90 transition-colors">
-                        <span class="truncate">Sign Up</span>
-                    </RouterLink>
-                    <RouterLink to="/login/"
-                        class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-background text-gray-800 border border-gray-300 text-sm font-bold leading-normal tracking-wide hover:bg-gray-100 transition-colors">
-                        <span class="truncate">Log In</span>
-                    </RouterLink>
-
+                <div class="overflow-x-auto rounded-lg border border-accent-light dark:border-accent-dark">
+                    <table class="min-w-full divide-y divide-accent-light dark:divide-accent-dark">
+                        <thead class="bg-accent-light/50 dark:bg-accent-dark/50">
+                            <tr>
+                                <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
+                                    scope="col">Order ID</th>
+                                <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
+                                    scope="col">Buyer</th>
+                                <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
+                                    scope="col">Product(s)</th>
+                                <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
+                                    scope="col">Quantity</th>
+                                <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
+                                    scope="col">Total</th>
+                                <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
+                                    scope="col">Date</th>
+                                <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
+                                    scope="col">Status</th>
+                                <th class="relative py-3.5 pl-3 pr-4 sm:pr-6" scope="col"><span
+                                        class="sr-only">Actions</span></th>
+                            </tr>
+                        </thead>
+                        <tbody
+                            class="divide-y divide-accent-light dark:divide-accent-dark bg-background-light dark:bg-background-dark">
+                            <tr>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-primary">#12345
+                                </td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    Sophia Carter</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    Handmade Soap</td>
+                                <td
+                                    class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark text-center">
+                                    2</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    $25.00</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    2024-07-26</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm"><span
+                                        class="status-badge status-pending">Pending</span></td>
+                                <td class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                    <a class="text-primary hover:text-primary/80 dark:hover:text-primary/80 transition-colors"
+                                        href="#">View Details</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-primary">#12346
+                                </td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    Ethan Bennett</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    Knitted Scarf</td>
+                                <td
+                                    class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark text-center">
+                                    1</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    $30.00</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    2024-07-25</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm"><span
+                                        class="status-badge status-processing">Processing</span></td>
+                                <td class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                    <a class="text-primary hover:text-primary/80 dark:hover:text-primary/80 transition-colors"
+                                        href="#">View Details</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-primary">#12347
+                                </td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    Olivia Harper</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    Baked Cookies</td>
+                                <td
+                                    class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark text-center">
+                                    3</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    $15.00</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    2024-07-24</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm"><span
+                                        class="status-badge status-shipped">Shipped</span></td>
+                                <td class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                    <a class="text-primary hover:text-primary/80 dark:hover:text-primary/80 transition-colors"
+                                        href="#">View Details</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-primary">#12348
+                                </td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    Liam Foster</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    Custom Mug</td>
+                                <td
+                                    class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark text-center">
+                                    1</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    $20.00</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    2024-07-23</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm"><span
+                                        class="status-badge status-delivered">Delivered</span></td>
+                                <td class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                    <a class="text-primary hover:text-primary/80 dark:hover:text-primary/80 transition-colors"
+                                        href="#">View Details</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-primary">#12349
+                                </td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    Ava Morgan</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    Jewelry Set</td>
+                                <td
+                                    class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark text-center">
+                                    1</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    $45.00</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
+                                    2024-07-22</td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm"><span
+                                        class="status-badge status-pending">Pending</span></td>
+                                <td class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                    <a class="text-primary hover:text-primary/80 dark:hover:text-primary/80 transition-colors"
+                                        href="#">View Details</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-            </header>
-            <main class="flex-1 overflow-y-auto">
-                <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                        <div>
-                            <h2
-                                class="text-3xl font-extrabold tracking-tight text-foreground-light dark:text-foreground-dark">
-                                Orders</h2>
-                            <p class="text-muted-light dark:text-muted-dark mt-1">Manage your incoming and pending
-                                orders.</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button
-                                class="flex items-center gap-2 rounded-lg bg-accent-light dark:bg-accent-dark px-4 py-2 text-sm font-medium text-muted-light dark:text-muted-dark hover:bg-primary/10 dark:hover:bg-primary/20 hover:text-primary dark:hover:text-primary transition-colors">
-                                <span class="material-symbols-outlined text-base">filter_list</span>
-                                Filter
-                            </button>
-                            <button
-                                class="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90">
-                                <span class="material-symbols-outlined text-base">add</span>
-                                New Order
-                            </button>
-                        </div>
+                <nav aria-label="Pagination"
+                    class="flex items-center justify-between border-t border-accent-light dark:border-accent-dark pt-4">
+                    <div class="hidden sm:block">
+                        <p class="text-sm text-muted-light dark:text-muted-dark">
+                            Showing <span class="font-medium text-foreground-light dark:text-foreground-dark">1</span>
+                            to
+                            <span class="font-medium text-foreground-light dark:text-foreground-dark">5</span>
+                            of <span class="font-medium text-foreground-light dark:text-foreground-dark">20</span>
+                            results
+                        </p>
                     </div>
-                    <div class="flex flex-col gap-6">
-                        <div class="relative">
-                            <span
-                                class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-light dark:text-muted-dark">search</span>
-                            <input
-                                class="form-input w-full rounded-lg border-accent-light dark:border-accent-dark bg-background-light dark:bg-accent-dark pl-10 pr-4 py-2.5 text-foreground-light dark:text-foreground-dark focus:border-primary focus:ring-primary placeholder:text-muted-light dark:placeholder:text-muted-dark"
-                                placeholder="Search orders by ID or buyer name" type="search" />
-                        </div>
-                        <div class="border-b border-accent-light dark:border-accent-dark">
-                            <nav aria-label="Tabs" class="-mb-px flex space-x-6">
-                                <a class="whitespace-nowrap py-3 px-1 border-b-2 font-semibold text-sm text-primary border-primary"
-                                    href="#">All Orders</a>
-                                <a class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-muted-light dark:text-muted-dark border-transparent hover:text-primary hover:border-primary/50 dark:hover:text-primary dark:hover:border-primary/50 transition-colors"
-                                    href="#">Pending</a>
-                                <a class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-muted-light dark:text-muted-dark border-transparent hover:text-primary hover:border-primary/50 dark:hover:text-primary dark:hover:border-primary/50 transition-colors"
-                                    href="#">Processing</a>
-                                <a class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-muted-light dark:text-muted-dark border-transparent hover:text-primary hover:border-primary/50 dark:hover:text-primary dark:hover:border-primary/50 transition-colors"
-                                    href="#">Shipped</a>
-                                <a class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-muted-light dark:text-muted-dark border-transparent hover:text-primary hover:border-primary/50 dark:hover:text-primary dark:hover:border-primary/50 transition-colors"
-                                    href="#">Delivered</a>
-                            </nav>
-                        </div>
-                        <div class="overflow-x-auto rounded-lg border border-accent-light dark:border-accent-dark">
-                            <table class="min-w-full divide-y divide-accent-light dark:divide-accent-dark">
-                                <thead class="bg-accent-light/50 dark:bg-accent-dark/50">
-                                    <tr>
-                                        <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
-                                            scope="col">Order ID</th>
-                                        <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
-                                            scope="col">Buyer</th>
-                                        <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
-                                            scope="col">Product(s)</th>
-                                        <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
-                                            scope="col">Quantity</th>
-                                        <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
-                                            scope="col">Total</th>
-                                        <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
-                                            scope="col">Date</th>
-                                        <th class="px-6 py-3.5 text-left text-sm font-semibold text-foreground-light dark:text-foreground-dark"
-                                            scope="col">Status</th>
-                                        <th class="relative py-3.5 pl-3 pr-4 sm:pr-6" scope="col"><span
-                                                class="sr-only">Actions</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody
-                                    class="divide-y divide-accent-light dark:divide-accent-dark bg-background-light dark:bg-background-dark">
-                                    <tr>
-                                        <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-primary">#12345
-                                        </td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            Sophia Carter</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            Handmade Soap</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark text-center">
-                                            2</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            $25.00</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            2024-07-26</td>
-                                        <td class="whitespace-nowrap px-6 py-4 text-sm"><span
-                                                class="status-badge status-pending">Pending</span></td>
-                                        <td
-                                            class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                            <a class="text-primary hover:text-primary/80 dark:hover:text-primary/80 transition-colors"
-                                                href="#">View Details</a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-primary">#12346
-                                        </td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            Ethan Bennett</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            Knitted Scarf</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark text-center">
-                                            1</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            $30.00</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            2024-07-25</td>
-                                        <td class="whitespace-nowrap px-6 py-4 text-sm"><span
-                                                class="status-badge status-processing">Processing</span></td>
-                                        <td
-                                            class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                            <a class="text-primary hover:text-primary/80 dark:hover:text-primary/80 transition-colors"
-                                                href="#">View Details</a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-primary">#12347
-                                        </td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            Olivia Harper</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            Baked Cookies</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark text-center">
-                                            3</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            $15.00</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            2024-07-24</td>
-                                        <td class="whitespace-nowrap px-6 py-4 text-sm"><span
-                                                class="status-badge status-shipped">Shipped</span></td>
-                                        <td
-                                            class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                            <a class="text-primary hover:text-primary/80 dark:hover:text-primary/80 transition-colors"
-                                                href="#">View Details</a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-primary">#12348
-                                        </td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            Liam Foster</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            Custom Mug</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark text-center">
-                                            1</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            $20.00</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            2024-07-23</td>
-                                        <td class="whitespace-nowrap px-6 py-4 text-sm"><span
-                                                class="status-badge status-delivered">Delivered</span></td>
-                                        <td
-                                            class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                            <a class="text-primary hover:text-primary/80 dark:hover:text-primary/80 transition-colors"
-                                                href="#">View Details</a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-primary">#12349
-                                        </td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            Ava Morgan</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            Jewelry Set</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark text-center">
-                                            1</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            $45.00</td>
-                                        <td
-                                            class="whitespace-nowrap px-6 py-4 text-sm text-muted-light dark:text-muted-dark">
-                                            2024-07-22</td>
-                                        <td class="whitespace-nowrap px-6 py-4 text-sm"><span
-                                                class="status-badge status-pending">Pending</span></td>
-                                        <td
-                                            class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                            <a class="text-primary hover:text-primary/80 dark:hover:text-primary/80 transition-colors"
-                                                href="#">View Details</a>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <nav aria-label="Pagination"
-                            class="flex items-center justify-between border-t border-accent-light dark:border-accent-dark pt-4">
-                            <div class="hidden sm:block">
-                                <p class="text-sm text-muted-light dark:text-muted-dark">
-                                    Showing <span
-                                        class="font-medium text-foreground-light dark:text-foreground-dark">1</span> to
-                                    <span class="font-medium text-foreground-light dark:text-foreground-dark">5</span>
-                                    of <span
-                                        class="font-medium text-foreground-light dark:text-foreground-dark">20</span>
-                                    results
-                                </p>
-                            </div>
-                            <div class="flex flex-1 justify-between sm:justify-end">
-                                <a class="relative inline-flex items-center rounded-md border border-accent-light dark:border-accent-dark bg-background-light dark:bg-background-dark px-4 py-2 text-sm font-medium text-muted-light dark:text-muted-dark hover:bg-accent-light dark:hover:bg-accent-dark"
-                                    href="#">Previous</a>
-                                <a class="relative ml-3 inline-flex items-center rounded-md border border-accent-light dark:border-accent-dark bg-background-light dark:bg-background-dark px-4 py-2 text-sm font-medium text-muted-light dark:text-muted-dark hover:bg-accent-light dark:hover:bg-accent-dark"
-                                    href="#">Next</a>
-                            </div>
-                        </nav>
+                    <div class="flex flex-1 justify-between sm:justify-end">
+                        <a class="relative inline-flex items-center rounded-md border border-accent-light dark:border-accent-dark bg-background-light dark:bg-background-dark px-4 py-2 text-sm font-medium text-muted-light dark:text-muted-dark hover:bg-accent-light dark:hover:bg-accent-dark"
+                            href="#">Previous</a>
+                        <a class="relative ml-3 inline-flex items-center rounded-md border border-accent-light dark:border-accent-dark bg-background-light dark:bg-background-dark px-4 py-2 text-sm font-medium text-muted-light dark:text-muted-dark hover:bg-accent-light dark:hover:bg-accent-dark"
+                            href="#">Next</a>
                     </div>
-                </div>
-            </main>
-            <footer class="bg-secondary border-t border-gray-200">
-                <div class="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-                    <div class="flex flex-col items-center gap-8">
-                        <p class="text-center text-sm text-gray-500">@2024 HousebibiGoWhere. All rights reserved.</p>
-                    </div>
-                </div>
-            </footer>
+                </nav>
+            </div>
         </div>
-    </div>
+    </main>
 </template>
 <style scoped>
 .status-badge {
