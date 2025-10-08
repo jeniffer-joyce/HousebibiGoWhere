@@ -1,5 +1,31 @@
-<template>
+<script setup>
+import { onMounted, ref, computed } from 'vue';
+import { getCategories } from '../firebase/services/home/categories.js';
+import { getBusinesses } from '../firebase/services/home/business.js';
 
+const categories = ref([]);
+const businesses = ref([]);
+const selectedCategory = ref('all');
+
+onMounted(async () => { // same as window.addEventListener("DOMContentLoaded", ()
+    categories.value = await getCategories();
+    businesses.value = await getBusinesses();
+});
+
+// function filterBusinesses(categorySlug) {
+//   selectedCategory.value = categorySlug;
+//   businesses.value = businesses.value.filter(b => 
+//     !categorySlug || b.category === categorySlug
+//   );
+// }
+
+const filteredBusinesses = computed(() => {
+    if (selectedCategory.value === 'all') return businesses.value
+    return businesses.value.filter(b => b.category === selectedCategory.value)
+})
+</script>
+
+<template>
     <div class="bg-background dark:bg-background-dark font-display text-slate-800 dark:text-slate-200">
         <div class="flex min-h-screen w-full flex-col">
             <header
@@ -98,7 +124,37 @@
                                 placeholder="Search for products or businesses" type="text" />
                         </div>
                     </div>
+                    <!-- Categories Section -->
                     <div>
+                        <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Categories</h3>
+                        <div class="flex flex-wrap gap-3">
+                            <button class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+                                @click="selectedCategory = 'all'">
+                                All
+                            </button>
+                            <button v-for="category in categories" :key="category.slug"
+                                class="rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 transition-colors"
+                                @click="selectedCategory = category.slug">
+                                {{ category.name }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Featured Businesses -->
+                    <div>
+                        <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Featured Businesses</h3>
+                        <div class="hide-scrollbar -mx-4 flex gap-6 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+                            <div v-for="business in filteredBusinesses" :key="business.name"
+                                class="flex w-64 shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900">
+                                <img :src="business.image" :alt="business.name" class="h-40 w-full object-cover" />
+                                <p class="px-4 py-3 text-base font-semibold text-slate-800 dark:text-slate-200">
+                                    {{ business.name }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- <div>
                         <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Categories</h3>
                         <div class="flex flex-wrap gap-3">
                             <button
@@ -126,8 +182,8 @@
                                 Tutoring
                             </button>
                         </div>
-                    </div>
-                    <div>
+                    </div> -->
+                    <!-- <div>
                         <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Featured Businesses</h3>
                         <div class="relative">
                             <div
@@ -173,7 +229,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                     <div>
                         <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Special Recommendation</h3>
                         <div class="@container overflow-hidden rounded-xl bg-white shadow-lg dark:bg-slate-900">
@@ -207,5 +263,3 @@
         </div>
     </div>
 </template>
-<script>
-</script>
