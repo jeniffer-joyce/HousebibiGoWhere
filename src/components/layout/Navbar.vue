@@ -1,5 +1,33 @@
 <script setup>
     import { user } from "@/store/user.js";
+
+    //Firebase authetication - check to see if user has logged in or not.
+    /*
+    import { ref, onMounted } from "vue";
+    import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+
+    const user = ref(null);
+    const defaultProfilePic = "/default-profile.png";
+
+    const auth = getAuth();
+
+    onMounted(() => {
+    onAuthStateChanged(auth, (firebaseUser) => {
+        user.value = firebaseUser;
+    });
+    });
+
+    function logout() {
+    signOut(auth)
+        .then(() => {
+        user.value = null;
+        })
+        .catch((error) => {
+        console.error("Logout error:", error);
+        });
+    }
+
+    */
 </script>
 
 <template>
