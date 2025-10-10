@@ -6,7 +6,7 @@ import SignUp from '../views/SignUp.vue'
 import Categories from '../views/Categories.vue'
 import About from '../views/About.vue'
 import ForSellers from '../views/ForSellers.vue'
-import SellerShop from '../views/sellers/SellerShop.vue'
+import SellerProfile from '../views/sellers/SellerProfile.vue'
 import AddNewProduct from '../views/sellers/AddNewProduct.vue'  
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 
@@ -37,8 +37,8 @@ const routes = [
         component: ForSellers
     },
     {
-        path: '/seller-shop/',
-        component: SellerShop
+        path: '/seller-profile/',
+        component: SellerProfile
     },
     {
         path: '/add-new-product/',
