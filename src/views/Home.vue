@@ -26,6 +26,18 @@ const categoryLabels = {
     'other': 'Other'
 };
 
+// Arrows
+const scrollContainer = ref(null);
+const scrollAmount = 300; // Amount of pixels to scroll per click
+
+function scrollLeft() {
+    scrollContainer.value.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+}
+
+function scrollRight() {
+    scrollContainer.value.scrollBy({ left: scrollAmount, behavior: "smooth" });
+}
+
 onMounted(async () => {
     try {
         const [cats, biz] = await Promise.all([getCategories(), getBusinesses()])
@@ -97,18 +109,6 @@ const isPreferenceSelected = (value) => {
 
 const savePreference = () => {
     if (selectedPreferences.value.length > 0) {
-        // Map preference values to category slugs from Firebase
-        const preferenceToSlugMap = {
-            'food': 'food-beverages',
-            'crafts': 'handmade-crafts',
-            'beauty': 'beauty-wellness',
-            'services': 'home-services',
-            'fashion': 'fashion-accessories',
-            'education': 'education-tutoring',
-            'tech': 'tech-digital',
-            'other': 'other'
-        };
-        
         // Find matching category slugs from fetched categories
         selectedCategories.value = categories.value
             .filter(cat => {
@@ -259,18 +259,42 @@ const skipPreference = () => {
                 <!-- Featured Businesses -->
                 <div>
                     <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Featured Businesses</h3>
-                    <div v-if="filteredBusinesses.length === 0" class="text-center py-12 text-slate-500">
+                    <div v-if="filteredBusinesses.length === 0" class="text-center py-12 text-slate-500 dark:text-slate-400">
                         No businesses found for the selected categories. Try selecting different categories!
                     </div>
-                    <div v-else
-                        class="hide-scrollbar -mx-4 flex gap-6 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-                        <div v-for="business in filteredBusinesses" :key="business.name"
-                            class="flex w-64 shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900">
-                            <img :src="business.image" :alt="business.name" class="h-40 w-full object-cover" />
-                            <p class="px-4 py-3 text-base font-semibold text-slate-800 dark:text-slate-200">
-                                {{ business.name }}
-                            </p>
+                    <div v-else class="relative">
+                        <!-- Left Arrow -->
+                        <button
+                            @click="scrollLeft"
+                            class="absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
+                            aria-label="Scroll left">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                        </button>
+
+                        <!-- Scroll Container -->
+                        <div
+                            ref="scrollContainer"
+                            class="hide-scrollbar -mx-4 flex gap-6 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 scroll-smooth">
+                            <div v-for="business in filteredBusinesses" :key="business.name"
+                                class="flex w-64 shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900">
+                                <img :src="business.image" :alt="business.name" class="h-40 w-full object-cover" />
+                                <p class="px-4 py-3 text-base font-semibold text-slate-800 dark:text-slate-200">
+                                    {{ business.name }}
+                                </p>
+                            </div>
                         </div>
+
+                        <!-- Right Arrow -->
+                        <button
+                            @click="scrollRight"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
+                            aria-label="Scroll right">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
