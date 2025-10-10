@@ -32,6 +32,21 @@ const filteredBusinesses = computed(() => {
     if (selectedCategory.value === 'all') return businesses.value
     return businesses.value.filter(b => b.category === selectedCategory.value)
 })
+
+//arrows
+
+const scrollContainer = ref(null);
+
+const scrollAmount = 300; // Amount of pixels to scroll per click
+
+function scrollLeft() {
+  scrollContainer.value.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+}
+
+function scrollRight() {
+  scrollContainer.value.scrollBy({ left: scrollAmount, behavior: "smooth" });
+}
+
 </script>
 
 <template>
@@ -82,15 +97,40 @@ const filteredBusinesses = computed(() => {
                 <!-- Featured Businesses -->
                 <div>
                     <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Featured Businesses</h3>
-                    <div
-                        class="hide-scrollbar -mx-4 flex gap-6 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-                        <div v-for="business in filteredBusinesses" :key="business.name"
-                            class="flex w-64 shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900">
-                            <img :src="business.image" :alt="business.name" class="h-40 w-full object-cover" />
-                            <p class="px-4 py-3 text-base font-semibold text-slate-800 dark:text-slate-200">
-                                {{ business.name }}
-                            </p>
+
+                    <div class="relative">
+                        <!-- Left Arrow -->
+                        <button
+                            @click="scrollLeft"
+                            class="absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white p-2 shadow-md dark:bg-slate-800"
+                        >
+                            &#8592;
+                        </button>
+
+                        <!-- Scroll Container -->
+                        <div
+                            ref="scrollContainer"
+                            class="hide-scrollbar flex gap-6 overflow-x-auto px-4 pb-4 sm:px-6 lg:px-8 scroll-smooth"
+                        >
+                            <div
+                            v-for="business in filteredBusinesses"
+                            :key="business.name"
+                            class="flex w-64 shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900"
+                            >
+                                <img :src="business.image" :alt="business.name" class="h-40 w-full object-cover" />
+                                <p class="px-4 py-3 text-base font-semibold text-slate-800 dark:text-slate-200">
+                                    {{ business.name }}
+                                </p>
+                            </div>
                         </div>
+
+                        <!-- Right Arrow -->
+                        <button
+                            @click="scrollRight"
+                            class="absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white p-2 shadow-md dark:bg-slate-800"
+                        >
+                        &#8594;
+                        </button>
                     </div>
                 </div>
             </div>
