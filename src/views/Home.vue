@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { useCategories } from '@/composables/home/useCategories';
 import { usePreferences } from '@/composables/signup/usePreferences';
-import { searchWithGemini } from '@/firebase/services/gemini.js';
+import { useGeminiSearch } from '@/composables/gemini/useGeminiSearch';
 import Loading from '@/components/status/Loading.vue'
 
 
@@ -41,15 +41,11 @@ const categoryHeading = computed(() => {
     return hasSubmittedPreference.value ? 'For You' : 'Categories';
 });
 
-
-
 const searchQuery = ref('');
-const isSearching = ref(false);
-const searchSuggestions = ref([]);
-const showSuggestions = ref(false);
-
-
-
+const {
+    isSearching,
+    searchSuggestions,
+    selectSuggestion } = useGeminiSearch(searchQuery, businesses, selectedCategories);
 
 // Arrows
 const scrollContainer = ref(null);
@@ -62,63 +58,6 @@ function scrollLeft() {
 function scrollRight() {
     scrollContainer.value.scrollBy({ left: scrollAmount, behavior: "smooth" });
 }
-
-// Debounced search with Gemini for suggestions
-let searchTimeout;
-watch(searchQuery, (newQuery) => {
-    clearTimeout(searchTimeout);
-
-    if (!newQuery.trim()) {
-        searchSuggestions.value = [];
-        showSuggestions.value = false;
-        return;
-    }
-
-    isSearching.value = true;
-    showSuggestions.value = true;
-
-    searchTimeout = setTimeout(async () => {
-        try {
-            searchSuggestions.value = await searchWithGemini(newQuery, businesses.value);
-        } catch (error) {
-            console.error('Search error:', error);
-            // Fallback to simple search
-            searchSuggestions.value = businesses.value.filter(b =>
-                b.name.toLowerCase().includes(newQuery.toLowerCase()) ||
-                b.description?.toLowerCase().includes(newQuery.toLowerCase())
-            );
-        } finally {
-            isSearching.value = false;
-        }
-    }, 500);
-});
-
-// Select a suggestion
-const selectSuggestion = (business) => {
-    searchQuery.value = '';
-    showSuggestions.value = false;
-    searchSuggestions.value = [];
-
-    // Find and select the category of this business
-    if (business.category) {
-        selectedCategories.value = [business.category];
-
-        // Scroll to the business card
-        setTimeout(() => {
-            const element = document.querySelector(`[data-business="${business.name}"]`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }, 100);
-    }
-};
-
-
-
-
-
-
-
 
 </script>
 
