@@ -4,7 +4,7 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebas
 
 //Below is for authetication, must set up authetication methods first and do the backend for
 //login and signup
-//import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -19,9 +19,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-//const auth = getAuth(app);
+const auth = getAuth(app);
 
-export { db, app }; //add in auth later
+export { db, app, auth }; //add in auth later
 
 // let currentCategory = null;
 

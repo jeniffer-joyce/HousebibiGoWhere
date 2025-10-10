@@ -1,51 +1,212 @@
 <template>
-    <main class="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div
-            class="w-full max-w-md space-y-8 bg-background-light dark:bg-background-dark p-8 sm:p-10 rounded-xl border border-background-dark/10 dark:border-background-light/10">
-            <div>
-                <h2 class="text-center text-3xl font-extrabold text-background-dark dark:text-background-light">
-                    Welcome back
-                </h2>
-                <p class="mt-2 text-center text-sm text-background-dark/60 dark:text-background-light/60">
-                    Log in to continue your journey with us.
-                </p>
+  <main class="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="w-full max-w-md space-y-8 bg-background-light dark:bg-background-dark p-8 sm:p-10 rounded-xl border border-background-dark/10 dark:border-background-light/10">
+      <div>
+        <h2 class="text-center text-3xl font-extrabold text-background-dark dark:text-background-light">
+          Welcome back
+        </h2>
+        <p class="mt-2 text-center text-sm text-background-dark/60 dark:text-background-light/60">
+          Log in to continue your journey with us.
+        </p>
+      </div>
+
+      <form class="mt-8 space-y-6" @submit.prevent="onSubmit">
+        <div class="-space-y-px">
+          <!-- Identifier -->
+          <div>
+            <label class="sr-only" for="identifier">Username or email</label>
+            <input
+              id="identifier"
+              v-model.trim="identifier"
+              type="text"
+              inputmode="email"
+              autocomplete="username email"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="Username or email"
+              class="form-input appearance-none rounded-none relative block w-full px-3 py-3 border border-background-dark/20 dark:border-background-light/20 bg-background-light dark:bg-background-dark text-background-dark dark:text-background-light placeholder-opacity-50 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 text-sm rounded-t-lg"
+              required
+            />
+          </div>
+
+          <!-- Password with eye toggle -->
+          <div>
+            <label class="sr-only" for="password">Password</label>
+            <div class="relative">
+              <input
+                id="password"
+                :type="showPassword ? 'text' : 'password'"
+                v-model="password"
+                placeholder="Password"
+                autocomplete="current-password"
+                class="form-input appearance-none rounded-none relative block w-full px-3 py-3 pr-10 border border-background-dark/20 dark:border-background-light/20 bg-background-light dark:bg-background-dark text-background-dark dark:text-background-light placeholder-opacity-50 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 text-sm rounded-b-lg"
+                required
+              />
+              <button
+                type="button"
+                @click="showPassword = !showPassword"
+                class="absolute inset-y-0 right-3 grid place-items-center text-background-dark/60 dark:text-background-light/60 hover:opacity-80 focus:outline-none"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                tabindex="-1"
+              >
+                <!-- eye (hidden) -->
+                <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+                <!-- eye (crossed) -->
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 013.563-4.773M6.223 6.223A9.965 9.965 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.953 9.953 0 01-4.152 5.016M6.223 6.223L3 3m3.223 3.223L21 21"/>
+                </svg>
+              </button>
             </div>
-            <form action="#" class="mt-8 space-y-6" method="POST">
-                <div class="rounded-md shadow-sm -space-y-px">
-                    <div>
-                        <label class="sr-only" for="email-address">Username or email</label>
-                        <input autocomplete="email"
-                            class="form-input appearance-none rounded-none relative block w-full px-3 py-3 border border-background-dark/20 dark:border-background-light/20 bg-background-light dark:bg-background-dark text-background-dark dark:text-background-light placeholder-opacity-50 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 text-sm rounded-t-lg"
-                            id="email-address" name="email" placeholder="Username or email" required type="email" />
-                    </div>
-                    <div>
-                        <label class="sr-only" for="password">Password</label>
-                        <input autocomplete="current-password"
-                            class="form-input appearance-none rounded-none relative block w-full px-3 py-3 border border-background-dark/20 dark:border-background-light/20 bg-background-light dark:bg-background-dark text-background-dark dark:text-background-light placeholder-opacity-50 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 text-sm rounded-b-lg"
-                            id="password" name="password" placeholder="Password" required type="password" />
-                    </div>
-                </div>
-                <div class="flex items-center justify-end">
-                    <div class="text-sm">
-                        <a class="font-medium text-primary hover:text-primary/80" href="#">
-                            Forgot your password?
-                        </a>
-                    </div>
-                </div>
-                <div>
-                    <button
-                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:ring-offset-background-light dark:focus:ring-offset-background-dark transition-colors"
-                        type="submit">
-                        Log in
-                    </button>
-                </div>
-            </form>
-            <p class="text-center text-sm text-background-dark/60 dark:text-background-light/60">
-                Don't have an account?
-                <a class="font-medium text-primary hover:text-primary/80" href="#">
-                    Sign up
-                </a>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end">
+          <div class="text-sm">
+            <a class="font-medium text-primary hover:text-primary/80" href="#">
+              Forgot your password?
+            </a>
+          </div>
+        </div>
+
+        <!-- reCAPTCHA -->
+        <div class="mt-4">
+            <div class="flex justify-center">
+                <div id="recaptcha-login" class="inline-block"></div>
+            </div>
+            <p v-if="captchaError" class="text-xs text-red-600 mt-2 text-center">
+                Please complete the reCAPTCHA.
             </p>
         </div>
-    </main>
+
+
+        <p v-if="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</p>
+
+        <div>
+          <button
+            type="submit"
+            :disabled="loading || !identifier || !password || !captchaToken"
+            class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white
+                   bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary
+                   focus:ring-offset-background-light dark:focus:ring-offset-background-dark transition-colors
+                   disabled:opacity-60 disabled:cursor-not-allowed">
+            <span v-if="!loading">Log in</span>
+            <span v-else>Logging in…</span>
+          </button>
+        </div>
+      </form>
+
+      <p class="text-center text-sm text-background-dark/60 dark:text-background-light/60">
+        Don't have an account?
+        <router-link class="font-medium text-primary hover:text-primary/80" to="/signup">
+          Sign up
+        </router-link>
+      </p>
+    </div>
+  </main>
 </template>
+
+<script setup>
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
+import { loginWithIdentifier } from '../firebase/auth/authService'
+
+const router = useRouter()
+
+// form
+const identifier = ref('')
+const password = ref('')
+const showPassword = ref(false) // 👈 toggle state
+
+// reCAPTCHA
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
+const captchaToken = ref('')
+const captchaError = ref(false)
+let widgetId = null
+let expireTimer
+
+function loadRecaptchaScript () {
+  return new Promise((resolve, reject) => {
+    if (window.grecaptcha?.render) return resolve()
+    const s = document.createElement('script')
+    s.src = 'https://www.google.com/recaptcha/api.js?render=explicit'
+    s.async = true
+    s.defer = true
+    s.onload = () => resolve()
+    s.onerror = () => reject(new Error('recaptcha/script-failed'))
+    document.head.appendChild(s)
+  })
+}
+
+function onTokenReceived (token) {
+  captchaToken.value = token
+  captchaError.value = false
+  clearTimeout(expireTimer)
+  expireTimer = setTimeout(() => resetRecaptcha(), 110000)
+}
+
+function renderRecaptcha () {
+  widgetId = window.grecaptcha.render('recaptcha-login', {
+    sitekey: recaptchaSiteKey,
+    callback: onTokenReceived,
+    'expired-callback': () => {
+      captchaToken.value = ''
+      captchaError.value = true
+    }
+  })
+}
+
+function resetRecaptcha () {
+  if (window.grecaptcha && widgetId !== null) {
+    window.grecaptcha.reset(widgetId)
+  }
+  captchaToken.value = ''
+}
+
+onMounted(async () => {
+  if (!recaptchaSiteKey) {
+    console.error('Missing VITE_RECAPTCHA_SITE_KEY')
+    return
+  }
+  await loadRecaptchaScript()
+  renderRecaptcha()
+})
+
+onBeforeUnmount(() => {
+  clearTimeout(expireTimer)
+  resetRecaptcha()
+})
+
+const loading = ref(false)
+const errorMsg = ref('')
+
+async function onSubmit () {
+  if (!captchaToken.value) { captchaError.value = true; return }
+  loading.value = true
+  errorMsg.value = ''
+  try {
+    await loginWithIdentifier(identifier.value.trim(), password.value, captchaToken.value)
+    resetRecaptcha()
+    router.push('/')
+  } catch (err) {
+    console.error(err)
+    errorMsg.value = mapErr(err)
+    resetRecaptcha()
+  } finally {
+    loading.value = false
+  }
+}
+
+function mapErr (err) {
+  const code = err?.code || err?.message || ''
+  if (code.includes('auth/user-not-found')) return 'Username/Email not found!'
+  if (code.includes('auth/wrong-password')) return 'Incorrect password!'
+  if (code.includes('captcha')) return 'Please complete the reCAPTCHA.'
+  return 'Login failed. Please try again.'
+}
+</script>
