@@ -1,18 +1,23 @@
 <script setup>
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, ref, computed, watch } from 'vue';
 import { getCategories } from '@/firebase/services/home/categories.js';
 import { getBusinesses } from '@/firebase/services/home/business.js';
+import { searchWithGemini } from '@/firebase/services/gemini.js';
 import Loading from '@/components/status/Loading.vue'
 
 const categories = ref([]);
 const businesses = ref([]);
-const selectedCategories = ref([]); // Changed to array for multiple selections
+const selectedCategories = ref([]);
 const loading = ref(true);
+const searchQuery = ref('');
+const isSearching = ref(false);
+const searchSuggestions = ref([]);
+const showSuggestions = ref(false);
 
 // Preference prompt state
-const showPreferencePrompt = ref(true); // Always show on visit
-const selectedPreferences = ref([]); // Changed to array for multiple interests
-const hasSubmittedPreference = ref(false); // Track if user submitted preference this session
+const showPreferencePrompt = ref(true);
+const selectedPreferences = ref([]);
+const hasSubmittedPreference = ref(false);
 
 // Category labels mapping
 const categoryLabels = {
@@ -28,7 +33,7 @@ const categoryLabels = {
 
 // Arrows
 const scrollContainer = ref(null);
-const scrollAmount = 300; // Amount of pixels to scroll per click
+const scrollAmount = 300;
 
 function scrollLeft() {
     scrollContainer.value.scrollBy({ left: -scrollAmount, behavior: "smooth" });
@@ -37,6 +42,56 @@ function scrollLeft() {
 function scrollRight() {
     scrollContainer.value.scrollBy({ left: scrollAmount, behavior: "smooth" });
 }
+
+// Debounced search with Gemini for suggestions
+let searchTimeout;
+watch(searchQuery, (newQuery) => {
+    clearTimeout(searchTimeout);
+    
+    if (!newQuery.trim()) {
+        searchSuggestions.value = [];
+        showSuggestions.value = false;
+        return;
+    }
+    
+    isSearching.value = true;
+    showSuggestions.value = true;
+    
+    searchTimeout = setTimeout(async () => {
+        try {
+            searchSuggestions.value = await searchWithGemini(newQuery, businesses.value);
+        } catch (error) {
+            console.error('Search error:', error);
+            // Fallback to simple search
+            searchSuggestions.value = businesses.value.filter(b => 
+                b.name.toLowerCase().includes(newQuery.toLowerCase()) ||
+                b.description?.toLowerCase().includes(newQuery.toLowerCase())
+            );
+        } finally {
+            isSearching.value = false;
+        }
+    }, 500);
+});
+
+// Select a suggestion
+const selectSuggestion = (business) => {
+    searchQuery.value = '';
+    showSuggestions.value = false;
+    searchSuggestions.value = [];
+    
+    // Find and select the category of this business
+    if (business.category) {
+        selectedCategories.value = [business.category];
+        
+        // Scroll to the business card
+        setTimeout(() => {
+            const element = document.querySelector(`[data-business="${business.name}"]`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
+    }
+};
 
 onMounted(async () => {
     try {
@@ -53,10 +108,8 @@ onMounted(async () => {
 const filteredBusinesses = computed(() => {
     if (selectedCategories.value.length === 0) return businesses.value
     
-    // Sort businesses so that the most recently selected category appears last (on the right)
     const result = businesses.value.filter(b => selectedCategories.value.includes(b.category));
     
-    // Sort by the order of selection - businesses from the most recently selected category appear last
     return result.sort((a, b) => {
         const aIndex = selectedCategories.value.indexOf(a.category);
         const bIndex = selectedCategories.value.indexOf(b.category);
@@ -73,7 +126,6 @@ const toggleCategory = (categorySlug) => {
     if (index === -1) {
         selectedCategories.value.push(categorySlug);
     } else {
-        // If it's the last selected category, unselecting it means "All"
         if (selectedCategories.value.length === 1) {
             selectedCategories.value = [];
         } else {
@@ -109,10 +161,8 @@ const isPreferenceSelected = (value) => {
 
 const savePreference = () => {
     if (selectedPreferences.value.length > 0) {
-        // Find matching category slugs from fetched categories
         selectedCategories.value = categories.value
             .filter(cat => {
-                // Try to match by checking if preference keywords are in the category name or slug
                 return selectedPreferences.value.some(pref => {
                     const prefLower = pref.toLowerCase();
                     const catNameLower = cat.name.toLowerCase();
@@ -149,16 +199,23 @@ const skipPreference = () => {
                 <div class="relative mt-4 w-full max-w-xl flex items-center gap-3">
                     <div class="relative flex-1">
                         <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                            <svg fill="currentColor" height="24" viewBox="0 0 256 256" width="24"
+                            <svg v-if="!isSearching" fill="currentColor" height="24" viewBox="0 0 256 256" width="24"
                                 xmlns="http://www.w3.org/2000/svg">
                                 <path
                                     d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z">
                                 </path>
                             </svg>
+                            <!-- Loading spinner when searching -->
+                            <svg v-else class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
                         </span>
                         <input
+                            v-model="searchQuery"
                             class="h-14 w-full rounded-xl border-slate-300 bg-white pl-12 pr-4 text-lg text-slate-800 placeholder-slate-500 shadow-sm focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-400 dark:focus:border-primary"
-                            placeholder="Search for products or businesses" type="text" />
+                            placeholder="Search for products or businesses..." 
+                            type="text" />
                     </div>
                     
                     <!-- Edit Preferences Icon Button -->
@@ -170,6 +227,30 @@ const skipPreference = () => {
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" stroke-linecap="round" stroke-linejoin="round"></path>
                         </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search Results Section (only shows when searching) -->
+            <div v-if="searchQuery.trim() && !loading" class="rounded-xl border border-primary/20 bg-white dark:bg-slate-900 p-6 shadow-lg">
+                <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Search Results</h3>
+                <div v-if="isSearching" class="flex justify-center items-center py-8">
+                    <Loading size="md" />
+                </div>
+                <div v-else-if="searchSuggestions.length === 0" class="text-center py-8 text-slate-500 dark:text-slate-400">
+                    No businesses found matching "{{ searchQuery }}". Try different keywords!
+                </div>
+                <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <button
+                        v-for="business in searchSuggestions"
+                        :key="business.name"
+                        @click="selectSuggestion(business)"
+                        class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all text-left">
+                        <img :src="business.image" :alt="business.name" class="h-16 w-16 rounded-lg object-cover" />
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-slate-800 dark:text-slate-200 truncate">{{ business.name }}</p>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 truncate">{{ business.description || 'Click to view' }}</p>
+                        </div>
                     </button>
                 </div>
             </div>
@@ -278,7 +359,8 @@ const skipPreference = () => {
                             ref="scrollContainer"
                             class="hide-scrollbar -mx-4 flex gap-6 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 scroll-smooth">
                             <div v-for="business in filteredBusinesses" :key="business.name"
-                                class="flex w-64 shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900">
+                                :data-business="business.name"
+                                class="flex w-64 shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900 transition-transform hover:scale-105">
                                 <img :src="business.image" :alt="business.name" class="h-40 w-full object-cover" />
                                 <p class="px-4 py-3 text-base font-semibold text-slate-800 dark:text-slate-200">
                                     {{ business.name }}
@@ -332,5 +414,13 @@ const skipPreference = () => {
 .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
 }
 </style>
