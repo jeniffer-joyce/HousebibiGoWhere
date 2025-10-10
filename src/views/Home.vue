@@ -1,14 +1,12 @@
 <script setup>
 import { onMounted, ref, computed, watch } from 'vue';
-import { getCategories } from '@/firebase/services/home/categories.js';
-import { getBusinesses } from '@/firebase/services/home/business.js';
+
 import { searchWithGemini } from '@/firebase/services/gemini.js';
 import Loading from '@/components/status/Loading.vue'
+import { useHomeData } from '@/composables/home/useHomeData';
 
-const categories = ref([]);
-const businesses = ref([]);
+const { categories, businesses, loading } = useHomeData();
 const selectedCategories = ref([]);
-const loading = ref(true);
 const searchQuery = ref('');
 const isSearching = ref(false);
 const searchSuggestions = ref([]);
@@ -93,17 +91,6 @@ const selectSuggestion = (business) => {
     }
 };
 
-onMounted(async () => {
-    try {
-        const [cats, biz] = await Promise.all([getCategories(), getBusinesses()])
-        categories.value = cats;
-        businesses.value = biz;
-    } catch (e) {
-        console.error(e)
-    } finally {
-        loading.value = false
-    }
-});
 
 const filteredBusinesses = computed(() => {
     if (selectedCategories.value.length === 0) return businesses.value
