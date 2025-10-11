@@ -185,20 +185,6 @@ const skipPreference = () => {
     showPreferencePrompt.value = false;
 };
 
-//arrows
-
-const scrollContainer = ref(null);
-
-const scrollAmount = 300; // Amount of pixels to scroll per click
-
-function scrollLeft() {
-  scrollContainer.value.scrollBy({ left: -scrollAmount, behavior: "smooth" });
-}
-
-function scrollRight() {
-  scrollContainer.value.scrollBy({ left: scrollAmount, behavior: "smooth" });
-}
-
 </script>
 
 <template>
