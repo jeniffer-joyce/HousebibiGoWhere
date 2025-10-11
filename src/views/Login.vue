@@ -24,7 +24,7 @@
               autocapitalize="none"
               spellcheck="false"
               placeholder="Username or email"
-              class="form-input appearance-none rounded-none relative block w-full px-3 py-3 border border-background-dark/20 dark:border-background-light/20 bg-background-light dark:bg-background-dark text-background-dark dark:text-background-light placeholder-opacity-50 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 text-sm rounded-t-lg"
+              class="form-input appearance-none rounded-none relative block w-full px-3 py-3 border border-background-dark/20 dark:border-background-light/20 bg-background-light dark:bg-background-dark text-background-dark dark:text-background-light placeholder-opacity-50 focus:outline-none focus:ring-primary focus:border-primary text-sm rounded-t-lg"
               required
             />
           </div>
@@ -39,13 +39,13 @@
                 v-model="password"
                 placeholder="Password"
                 autocomplete="current-password"
-                class="form-input appearance-none rounded-none relative block w-full px-3 py-3 pr-10 border border-background-dark/20 dark:border-background-light/20 bg-background-light dark:bg-background-dark text-background-dark dark:text-background-light placeholder-opacity-50 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 text-sm rounded-b-lg"
+                class="form-input appearance-none rounded-none relative block w-full px-3 py-3 pr-10 border border-background-dark/20 dark:border-background-light/20 bg-background-light dark:bg-background-dark text-background-dark dark:text-background-light placeholder-opacity-50 focus:outline-none focus:ring-primary focus:border-primary text-sm rounded-b-lg"
                 required
               />
               <button
                 type="button"
                 @click="showPassword = !showPassword"
-                class="absolute inset-y-0 right-3 grid place-items-center text-background-dark/60 dark:text-background-light/60 hover:opacity-80 focus:outline-none"
+                class="absolute inset-y-0 right-3 grid place-items-center text-background-dark/60 dark:text-background-light/60 hover:opacity-80 focus:outline-none z-20"
                 :aria-label="showPassword ? 'Hide password' : 'Show password'"
                 tabindex="-1"
               >
@@ -76,14 +76,13 @@
 
         <!-- reCAPTCHA -->
         <div class="mt-4">
-            <div class="flex justify-center">
-                <div id="recaptcha-login" class="inline-block"></div>
-            </div>
-            <p v-if="captchaError" class="text-xs text-red-600 mt-2 text-center">
-                Please complete the reCAPTCHA.
-            </p>
+          <div class="flex justify-center">
+            <div id="recaptcha-login" class="inline-block"></div>
+          </div>
+          <p v-if="captchaError" class="text-xs text-red-600 mt-2 text-center">
+            Please complete the reCAPTCHA.
+          </p>
         </div>
-
 
         <p v-if="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</p>
 
@@ -121,7 +120,7 @@ const router = useRouter()
 // form
 const identifier = ref('')
 const password = ref('')
-const showPassword = ref(false) // 👈 toggle state
+const showPassword = ref(false)
 
 // reCAPTCHA
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
