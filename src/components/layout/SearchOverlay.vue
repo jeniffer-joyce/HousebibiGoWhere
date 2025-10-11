@@ -1,7 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useGeminiSearch } from '@/composables/gemini/useGeminiSearch';
-
+import { useSearch } from '@/composables/useSearch';
 import { useCategories } from '@/composables/home/useCategories'
 
 const props = defineProps({
@@ -17,7 +16,7 @@ const {
     searchSuggestions,
     isSearching,
     selectSuggestion
-} = useGeminiSearch(searchQuery, businesses, selectedCategories)
+} = useSearch(searchQuery, businesses, selectedCategories)
 
 function handleSelect(business) {
     selectSuggestion(business)

@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { useCategories } from '@/composables/home/useCategories';
 import { usePreferences } from '@/composables/signup/usePreferences';
-import { useGeminiSearch } from '@/composables/gemini/useGeminiSearch';
+import { useSearch } from '@/composables/useSearch';
 import Loading from '@/components/status/Loading.vue'
 
 
@@ -45,7 +45,7 @@ const searchQuery = ref('');
 const {
     isSearching,
     searchSuggestions,
-    selectSuggestion } = useGeminiSearch(searchQuery, businesses, selectedCategories);
+    selectSuggestion } = useSearch(searchQuery, businesses, selectedCategories);
 
 // Arrows
 const scrollContainer = ref(null);
