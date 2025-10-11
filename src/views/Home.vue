@@ -162,6 +162,7 @@ const skipPreference = () => {
     hasSubmittedPreference.value = false;
     showPreferencePrompt.value = false;
 };
+
 </script>
 
 <template>

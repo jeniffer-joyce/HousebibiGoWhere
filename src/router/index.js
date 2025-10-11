@@ -1,4 +1,5 @@
 // import { Component } from 'react'
+import { watch } from "vue";
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
@@ -9,6 +10,7 @@ import ForSellers from '../views/ForSellers.vue'
 import SellerProfile from '../views/sellers/SellerProfile.vue'
 import AddNewProduct from '../views/sellers/AddNewProduct.vue'  
 import SellerOrders from '../views/sellers/SellerOrders.vue'
+import { user } from '../store/user.js'
 
 const routes = [
     {
@@ -53,6 +55,22 @@ const routes = [
 const router = createRouter({
     history: createWebHistory(),
     routes
+})
+
+router.beforeEach((to, from, next) => {
+  if (user.loading) {
+    const unwatch = watch(() => user.loading, (val) => {
+      if (!val) {
+        unwatch()
+        next({ ...to, replace: true }) // re-run navigation
+      }
+    })
+  } else {
+    // existing role-based logic
+    if (to.path === '/' && user.isLoggedIn && user.role === 'seller') next('/seller-profile/')
+    else if (to.meta.requiresSeller && user.role !== 'seller') next('/')
+    else next()
+  }
 })
 
 export default router;
