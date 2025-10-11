@@ -1,14 +1,12 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-<<<<<<< HEAD
+
 //Below is for authetication, must set up authetication methods first and do the backend for
 //login and signup
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js" ;
 
 // Firebase Configuration
-=======
->>>>>>> f9c19e4348b293d3c92f9ca7256d0eaefcdf8ce6
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -20,7 +18,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-<<<<<<< HEAD
 const auth = getAuth(app);
 
 export { db, app, auth }; //add in auth later
@@ -126,7 +123,3 @@ export { db, app, auth }; //add in auth later
 //   loadCategories();
 //   loadBusinesses();
 // });
-=======
-
-export { db, app };
->>>>>>> f9c19e4348b293d3c92f9ca7256d0eaefcdf8ce6
