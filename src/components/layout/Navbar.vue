@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { user } from "@/store/user.js";
+import SearchOverlay from '@/components/layout/SearchOverlay.vue';
+
 
 // Dark mode state
 const isDark = ref(false);
@@ -9,7 +11,7 @@ const isDark = ref(false);
 onMounted(() => {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
+
     if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
         isDark.value = true;
         document.documentElement.classList.add('dark');
@@ -22,7 +24,7 @@ onMounted(() => {
 // Toggle dark mode
 const toggleDarkMode = () => {
     isDark.value = !isDark.value;
-    
+
     if (isDark.value) {
         document.documentElement.classList.add('dark');
         localStorage.setItem('theme', 'dark');
@@ -31,11 +33,16 @@ const toggleDarkMode = () => {
         localStorage.setItem('theme', 'light');
     }
 };
+
+const showSearchOverlay = ref(false)
+
 </script>
 
 <template>
     <header
-        class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200/80 bg-background-light/80 px-4 py-3 backdrop-blur-sm dark:border-slate-800/80 dark:bg-background-dark/80 sm:px-6 lg:px-8">
+        class="sticky top-0 z-50 flex items-center justify-between border-b border-slate-200/80 bg-background-light/80 px-4 py-3 backdrop-blur-sm dark:border-slate-800/80 dark:bg-background-dark/80 sm:px-6 lg:px-8">
+        <SearchOverlay :show="showSearchOverlay" @close="showSearchOverlay = false"
+            @select="(business) => console.log('Selected:', business)" />
         <div class="flex items-center gap-6">
             <RouterLink to="/">
                 <div class="flex items-center gap-2">
@@ -63,26 +70,24 @@ const toggleDarkMode = () => {
         </div>
         <div class="flex items-center gap-4">
             <div class="relative hidden lg:block">
-                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
-                    <svg fill="currentColor" height="20" viewBox="0 0 256 256" width="20"
-                        xmlns="http://www.w3.org/2000/svg">
-                        <path
-                            d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z">
-                        </path>
+                <button @click="showSearchOverlay = true"
+                    class="relative inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                    title="Search">
+                    <svg class="h-5 w-5 text-slate-800 dark:text-slate-200" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
                     </svg>
-                </span>
-                <input
-                    class="h-10 w-48 rounded-lg border-slate-300 bg-slate-100 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-500 focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder-slate-400"
-                    placeholder="Search..." type="text" />
+                </button>
             </div>
 
             <!-- Dark Mode Toggle -->
-            <button
-                @click="toggleDarkMode"
+            <button @click="toggleDarkMode"
                 class="relative inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
                 :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
                 <!-- Sun Icon (Light Mode) -->
-                <svg v-if="!isDark" class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!isDark" class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
                     </path>
@@ -97,45 +102,49 @@ const toggleDarkMode = () => {
 
             <div>
                 <div v-if="!user.isLoggedIn" class="flex items-center gap-4">
-                    <RouterLink to="/signup/" 
+                    <RouterLink to="/signup/"
                         class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-accent text-white text-sm font-bold leading-normal tracking-wide hover:bg-accent/90 transition-colors">
                         <span class="truncate">Sign Up</span>
                     </RouterLink>
 
-                    <RouterLink to="/login/" 
+                    <RouterLink to="/login/"
                         class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-background text-gray-800 border border-gray-300 text-sm font-bold leading-normal tracking-wide hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700 transition-colors">
                         <span class="truncate">Log In</span>
                     </RouterLink>
                 </div>
                 <div v-else class="flex items-center gap-4">
                     <!-- Cart Icon -->
-                    <button @click="() => console.log('Go to cart')" 
-                            class="relative p-2 rounded-lg bg-primary text-white hover:bg-primary/90">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.5 7H19M7 13l-4-8m16 0v2M9 21h6"/>
+                    <button @click="() => console.log('Go to cart')"
+                        class="relative p-2 rounded-lg bg-primary text-white hover:bg-primary/90">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.5 7H19M7 13l-4-8m16 0v2M9 21h6" />
                         </svg>
                         <!-- Cart Item Count Badge -->
-                        <span class="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-xs w-4 h-4">
-                        {{ user.cart.length }}
+                        <span
+                            class="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-xs w-4 h-4">
+                            {{ user.cart.length }}
                         </span>
                     </button>
 
                     <!-- Wishlist Icon -->
-                    <button @click="() => console.log('Go to wishlist')" 
-                            class="relative p-2 rounded-lg bg-primary text-white hover:bg-primary/90">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 8c0-1.105.895-2 2-2h12c1.105 0 2 .895 2 2v12l-8-4-8 4V8z"/>
+                    <button @click="() => console.log('Go to wishlist')"
+                        class="relative p-2 rounded-lg bg-primary text-white hover:bg-primary/90">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 8c0-1.105.895-2 2-2h12c1.105 0 2 .895 2 2v12l-8-4-8 4V8z" />
                         </svg>
                         <!-- Wishlist Count Badge -->
-                        <span class="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-xs w-4 h-4">
-                        {{ user.wishlist.length }}
+                        <span
+                            class="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-xs w-4 h-4">
+                            {{ user.wishlist.length }}
                         </span>
                     </button>
 
                     <!-- Profile Picture -->
-                    <img :src="user.avatar" alt="avatar" class="h-10 w-10 rounded-full"/>
+                    <img :src="user.avatar" alt="avatar" class="h-10 w-10 rounded-full" />
                 </div>
             </div>
         </div>
