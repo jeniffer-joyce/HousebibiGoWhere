@@ -19,18 +19,6 @@ const showPreferencePrompt = ref(true);
 const selectedPreferences = ref([]);
 const hasSubmittedPreference = ref(false);
 
-// Category labels mapping
-const categoryLabels = {
-    'food': 'Food & Beverages',
-    'crafts': 'Handmade Crafts',
-    'beauty': 'Beauty & Wellness',
-    'services': 'Home Services',
-    'fashion': 'Fashion & Accessories',
-    'education': 'Education & Tutoring',
-    'tech': 'Tech & Digital Services',
-    'other': 'Other'
-};
-
 // Arrows
 const scrollContainer = ref(null);
 const scrollAmount = 300;
@@ -161,18 +149,8 @@ const isPreferenceSelected = (value) => {
 
 const savePreference = () => {
     if (selectedPreferences.value.length > 0) {
-        selectedCategories.value = categories.value
-            .filter(cat => {
-                return selectedPreferences.value.some(pref => {
-                    const prefLower = pref.toLowerCase();
-                    const catNameLower = cat.name.toLowerCase();
-                    const catSlugLower = cat.slug.toLowerCase();
-                    return catNameLower.includes(prefLower) || 
-                           catSlugLower.includes(prefLower) ||
-                           prefLower.includes(catNameLower.split(' ')[0].toLowerCase());
-                });
-            })
-            .map(cat => cat.slug);
+        // Directly use the selected category slugs
+        selectedCategories.value = selectedPreferences.value;
         
         hasSubmittedPreference.value = true;
         showPreferencePrompt.value = false;
@@ -274,16 +252,16 @@ const skipPreference = () => {
                     <div class="flex w-full max-w-2xl flex-col gap-3">
                         <div class="flex flex-wrap gap-2 justify-center">
                             <button
-                                v-for="(label, value) in categoryLabels"
-                                :key="value"
-                                @click="togglePreferenceSelection(value)"
+                                v-for="category in categories"
+                                :key="category.slug"
+                                @click="togglePreferenceSelection(category.slug)"
                                 :class="[
                                     'rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
-                                    isPreferenceSelected(value)
+                                    isPreferenceSelected(category.slug)
                                         ? 'bg-primary text-white hover:bg-primary/90'
                                         : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700'
                                 ]">
-                                {{ label }}
+                                {{ category.name }}
                             </button>
                         </div>
                         <div class="flex gap-2 justify-center">
