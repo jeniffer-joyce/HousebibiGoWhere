@@ -6,17 +6,17 @@ import { useSearch } from '@/composables/useSearch';
 import Loading from '@/components/status/Loading.vue'
 
 
-// Category labels mapping
-const categoryLabels = {
-    'food': 'Food & Beverages',
-    'crafts': 'Handmade Crafts',
-    'beauty': 'Beauty & Wellness',
-    'services': 'Home Services',
-    'fashion': 'Fashion & Accessories',
-    'education': 'Education & Tutoring',
-    'tech': 'Tech & Digital Services',
-    'other': 'Other'
-};
+// // Category labels mapping
+// const categoryLabels = {
+//     'food': 'Food & Beverages',
+//     'crafts': 'Handmade Crafts',
+//     'beauty': 'Beauty & Wellness',
+//     'services': 'Home Services',
+//     'fashion': 'Fashion & Accessories',
+//     'education': 'Education & Tutoring',
+//     'tech': 'Tech & Digital Services',
+//     'other': 'Other'
+// };
 const {
     loading,
     categories,
@@ -58,6 +58,9 @@ function scrollLeft() {
 function scrollRight() {
     scrollContainer.value.scrollBy({ left: scrollAmount, behavior: "smooth" });
 }
+
+
+
 
 </script>
 
@@ -152,14 +155,17 @@ function scrollRight() {
                     </div>
                     <div class="flex w-full max-w-2xl flex-col gap-3">
                         <div class="flex flex-wrap gap-2 justify-center">
-                            <button v-for="(label, value) in categoryLabels" :key="value"
-                                @click="togglePreferenceSelection(value)" :class="[
+                            <button
+                                v-for="category in categories"
+                                :key="category.slug"
+                                @click="togglePreferenceSelection(category.slug)"
+                                :class="[
                                     'rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
-                                    isPreferenceSelected(value)
+                                    isPreferenceSelected(category.slug)
                                         ? 'bg-primary text-white hover:bg-primary/90'
                                         : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700'
                                 ]">
-                                {{ label }}
+                                {{ category.name }}
                             </button>
                         </div>
                         <div class="flex gap-2 justify-center">

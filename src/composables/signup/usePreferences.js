@@ -18,20 +18,29 @@ export function usePreferences(selectedCategories, categories) {
         return selectedPreferences.value.includes(value);
     };
 
+    // const savePreference = () => {
+    //     if (selectedPreferences.value.length > 0) {
+    //         selectedCategories.value = categories.value
+    //             .filter(cat => {
+    //                 return selectedPreferences.value.some(pref => {
+    //                     const prefLower = pref.toLowerCase();
+    //                     const catNameLower = cat.name.toLowerCase();
+    //                     const catSlugLower = cat.slug.toLowerCase();
+    //                     return catNameLower.includes(prefLower) ||
+    //                         catSlugLower.includes(prefLower) ||
+    //                         prefLower.includes(catNameLower.split(' ')[0].toLowerCase());
+    //                 });
+    //             })
+    //             .map(cat => cat.slug);
+
+    //         hasSubmittedPreference.value = true;
+    //         showPreferencePrompt.value = false;
+    //     }
+    // };
     const savePreference = () => {
         if (selectedPreferences.value.length > 0) {
-            selectedCategories.value = categories.value
-                .filter(cat => {
-                    return selectedPreferences.value.some(pref => {
-                        const prefLower = pref.toLowerCase();
-                        const catNameLower = cat.name.toLowerCase();
-                        const catSlugLower = cat.slug.toLowerCase();
-                        return catNameLower.includes(prefLower) ||
-                            catSlugLower.includes(prefLower) ||
-                            prefLower.includes(catNameLower.split(' ')[0].toLowerCase());
-                    });
-                })
-                .map(cat => cat.slug);
+            // Directly use the selected category slugs
+            selectedCategories.value = selectedPreferences.value;
 
             hasSubmittedPreference.value = true;
             showPreferencePrompt.value = false;
