@@ -40,7 +40,7 @@ const showSearchOverlay = ref(false)
 
 <template>
     <header
-        class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200/80 bg-background-light/80 px-4 py-3 backdrop-blur-sm dark:border-slate-800/80 dark:bg-background-dark/80 sm:px-6 lg:px-8">
+        class="sticky top-0 z-50 flex items-center justify-between border-b border-slate-200/80 bg-background-light/80 px-4 py-3 backdrop-blur-sm dark:border-slate-800/80 dark:bg-background-dark/80 sm:px-6 lg:px-8">
         <SearchOverlay :show="showSearchOverlay" @close="showSearchOverlay = false"
             @select="(business) => console.log('Selected:', business)" />
         <div class="flex items-center gap-6">
