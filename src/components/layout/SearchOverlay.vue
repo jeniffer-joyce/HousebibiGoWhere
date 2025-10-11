@@ -40,46 +40,51 @@ function handleSelect(business) {
                 style="height: 60vh;">
 
                 <!-- Close Button -->
-                    <div class="flex justify-end mb-4">
-                        <button @click="$emit('close')" class="text-slate-600 dark:text-slate-300 hover:text-red-500">
-                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
+                <div class="flex justify-end mb-4">
+                    <button @click="$emit('close')" class="text-slate-600 dark:text-slate-300 hover:text-red-500">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="max-w-7xl mx-auto w-full px-4 flex flex-col flex-1 overflow-hidden">
                     <!-- Search Input -->
                     <div class="relative mb-4">
                         <input v-model="searchQuery" type="text" placeholder="Search products or businesses..."
                             class="w-full bg-transparent border-0 border-b-4 border-slate-300 dark:border-slate-700 px-0 py-3 text-2xl text-slate-800 dark:text-slate-200 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-0" />
                         <span v-if="isSearching" class="absolute right-4 top-1/2 -translate-y-1/2">
                             <svg class="animate-spin h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4" />
                                 <path class="opacity-75" fill="currentColor"
                                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                             </svg>
                         </span>
                     </div>
-                <!-- Search Results: flex-grow + scroll -->
-                <div class="flex-1 max-w-7xl mx-auto px-4 overflow-y-auto">
-                    <div v-if="searchQuery.trim() && searchSuggestions.length === 0 && !isSearching"
-                        class="text-center text-slate-500 dark:text-slate-400">
-                        No results found.
-                    </div>
+                    <!-- Search Results: flex-grow + scroll -->
+                    <div class="flex-1 overflow-y-auto">
+                        <div v-if="searchQuery.trim() && searchSuggestions.length === 0 && !isSearching"
+                            class="text-center text-slate-500 dark:text-slate-400">
+                            No results found.
+                        </div>
 
-                    <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <button v-for="business in searchSuggestions" :key="business.name"
-                            @click="handleSelect(business)"
-                            class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all text-left">
-                            <img :src="business.image" :alt="business.name" class="h-16 w-16 rounded-lg object-cover" />
-                            <div class="flex-1 min-w-0">
-                                <p class="font-semibold text-slate-800 dark:text-slate-200 truncate">{{ business.name }}
-                                </p>
-                                <p class="text-sm text-slate-500 dark:text-slate-400 truncate">{{ business.description
-                                    || 'Click to view' }}</p>
-                            </div>
-                        </button>
+                        <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <button v-for="business in searchSuggestions" :key="business.name"
+                                @click="handleSelect(business)"
+                                class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all text-left">
+                                <img :src="business.image" :alt="business.name"
+                                    class="h-16 w-16 rounded-lg object-cover" />
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-slate-800 dark:text-slate-200 truncate">{{
+                                        business.name }}
+                                    </p>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400 truncate">{{
+                                        business.description
+                                        || 'Click to view' }}</p>
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
