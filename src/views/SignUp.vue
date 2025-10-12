@@ -72,7 +72,7 @@
             </p>
           </div>
 
-          <!-- Password with Eye Icon (icon stays aligned even when error shows) -->
+          <!-- Password with Eye Icon -->
           <div>
             <div class="relative">
               <input
@@ -157,25 +157,74 @@
             </p>
           </div>
 
-            <!-- reCAPTCHA -->
-            <div class="mt-4 flex justify-center">
-                <!-- reCAPTCHA target -->
-                <div id="recaptcha-container"></div>
+          <!-- User Preferences Section (Buyers Only) -->
+          <div v-if="role === 'buyer'" class="mt-6 rounded-xl border border-[#10A9C7]/20 bg-gradient-to-br from-[#10A9C7]/5 to-[#10A9C7]/10 p-5 shadow-sm">
+            <div class="flex flex-col gap-4">
+              <div class="flex items-start gap-3">
+                <div class="rounded-full bg-[#10A9C7]/10 p-2 mt-0.5">
+                  <svg class="h-5 w-5 text-[#10A9C7]" fill="none" stroke="currentColor" stroke-width="2"
+                    viewBox="0 0 24 24">
+                    <path
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      stroke-linecap="round" stroke-linejoin="round"></path>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <h3 class="text-base font-bold text-slate-900">What are your favorite categories?</h3>
+                  <p class="text-xs text-slate-600 mt-1">Select multiple categories to personalize your experience (optional)</p>
+                </div>
+              </div>
+              
+              <div v-if="categoriesLoading" class="flex justify-center py-4">
+                <div class="animate-spin h-6 w-6 border-2 border-[#10A9C7] border-t-transparent rounded-full"></div>
+              </div>
+              
+              <div v-else-if="categories.length > 0" class="flex flex-wrap gap-2">
+                <button
+                  v-for="category in categories"
+                  :key="category.slug"
+                  type="button"
+                  @click="togglePreference(category.slug)"
+                  :class="[
+                    'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    selectedPreferences.includes(category.slug)
+                      ? 'bg-[#10A9C7] text-white hover:bg-[#10A9C7]/90'
+                      : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                  ]">
+                  {{ category.name }}
+                </button>
+              </div>
+              
+              <p v-else class="text-xs text-slate-500 text-center py-2">
+                Unable to load categories. You can set your preferences later!
+              </p>
             </div>
-            <p v-if="captchaError" class="text-xs text-red-600 mt-1 text-center">
+          </div>
+
+          <!-- reCAPTCHA -->
+          <div class="mt-4">
+            <div v-if="recaptchaLoading" class="flex flex-col items-center gap-2 py-8">
+              <div class="animate-spin h-8 w-8 border-3 border-[#10A9C7] border-t-transparent rounded-full"></div>
+              <p class="text-sm text-slate-500">Loading security check...</p>
+            </div>
+            <div v-show="!recaptchaLoading" class="flex justify-center">
+              <div id="recaptcha-container"></div>
+            </div>
+          </div>
+          <p v-if="captchaError" class="text-xs text-red-600 mt-1 text-center">
             Please complete the reCAPTCHA before signing up.
-            </p>
+          </p>
 
-            <!-- Error -->
-            <p v-if="errorMsg" class="text-sm text-red-600 mt-1">{{ errorMsg }}</p>
+          <!-- Error -->
+          <p v-if="errorMsg" class="text-sm text-red-600 mt-1">{{ errorMsg }}</p>
 
-            <!-- Submit -->
-            <button
-                type="submit"
-                :disabled="!canSubmit || loading"
-                class="w-full h-11 rounded-lg text-white font-semibold mt-2 transition"
-                :class="canSubmit ? 'bg-[#FF7A5C] hover:opacity-95' : 'bg-gray-300 cursor-not-allowed'"
-            >
+          <!-- Submit -->
+          <button
+            type="submit"
+            :disabled="!canSubmit || loading"
+            class="w-full h-11 rounded-lg text-white font-semibold mt-2 transition"
+            :class="canSubmit ? 'bg-[#FF7A5C] hover:opacity-95' : 'bg-gray-300 cursor-not-allowed'"
+          >
             <span v-if="!loading">Sign up</span>
             <span v-else>Creating account…</span>
           </button>
@@ -194,6 +243,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { registerUserWithUsername } from '../firebase/auth/authService'
+import { getCategories } from '../firebase/services/home/categories.js'
 
 const router = useRouter()
 
@@ -211,6 +261,12 @@ const phone = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
+
+// Preferences
+const categories = ref([])
+const categoriesLoading = ref(true)
+const selectedPreferences = ref([])
+const recaptchaLoading = ref(true)
 
 // Validation
 const usernameValid = computed(() => /^[A-Za-z0-9]{8,20}$/.test(username.value.trim()))
@@ -242,6 +298,46 @@ const canSubmit = computed(() =>
   uenRequiredOk.value
 )
 
+// Preferences functions
+const togglePreference = (categorySlug) => {
+  const index = selectedPreferences.value.indexOf(categorySlug)
+  if (index === -1) {
+    selectedPreferences.value.push(categorySlug)
+  } else {
+    selectedPreferences.value.splice(index, 1)
+  }
+}
+
+// Load categories
+onMounted(async () => {
+  try {
+    const cats = await getCategories()
+    categories.value = cats
+  } catch (error) {
+    console.error('Error loading categories:', error)
+  } finally {
+    categoriesLoading.value = false
+  }
+
+  // Load reCAPTCHA
+  if (!recaptchaSiteKey) {
+    console.error('Missing VITE_RECAPTCHA_SITE_KEY in .env.local')
+    errorMsg.value = 'reCAPTCHA configuration error. Please contact support.'
+    return
+  }
+  
+  try {
+    await loadRecaptchaScript()
+    // Wait a bit to ensure the container is in the DOM
+    setTimeout(() => {
+      renderRecaptcha()
+    }, 100)
+  } catch (error) {
+    console.error('reCAPTCHA loading error:', error)
+    errorMsg.value = 'Failed to load reCAPTCHA. Please refresh the page.'
+  }
+})
+
 // --- reCAPTCHA (v2 Checkbox) ---
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 const captchaToken = ref('')
@@ -253,7 +349,6 @@ function resetRecaptcha() {
     window.grecaptcha.reset(widgetId)
   }
   captchaToken.value = ''
-  // leave captchaError false; it will turn true only if they submit w/o rechecking
 }
 
 function loadRecaptchaScript() {
@@ -270,27 +365,38 @@ function loadRecaptchaScript() {
 }
 
 function renderRecaptcha() {
-  widgetId = window.grecaptcha.render('recaptcha-container', {
-    sitekey: recaptchaSiteKey,
-    callback: (token) => {
-      captchaToken.value = token
-      captchaError.value = false
-    },
-    'expired-callback': () => {
-      captchaToken.value = ''
-      captchaError.value = true
+  try {
+    const container = document.getElementById('recaptcha-container')
+    if (!container) {
+      console.error('reCAPTCHA container not found')
+      recaptchaLoading.value = false
+      return
     }
-  })
-}
-
-onMounted(async () => {
-  if (!recaptchaSiteKey) {
-    console.error('Missing VITE_RECAPTCHA_SITE_KEY in .env.local')
-    return
+    
+    // Check if grecaptcha is ready
+    if (!window.grecaptcha || !window.grecaptcha.render) {
+      console.error('grecaptcha not ready')
+      recaptchaLoading.value = false
+      return
+    }
+    
+    widgetId = window.grecaptcha.render('recaptcha-container', {
+      sitekey: recaptchaSiteKey,
+      callback: (token) => {
+        captchaToken.value = token
+        captchaError.value = false
+      },
+      'expired-callback': () => {
+        captchaToken.value = ''
+        captchaError.value = true
+      }
+    })
+    recaptchaLoading.value = false
+  } catch (error) {
+    console.error('Error rendering reCAPTCHA:', error)
+    recaptchaLoading.value = false
   }
-  await loadRecaptchaScript()
-  renderRecaptcha()
-})
+}
 
 onBeforeUnmount(() => {
   if (window.grecaptcha && widgetId !== null) {
@@ -325,16 +431,15 @@ async function onSubmit() {
         birthday: birthday.value,
         phone: phone.value.trim(),
         uen: role.value === 'seller' ? uen.value.trim() : null,
+        preferences: role.value === 'buyer' ? selectedPreferences.value : [], // Only save preferences for buyers
       },
       captchaToken: captchaToken.value,
     })
-    // success → (optional) reset before redirect, but you’re navigating away anyway
     resetRecaptcha()
     router.push('/login')
   } catch (err) {
     console.error(err)
     errorMsg.value = mapError(err)
-    // IMPORTANT: reCAPTCHA token is now used/expired — force a fresh one
     resetRecaptcha()
   } finally {
     loading.value = false
@@ -353,3 +458,13 @@ function mapError(err) {
   return 'Something went wrong. Please try again.'
 }
 </script>
+
+<style scoped>
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+</style>
