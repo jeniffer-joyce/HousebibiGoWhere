@@ -304,7 +304,7 @@ function renderRecaptcha() {
   const theme = currentTheme()
   widgetId = window.grecaptcha.render('recaptcha-container', {
     sitekey: recaptchaSiteKey,
-    theme, // light/dark to match site
+    theme,
     callback: (token) => {
       captchaToken.value = token
       captchaError.value = false
@@ -324,11 +324,10 @@ onMounted(async () => {
   await loadRecaptchaScript()
   renderRecaptcha()
 
-  // Re-render captcha when theme changes (class on <html> toggles)
   themeObserver = new MutationObserver(() => {
     const el = document.getElementById('recaptcha-container')
     if (!el || !window.grecaptcha) return
-    el.innerHTML = ''   // remove old iframe
+    el.innerHTML = ''
     widgetId = null
     captchaToken.value = ''
     renderRecaptcha()
@@ -372,7 +371,8 @@ async function onSubmit() {
       captchaToken: captchaToken.value,
     })
     resetRecaptcha()
-    router.push('/login')
+    // CHANGED: Redirect to homepage instead of login
+    router.push('/')
   } catch (err) {
     console.error(err)
     errorMsg.value = mapError(err)
