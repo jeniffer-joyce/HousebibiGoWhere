@@ -20,7 +20,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-export { db, app, auth }; //add in auth later
+export { db, app, auth, onAuthStateChanged }; //add in auth later
 
 // let currentCategory = null;
 
