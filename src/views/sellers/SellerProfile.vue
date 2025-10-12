@@ -1,7 +1,13 @@
 <!-- SellerProfile.vue -->
 <template>
   <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="max-w-4xl mx-auto">
+    <!-- Loading State -->
+    <div v-if="loading" class="flex justify-center items-center min-h-[400px]">
+      <Loading size="lg" />
+    </div>
+
+    <!-- Existing content -->
+    <div v-else class="max-w-4xl mx-auto">
       <!-- ===========================
            Profile Card
            =========================== -->
@@ -264,7 +270,7 @@
 
           <!-- Add button always visible -->
           <div class="mt-8 flex justify-center">
-            <button @click="addProductModal = true"
+            <button @click="showAddModal = true"
                     class="flex items-center justify-center gap-2 h-12 px-8 bg-accent text-white font-bold text-sm rounded-lg shadow-lg hover:bg-vibrant-coral/90 transition-all transform hover:scale-105">
               <span class="material-symbols-outlined">add_circle</span>
               <span>Add New Product</span>
@@ -289,15 +295,26 @@
         </div>
       </div>
     </div>
+    <AddProductModal 
+  :show="showAddModal" 
+  @close="showAddModal = false" 
+  @save="handleAddProduct" 
+/>
   </main>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { getSellerProducts } from '@/firebase/services/sellers/products.js'
+import Loading from '@/components/status/Loading.vue'
+import AddProductModal from '@/components/modals/AddProductModal.vue'
+import { createProduct } from '@/firebase/services/sellers/products.js'
 
-/* -----------------------------
- * Mock Seller Data
- * ----------------------------- */
+
+// Get seller ID (replace with actual from route/store later)
+const sellerID = 'A0000001'
+
+/* Seller data - keep hardcoded for now until you create sellers collection */
 const seller = reactive({
   userID: 'A0000001',
   dateCreated: '2023-01-15 10:30:00 UTC+8',
@@ -306,35 +323,46 @@ const seller = reactive({
   account_type: 'seller',
   uen: '12345678A',
   rating: 4.8,
-  bio: 'Handmade crafts and unique home decor items. Bringing warmth and style to your living space. Crafted with love in Singapore. Follow us for the latest updates and exclusive offers!',
+  bio: 'Handmade crafts and unique home decor items. Bringing warmth and style to your living space.',
   logo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAvDcbMzFfeOb3_h2t6uZzdwHccl2CtXAV_HefE3Vq9CTAeiMu4sCE6Jhdva_sb7S3PV3u9zSaANk2iz7iFIRPCHqAvHuCd-xacQWdeUyun9Iy7oICCCN_X1QqwJ1lyHqbtjGYzhOn5mKV_i9eD1o6fGeWgjfIB87h1dAcVufqCvvW4N0925h4gJ92uxp7J-7z5vz7SHWEf4IObyuH5WZLYNVL2GAYYWtkDBuyJtHtigkoLtjT0cc6ghqtBLxUoRxa4OnNWmD2O1c0b',
   address: '216 Wadapp St, Singapore',
-  products: [
-    { type: 'product', name: 'Handmade Knitted Blanket', category: 'Home Decor', price: [12.5, 15.3, 18], availability: true, quantity: [10,15,5], size: ['Small','Medium','Large'], description: 'A cozy and warm blanket, perfect for chilly evenings.', images: ['https://picsum.photos/seed/blanket1/600/600','https://picsum.photos/seed/blanket2/600/600','https://picsum.photos/seed/blanket3/600/600'] },
-    { type: 'product', name: 'Ceramic Coffee Mug', category: 'Kitchenware', price: [12.5, 15.0], availability: true, quantity: [20,15], size: ['300ml','450ml'], description: 'A stylish mug for your morning coffee or tea.', img: 'https://www.seriouseats.com/thmb/E8ZdOHHO16DIjR02TTd2pNO6AsA=/750x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/sea-tier-3-primary-best-coffee-mugs-ebrockob-001-87ba5747529f4351b06c885febf1ba7e.jpeg' },
-    {
-      type: 'service',
-      name: 'Home Styling Consultation',
-      category: 'Services',
-      description: '1–2 hour design consultation at your place or via video call.',
-      img: 'https://picsum.photos/seed/consult/600/600',
-      packages: [
-        { name: 'Basic (1 hr)', price: 49.0 },
-        { name: 'Standard (90m)', price: 69.0 },
-        { name: 'Premium (2 hr)', price: 89.0 }
-      ],
-      timeslots: [
-        { label: '10:00', start: '2025-10-13T10:00:00+08:00', end: '2025-10-13T11:00:00+08:00', capacity: 1, booked: 0 },
-        { label: '14:00', start: '2025-10-13T14:00:00+08:00', end: '2025-10-13T15:00:00+08:00', capacity: 2, booked: 1 },
-        { label: '16:00', start: '2025-10-13T16:00:00+08:00', end: '2025-10-13T17:00:00+08:00', capacity: 1, booked: 1 }
-      ],
-      availability: true
-    },
-    { type: 'product', name: 'Yoga Mat', category: 'Fitness', price: [12.0, 20.0, 30.0], availability: true, quantity: [25,10,0], size: ['Standard','Thick','Extra Thick'], description: 'A non-slip mat for all your yoga and exercise needs.', img: ['https://picsum.photos/seed/yog1/600/600','https://picsum.photos/seed/yog2/600/600'] },
-    { type: 'product', name: 'Scented Candles Set', category: 'Home Fragrance', price: 20.0, availability: true, quantity: 40, size: null, description: 'A set of three scented candles to create a relaxing atmosphere.', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDxM4GDJ-QHi29SrHwwJXPDkDpuCEyJHc2Y1XtgxlM_cP6zWz5XtmTwLanIyFZYMjGwEhrs7BNLxrHqoVDNOIZvWv42gXUhyD20gPEgmOnQZhJrrkrtdtQzPAL5DffP-EAqnestASgC1_BPEtc-uCVBpyoEj3zLF4MjYwLSe0RXNKk_WlLODzYW4C2tKrrenLK4kN8glkeRx5A9lhu6lvQPUxrbXfGlGvoVn7hwzv0XtfIDUBkbNoDQDl05IJg3RZu_4X5lbrvoDnxi' }
-  ]
+  products: [] // Will be loaded from Firebase
 })
 
+const loading = ref(true)
+
+/* Load products from Firebase */
+onMounted(async () => {
+  try {
+    const products = await getSellerProducts(sellerID)
+    seller.products = products
+    console.log('Loaded products:', products) // Debug log
+  } catch (error) {
+    console.error('Error loading products:', error)
+  } finally {
+    loading.value = false
+  }
+})
+
+const showAddModal = ref(false)
+
+async function handleAddProduct(productData) {
+  try {
+    const newId = await createProduct(productData)
+    seller.products.push({ 
+      id: newId, 
+      type: 'product',
+      name: productData.item_name, 
+      img: productData.img_url,
+      ...productData 
+    })
+    showAddModal.value = false
+    alert('✅ Product added!')
+  } catch (error) {
+    console.error('Error adding product:', error)
+    alert('❌ Failed to add product')
+  }
+}
 /* -----------------------------
  * Tabs & UI state
  * ----------------------------- */
@@ -553,7 +581,9 @@ const stockClass = (p = {}) =>
  * Handlers
  * ----------------------------- */
 function onEdit(item) {
-  // Wire to a modal or route as needed
   console.log('Edit item:', item)
 }
 </script>
+
+
+// ... rest of your existing code (tabs, filters, imgIndex, etc. - KEEP EVERYTHING ELSE THE SAME)
