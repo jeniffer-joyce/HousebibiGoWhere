@@ -1,9 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { user } from "@/store/user.js";
 import { auth } from "@/firebase/firebase_config";
 import { signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import SearchOverlay from '@/components/layout/SearchOverlay.vue';
+
+const router = useRouter();
 
 // Dark mode state
 const isDark = ref(false);
@@ -46,6 +49,11 @@ async function handleLogout() {
         await signOut(auth)
         showProfileDropdown.value = false
         console.log('Logged out successfully')
+        
+        // Redirect to homepage and force refresh
+        router.push('/').then(() => {
+            window.location.reload()
+        })
     } catch (error) {
         console.error('Error logging out:', error)
         alert('Failed to logout. Please try again.')
