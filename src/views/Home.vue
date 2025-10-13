@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { user } from '@/store/user.js';
 import { useCategories } from '@/composables/home/useCategories';
 import { usePreferences } from '@/composables/signup/usePreferences';
@@ -41,6 +41,27 @@ const showEditPreferencesButton = computed(() => {
     return user.isLoggedIn && !showPreferencePrompt.value;
 });
 
+// Check if a category is in user's preferences
+const isPreferredCategory = computed(() => {
+    return (slug) => user.preferences.categories.includes(slug);
+});
+
+// Sort categories to show preferred ones first
+const sortedCategories = computed(() => {
+    if (!user.isLoggedIn || user.preferences.categories.length === 0) {
+        return categories.value;
+    }
+    
+    const preferred = categories.value.filter(c => user.preferences.categories.includes(c.slug));
+    const others = categories.value.filter(c => !user.preferences.categories.includes(c.slug));
+    return [...preferred, ...others];
+});
+
+// Clear all selected preferences
+function clearAllPreferences() {
+    selectedPreferences.value = [];
+}
+
 // Arrows
 const scrollContainer = ref(null);
 const scrollAmount = 300;
@@ -59,11 +80,11 @@ function scrollRight() {
         <div class="flex flex-col gap-10">
             <div class="flex flex-col items-center gap-4 text-center">
                 <h2 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-                    <span v-if="currentUser">Welcome back, {{ userProfile?.displayName || 'Friend' }}! 👋</span>
+                    <span v-if="user.isLoggedIn">Welcome back, {{ user.name || 'Friend' }}! 👋</span>
                     <span v-else>Discover Home-Based Businesses</span>
                 </h2>
                 <p class="max-w-2xl text-lg text-slate-600 dark:text-slate-400">
-                    <span v-if="currentUser && userPreferences.length > 0">
+                    <span v-if="user.isLoggedIn && user.preferences.categories.length > 0">
                         Here are businesses tailored to your preferences
                     </span>
                     <span v-else>
@@ -163,14 +184,25 @@ function scrollRight() {
                                 {{ category.name }}
                             </button>
                         </div>
+                        
+                        <!-- Clear All button (only show if there are selections) -->
+                        <div v-if="selectedPreferences.length > 0" class="text-center">
+                            <button 
+                                @click="clearAllPreferences"
+                                class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 underline">
+                                Clear all selections
+                            </button>
+                        </div>
+
                         <div class="flex gap-2 justify-center">
-                            <button @click="savePreference" :disabled="selectedPreferences.length === 0"
-                                class="rounded-lg bg-primary px-6 py-2.5 font-semibold text-white transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
-                                Save Preferences
+                            <button 
+                                @click="savePreference"
+                                class="rounded-lg bg-primary px-6 py-2.5 font-semibold text-white transition-all hover:bg-primary/90">
+                                {{ selectedPreferences.length > 0 ? 'Save Preferences' : 'Clear All Preferences' }}
                             </button>
                             <button @click="skipPreference"
                                 class="rounded-lg px-6 py-2.5 font-semibold text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-300 dark:border-slate-600">
-                                Skip
+                                Cancel
                             </button>
                         </div>
                     </div>
@@ -184,9 +216,7 @@ function scrollRight() {
             <template v-if="!loading">
                 <!-- Categories Section -->
                 <div>
-                    <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">
-                        {{ currentUser && userPreferences.length > 0 ? 'Your Preferences' : 'Categories' }}
-                    </h3>
+                    <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">{{ categoryHeading }}</h3>
                     <div class="flex flex-wrap gap-3">
                         <!-- All Button -->
                         <button

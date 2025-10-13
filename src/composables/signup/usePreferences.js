@@ -25,6 +25,10 @@ export function usePreferences(selectedCategories, categories) {
         if (user.preferences.categories.length > 0) {
           selectedPreferences.value = [...user.preferences.categories];
           selectedCategories.value = [...user.preferences.categories];
+        } else {
+          // User has cleared their preferences
+          selectedPreferences.value = [];
+          selectedCategories.value = [];
         }
       } else if (!isLoggedIn) {
         // Not logged in - hide everything
@@ -56,7 +60,7 @@ export function usePreferences(selectedCategories, categories) {
     }
 
     try {
-      // Save to Firebase
+      // Allow saving even with empty array (clearing preferences)
       await saveUserPreferences(user.uid, selectedPreferences.value);
       
       // Update local user state
@@ -67,10 +71,10 @@ export function usePreferences(selectedCategories, categories) {
       selectedCategories.value = [...selectedPreferences.value];
       
       // Update UI state
-      hasSubmittedPreference.value = true;
+      hasSubmittedPreference.value = selectedPreferences.value.length > 0;
       showPreferencePrompt.value = false;
       
-      console.log('Preferences saved and applied!');
+      console.log('Preferences saved and applied!', selectedPreferences.value);
     } catch (error) {
       console.error('Failed to save preferences:', error);
       alert('Failed to save preferences. Please try again.');
@@ -89,6 +93,11 @@ export function usePreferences(selectedCategories, categories) {
       
       // Update local user state
       user.preferences.hasSetPreferences = true;
+      user.preferences.categories = []; // Clear any preferences
+      
+      // Clear selections
+      selectedPreferences.value = [];
+      selectedCategories.value = [];
       
       // Close prompt
       showPreferencePrompt.value = false;
