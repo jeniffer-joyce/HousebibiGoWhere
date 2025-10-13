@@ -1,22 +1,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
+import { user } from '@/store/user.js';
 import { useCategories } from '@/composables/home/useCategories';
 import { usePreferences } from '@/composables/signup/usePreferences';
 import { useSearch } from '@/composables/useSearch';
 import Loading from '@/components/status/Loading.vue'
 
-
-// // Category labels mapping
-// const categoryLabels = {
-//     'food': 'Food & Beverages',
-//     'crafts': 'Handmade Crafts',
-//     'beauty': 'Beauty & Wellness',
-//     'services': 'Home Services',
-//     'fashion': 'Fashion & Accessories',
-//     'education': 'Education & Tutoring',
-//     'tech': 'Tech & Digital Services',
-//     'other': 'Other'
-// };
 const {
     loading,
     categories,
@@ -47,6 +36,11 @@ const {
     searchSuggestions,
     selectSuggestion } = useSearch(searchQuery, businesses, selectedCategories);
 
+// Only show edit button if user is logged in
+const showEditPreferencesButton = computed(() => {
+    return user.isLoggedIn && !showPreferencePrompt.value;
+});
+
 // Arrows
 const scrollContainer = ref(null);
 const scrollAmount = 300;
@@ -58,10 +52,6 @@ function scrollLeft() {
 function scrollRight() {
     scrollContainer.value.scrollBy({ left: scrollAmount, behavior: "smooth" });
 }
-
-
-
-
 </script>
 
 <template>
@@ -97,8 +87,10 @@ function scrollRight() {
                             placeholder="Search for products or businesses..." type="text" />
                     </div>
 
-                    <!-- Edit Preferences Icon Button -->
-                    <button v-if="!showPreferencePrompt" @click="showPreferencePrompt = true"
+                    <!-- Edit Preferences Icon Button (only for logged-in users) -->
+                    <button 
+                        v-if="showEditPreferencesButton" 
+                        @click="showPreferencePrompt = true"
                         class="h-14 w-14 shrink-0 flex items-center justify-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 transition-colors"
                         title="Edit your preferences">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -135,7 +127,7 @@ function scrollRight() {
                 </div>
             </div>
 
-            <!-- User Preference Prompt -->
+            <!-- User Preference Prompt (only for logged-in first-time users) -->
             <div v-if="showPreferencePrompt"
                 class="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-6 shadow-lg dark:border-primary/30 dark:from-primary/10 dark:to-primary/20">
                 <div class="flex flex-col items-center gap-4 text-center">

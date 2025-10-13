@@ -15,6 +15,8 @@ export const user = reactive({
   preferences: {
     theme: "dark",
     language: "en",
+    categories: [], // User's preferred categories
+    hasSetPreferences: false // Whether user has set/skipped preferences
   },
 })
 
@@ -29,7 +31,7 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     user.uid = firebaseUser.uid
     user.email = firebaseUser.email
 
-    // Fetch user role from Firestore with retry logic
+    // Fetch user role and preferences from Firestore with retry logic
     try {
       const docRef = doc(db, "users", firebaseUser.uid)
       let attempts = 0
@@ -51,6 +53,10 @@ onAuthStateChanged(auth, async (firebaseUser) => {
 
         user.role = data.role || "buyer"
         
+        // Load user preferences
+        user.preferences.categories = data.preferredCategories || []
+        user.preferences.hasSetPreferences = data.hasSetPreferences || false
+        
         // Use seller's logo if available
         if (user.role === "seller" && data.logo) {
           user.avatar = data.logo
@@ -58,10 +64,14 @@ onAuthStateChanged(auth, async (firebaseUser) => {
       } else {
         console.warn("User document not found in Firestore after retries, defaulting to buyer role")
         user.role = "buyer"
+        user.preferences.categories = []
+        user.preferences.hasSetPreferences = false
       }
     } catch (error) {
-      console.error("Error fetching user role:", error)
+      console.error("Error fetching user data:", error)
       user.role = "buyer"
+      user.preferences.categories = []
+      user.preferences.hasSetPreferences = false
     }
 
   } else {
@@ -74,6 +84,8 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     user.role = "buyer"
     user.cart = []
     user.wishlist = []
+    user.preferences.categories = []
+    user.preferences.hasSetPreferences = false
   }
   user.loading = false
 })
