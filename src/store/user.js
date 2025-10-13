@@ -29,18 +29,35 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     user.uid = firebaseUser.uid
     user.email = firebaseUser.email
 
-    // Fetch user role from Firestore
+    // Fetch user role from Firestore with retry logic
     try {
       const docRef = doc(db, "users", firebaseUser.uid)
-      const docSnap = await getDoc(docRef)
-      if (docSnap.exists()) {
+      let attempts = 0
+      let docSnap = null
+      
+      // Retry up to 3 times with delays (in case Firestore write is delayed after signup)
+      while (attempts < 3) {
+        docSnap = await getDoc(docRef)
+        if (docSnap.exists()) break
+        attempts++
+        if (attempts < 3) {
+          await new Promise(resolve => setTimeout(resolve, 500)) // Wait 500ms before retry
+        }
+      }
+      
+      if (docSnap && docSnap.exists()) {
         const data = docSnap.data()
         console.log("Fetched user data:", data)
 
         user.role = data.role || "buyer"
+        
+        // Use seller's logo if available
         if (user.role === "seller" && data.logo) {
-          user.avatar = data.logo || "/avatar.png"
+          user.avatar = data.logo
         }
+      } else {
+        console.warn("User document not found in Firestore after retries, defaulting to buyer role")
+        user.role = "buyer"
       }
     } catch (error) {
       console.error("Error fetching user role:", error)

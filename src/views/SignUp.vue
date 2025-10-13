@@ -401,6 +401,25 @@ function renderRecaptcha() {
   })
 }
 
+onMounted(async () => {
+  if (!recaptchaSiteKey) {
+    console.error('Missing VITE_RECAPTCHA_SITE_KEY in .env.local')
+    return
+  }
+  await loadRecaptchaScript()
+  renderRecaptcha()
+
+  themeObserver = new MutationObserver(() => {
+    const el = document.getElementById('recaptcha-container')
+    if (!el || !window.grecaptcha) return
+    el.innerHTML = ''
+    widgetId = null
+    captchaToken.value = ''
+    renderRecaptcha()
+  })
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+})
+
 onBeforeUnmount(() => {
   themeObserver?.disconnect()
   resetRecaptcha()
