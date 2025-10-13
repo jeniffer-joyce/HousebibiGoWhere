@@ -1,19 +1,11 @@
 <template>
-  <div class="min-h-screen bg-[#F5F7F7] dark:bg-[#0B1220] pb-24">
+  <div class="min-h-screen bg-[#F5F7F7]">
     <div class="max-w-6xl mx-auto px-6 pt-7 pb-4"></div>
 
     <div class="max-w-xl mx-auto px-4">
-      <div
-        class="rounded-2xl shadow-md border p-8 md:p-10 mb-12
-               bg-white border-gray-100
-               dark:bg-gray-800 dark:border-gray-700"
-      >
-        <h1 class="text-3xl font-extrabold text-center tracking-tight dark:text-gray-100">
-          Create an account
-        </h1>
-        <p class="text-gray-500 dark:text-gray-400 text-center mt-2">
-          Join our community of buyers and sellers!
-        </p>
+      <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-8 md:p-10">
+        <h1 class="text-3xl font-extrabold text-center tracking-tight">Create an account</h1>
+        <p class="text-gray-500 text-center mt-2">Join our community of buyers and sellers!</p>
 
         <!-- Role Selection -->
         <div class="grid grid-cols-2 gap-2 mt-6">
@@ -22,7 +14,7 @@
             class="h-10 rounded-lg font-medium transition border"
             :class="role === 'buyer'
               ? 'bg-[#10A9C7] text-white border-transparent'
-              : 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600'"
+              : 'bg-gray-100 text-gray-700 border-gray-200'"
             @click="role = 'buyer'"
           >
             I'm a Buyer
@@ -32,7 +24,7 @@
             class="h-10 rounded-lg font-medium transition border"
             :class="role === 'seller'
               ? 'bg-[#10A9C7] text-white border-transparent'
-              : 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600'"
+              : 'bg-gray-100 text-gray-700 border-gray-200'"
             @click="role = 'seller'"
           >
             I'm a Seller
@@ -46,9 +38,7 @@
               v-model.trim="uen"
               type="text"
               inputmode="text"
-              class="w-full rounded-lg px-4 py-3 border
-                     bg-gray-50  border-gray-200  text-gray-900 placeholder-gray-400
-                     dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+              class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3"
               placeholder="Government UEN"
               autocomplete="off"
             />
@@ -59,13 +49,11 @@
             <input
               v-model.trim="username"
               type="text"
-              class="w-full rounded-lg px-4 py-3 border
-                     bg-gray-50  border-gray-200  text-gray-900 placeholder-gray-400
-                     dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+              class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3"
               placeholder="Username"
               autocomplete="username"
             />
-            <p v-if="username && !usernameValid" class="text-xs text-red-500 mt-1">
+            <p v-if="username && !usernameValid" class="text-xs text-red-600 mt-1">
               Username must be 8–20 characters long and contain only letters and numbers.
             </p>
           </div>
@@ -75,13 +63,11 @@
             <input
               v-model.trim="email"
               type="email"
-              class="w-full rounded-lg px-4 py-3 border
-                     bg-gray-50  border-gray-200  text-gray-900 placeholder-gray-400
-                     dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+              class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3"
               placeholder="Email"
               autocomplete="email"
             />
-            <p v-if="email && !emailValid" class="text-xs text-red-500 mt-1">
+            <p v-if="email && !emailValid" class="text-xs text-red-600 mt-1">
               Please enter a valid email address.
             </p>
           </div>
@@ -92,17 +78,14 @@
               <input
                 :type="showPassword ? 'text' : 'password'"
                 v-model="password"
-                class="w-full rounded-lg px-4 py-3 pr-10 border
-                       bg-gray-50  border-gray-200  text-gray-900 placeholder-gray-400
-                       dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+                class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 pr-10"
                 placeholder="Password"
                 autocomplete="new-password"
               />
               <button
                 type="button"
                 @click="showPassword = !showPassword"
-                class="absolute inset-y-0 right-3 grid place-items-center
-                       text-gray-500 dark:text-gray-300 hover:opacity-80 focus:outline-none z-20"
+                class="absolute inset-y-0 right-3 grid place-items-center text-gray-500 hover:text-gray-700 focus:outline-none"
                 aria-label="Toggle password visibility"
                 tabindex="-1"
               >
@@ -117,7 +100,7 @@
                 </svg>
               </button>
             </div>
-            <p v-if="password && !passwordStrong" class="text-xs text-red-500 mt-1">
+            <p v-if="password && !passwordStrong" class="text-xs text-red-600 mt-1">
               Password must be at least 8 characters and include an uppercase, lowercase, and special character.
             </p>
           </div>
@@ -127,9 +110,7 @@
             <input
               v-model.trim="displayName"
               type="text"
-              class="w-full rounded-lg px-4 py-3 border
-                     bg-gray-50  border-gray-200  text-gray-900 placeholder-gray-400
-                     dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+              class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3"
               placeholder="Full Name"
               autocomplete="name"
             />
@@ -140,9 +121,7 @@
             <div>
               <select
                 v-model="gender"
-                class="w-full rounded-lg px-4 py-3 border
-                       bg-gray-50  border-gray-200  text-gray-700
-                       dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-700"
               >
                 <option value="" disabled selected>Gender</option>
                 <option value="Female">Female</option>
@@ -155,12 +134,10 @@
               <input
                 v-model="birthday"
                 type="date"
-                class="w-full rounded-lg px-4 py-3 border
-                       bg-gray-50  border-gray-200
-                       dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+                class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3"
                 placeholder="Birthday"
               />
-              <p v-if="birthday && !birthdayValid" class="text-xs text-red-500 mt-1">
+              <p v-if="birthday && !birthdayValid" class="text-xs text-red-600 mt-1">
                 You must be at least 18 years old to create an account.
               </p>
             </div>
@@ -171,20 +148,17 @@
             <input
               v-model.trim="phone"
               type="tel"
-              class="w-full rounded-lg px-4 py-3 border
-                     bg-gray-50  border-gray-200  text-gray-900 placeholder-gray-400
-                     dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+              class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3"
               placeholder="SG Phone Number"
               autocomplete="tel"
             />
-            <p v-if="phone && !phoneValid" class="text-xs text-red-500 mt-1">
+            <p v-if="phone && !phoneValid" class="text-xs text-red-600 mt-1">
               Enter 8 digits (e.g., 8xxxxxxx / 9xxxxxxx) or +65XXXXXXXX.
             </p>
           </div>
 
-<<<<<<< HEAD
-          <!-- User Preferences Section (Buyers Only) -->
-          <div v-if="role === 'buyer'" class="mt-6 rounded-xl border border-[#10A9C7]/20 bg-gradient-to-br from-[#10A9C7]/5 to-[#10A9C7]/10 p-5 shadow-sm">
+          <!-- User Preferences Section -->
+          <div class="mt-6 rounded-xl border border-[#10A9C7]/20 bg-gradient-to-br from-[#10A9C7]/5 to-[#10A9C7]/10 p-5 shadow-sm">
             <div class="flex flex-col gap-4">
               <div class="flex items-start gap-3">
                 <div class="rounded-full bg-[#10A9C7]/10 p-2 mt-0.5">
@@ -228,14 +202,8 @@
           </div>
 
           <!-- reCAPTCHA -->
-          <div class="mt-4">
-            <div v-if="recaptchaLoading" class="flex flex-col items-center gap-2 py-8">
-              <div class="animate-spin h-8 w-8 border-3 border-[#10A9C7] border-t-transparent rounded-full"></div>
-              <p class="text-sm text-slate-500">Loading security check...</p>
-            </div>
-            <div v-show="!recaptchaLoading" class="flex justify-center">
-              <div id="recaptcha-container"></div>
-            </div>
+          <div class="mt-4 flex justify-center">
+            <div id="recaptcha-container"></div>
           </div>
           <p v-if="captchaError" class="text-xs text-red-600 mt-1 text-center">
             Please complete the reCAPTCHA before signing up.
@@ -275,7 +243,7 @@
             <span v-else>Creating account…</span>
           </button>
 
-          <p class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">
+          <p class="text-center text-sm text-gray-500 mt-3">
             Already have an account?
             <router-link to="/login" class="text-[#10A9C7] hover:underline">Log in</router-link>
           </p>
@@ -371,17 +339,8 @@ onMounted(async () => {
     errorMsg.value = 'reCAPTCHA configuration error. Please contact support.'
     return
   }
-  
-  try {
-    await loadRecaptchaScript()
-    // Wait a bit to ensure the container is in the DOM
-    setTimeout(() => {
-      renderRecaptcha()
-    }, 100)
-  } catch (error) {
-    console.error('reCAPTCHA loading error:', error)
-    errorMsg.value = 'Failed to load reCAPTCHA. Please refresh the page.'
-  }
+  await loadRecaptchaScript()
+  renderRecaptcha()
 })
 
 // --- reCAPTCHA (v2 Checkbox) ---
@@ -427,7 +386,6 @@ function renderRecaptcha() {
   const theme = currentTheme()
   widgetId = window.grecaptcha.render('recaptcha-container', {
     sitekey: recaptchaSiteKey,
-    theme, // light/dark to match site
     callback: (token) => {
       captchaToken.value = token
       captchaError.value = false
@@ -435,54 +393,14 @@ function renderRecaptcha() {
     'expired-callback': () => {
       captchaToken.value = ''
       captchaError.value = true
->>>>>>> e687fbbf625c96196fd25a2174be3ce1f1e68429
     }
-    
-    // Check if grecaptcha is ready
-    if (!window.grecaptcha || !window.grecaptcha.render) {
-      console.error('grecaptcha not ready')
-      recaptchaLoading.value = false
-      return
-    }
-    
-    widgetId = window.grecaptcha.render('recaptcha-container', {
-      sitekey: recaptchaSiteKey,
-      callback: (token) => {
-        captchaToken.value = token
-        captchaError.value = false
-      },
-      'expired-callback': () => {
-        captchaToken.value = ''
-        captchaError.value = true
-      }
-    })
-    recaptchaLoading.value = false
-  } catch (error) {
-    console.error('Error rendering reCAPTCHA:', error)
-    recaptchaLoading.value = false
-  }
-<<<<<<< HEAD
-}
-=======
-  await loadRecaptchaScript()
-  renderRecaptcha()
-
-  // Re-render captcha when theme changes (class on <html> toggles)
-  themeObserver = new MutationObserver(() => {
-    const el = document.getElementById('recaptcha-container')
-    if (!el || !window.grecaptcha) return
-    el.innerHTML = ''   // remove old iframe
-    widgetId = null
-    captchaToken.value = ''
-    renderRecaptcha()
   })
-  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-})
->>>>>>> e687fbbf625c96196fd25a2174be3ce1f1e68429
+}
 
 onBeforeUnmount(() => {
-  themeObserver?.disconnect()
-  resetRecaptcha()
+  if (window.grecaptcha && widgetId !== null) {
+    window.grecaptcha.reset(widgetId)
+  }
 })
 
 const validateCaptcha = () => {
@@ -512,7 +430,7 @@ async function onSubmit() {
         birthday: birthday.value,
         phone: phone.value.trim(),
         uen: role.value === 'seller' ? uen.value.trim() : null,
-        preferences: role.value === 'buyer' ? selectedPreferences.value : [], // Only save preferences for buyers
+        preferences: selectedPreferences.value, // Save preferences
       },
       captchaToken: captchaToken.value,
     })
