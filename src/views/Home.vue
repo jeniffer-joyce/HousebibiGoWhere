@@ -1,30 +1,66 @@
 <script setup>
-import { onMounted, ref, computed, watch, onBeforeUnmount } from 'vue';
-import { getCategories } from '@/firebase/services/home/categories.js';
-import { getBusinesses } from '@/firebase/services/home/business.js';
-import { auth, db } from '@/firebase/firebase_config.js';
-import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { ref, computed } from 'vue';
+import { user } from '@/store/user.js';
+import { useCategories } from '@/composables/home/useCategories';
+import { usePreferences } from '@/composables/signup/usePreferences';
+import { useSearch } from '@/composables/useSearch';
 import Loading from '@/components/status/Loading.vue'
 
-const categories = ref([]);
-const businesses = ref([]);
-const selectedCategories = ref([]);
-const loading = ref(true);
-const searchQuery = ref('');
-const isSearching = ref(false);
-const searchSuggestions = ref([]);
+const {
+    loading,
+    categories,
+    businesses,
+    selectedCategories,
+    toggleCategory,
+    toggleAll,
+    isAllSelected,
+    isCategorySelected,
+    filteredBusinesses } = useCategories();
 
-// User state
-const currentUser = ref(null);
-const userPreferences = ref([]);
-const userProfile = ref(null);
-const showPreferencesDropdown = ref(false);
+const {
+    showPreferencePrompt,
+    selectedPreferences,
+    hasSubmittedPreference,
+    togglePreferenceSelection,
+    isPreferenceSelected,
+    savePreference,
+    skipPreference } = usePreferences(selectedCategories, categories);
+
+const categoryHeading = computed(() => {
+    return hasSubmittedPreference.value ? 'For You' : 'Categories';
+});
+
+const searchQuery = ref('');
+const {
+    isSearching,
+    searchSuggestions,
+    selectSuggestion } = useSearch(searchQuery, businesses, selectedCategories);
 
 // Only show edit button if user is logged in
 const showEditPreferencesButton = computed(() => {
     return user.isLoggedIn && !showPreferencePrompt.value;
 });
+
+// Check if a category is in user's preferences
+const isPreferredCategory = computed(() => {
+    return (slug) => user.preferences.categories.includes(slug);
+});
+
+// Sort categories to show preferred ones first
+const sortedCategories = computed(() => {
+    if (!user.isLoggedIn || user.preferences.categories.length === 0) {
+        return categories.value;
+    }
+    
+    const preferred = categories.value.filter(c => user.preferences.categories.includes(c.slug));
+    const others = categories.value.filter(c => !user.preferences.categories.includes(c.slug));
+    return [...preferred, ...others];
+});
+
+// Clear all selected preferences
+function clearAllPreferences() {
+    selectedPreferences.value = [];
+}
 
 // Arrows
 const scrollContainer = ref(null);
@@ -37,178 +73,6 @@ function scrollLeft() {
 function scrollRight() {
     scrollContainer.value.scrollBy({ left: scrollAmount, behavior: "smooth" });
 }
-
-// Debounced search with simple keyword matching
-let searchTimeout;
-watch(searchQuery, (newQuery) => {
-    clearTimeout(searchTimeout);
-    
-    if (!newQuery.trim()) {
-        searchSuggestions.value = [];
-        return;
-    }
-    
-    isSearching.value = true;
-    
-    searchTimeout = setTimeout(() => {
-        // Simple keyword search
-        const queryLower = newQuery.toLowerCase();
-        const keywords = queryLower.split(' ').filter(k => k.length > 0);
-        
-        searchSuggestions.value = businesses.value.filter(business => {
-            const searchText = `${business.name} ${business.description || ''} ${business.category || ''}`.toLowerCase();
-            // Check if any keyword matches
-            return keywords.some(keyword => searchText.includes(keyword));
-        });
-        
-        isSearching.value = false;
-    }, 500);
-});
-
-// Select a suggestion
-const selectSuggestion = (business) => {
-    searchQuery.value = '';
-    searchSuggestions.value = [];
-    
-    if (business.category) {
-        selectedCategories.value = [business.category];
-        
-        setTimeout(() => {
-            const element = document.querySelector(`[data-business="${business.name}"]`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }, 100);
-    }
-};
-
-// Fetch user profile and preferences
-async function fetchUserProfile(uid) {
-    try {
-        const userDoc = await getDoc(doc(db, 'users', uid));
-        if (userDoc.exists()) {
-            userProfile.value = userDoc.data();
-            userPreferences.value = userProfile.value.preferences || [];
-            
-            // Auto-select user preferences on load
-            if (userPreferences.value.length > 0) {
-                selectedCategories.value = [...userPreferences.value];
-            }
-        }
-    } catch (error) {
-        console.error('Error fetching user profile:', error);
-    }
-}
-
-// Check auth state
-onAuthStateChanged(auth, async (user) => {
-    currentUser.value = user;
-    if (user) {
-        await fetchUserProfile(user.uid);
-    }
-});
-
-onMounted(async () => {
-    try {
-        const [cats, biz] = await Promise.all([getCategories(), getBusinesses()])
-        categories.value = cats;
-        businesses.value = biz;
-    } catch (e) {
-        console.error(e)
-    } finally {
-        loading.value = false
-    }
-});
-
-// Sort categories to show preferred ones first
-const sortedCategories = computed(() => {
-    if (!currentUser.value || userPreferences.value.length === 0) {
-        return categories.value;
-    }
-    
-    const preferred = [];
-    const other = [];
-    
-    categories.value.forEach(cat => {
-        if (userPreferences.value.includes(cat.slug)) {
-            preferred.push(cat);
-        } else {
-            other.push(cat);
-        }
-    });
-    
-    // Sort preferred by order in userPreferences
-    preferred.sort((a, b) => {
-        return userPreferences.value.indexOf(a.slug) - userPreferences.value.indexOf(b.slug);
-    });
-    
-    return [...preferred, ...other];
-});
-
-// Get preference names for dropdown
-const preferenceNames = computed(() => {
-    return userPreferences.value.map(slug => {
-        const cat = categories.value.find(c => c.slug === slug);
-        return cat ? cat.name : slug;
-    });
-});
-
-const filteredBusinesses = computed(() => {
-    if (selectedCategories.value.length === 0) return businesses.value
-    
-    const result = businesses.value.filter(b => selectedCategories.value.includes(b.category));
-    
-    return result.sort((a, b) => {
-        const aIndex = selectedCategories.value.indexOf(a.category);
-        const bIndex = selectedCategories.value.indexOf(b.category);
-        return aIndex - bIndex;
-    });
-});
-
-const toggleCategory = (categorySlug) => {
-    const index = selectedCategories.value.indexOf(categorySlug);
-    if (index === -1) {
-        selectedCategories.value.push(categorySlug);
-    } else {
-        if (selectedCategories.value.length === 1) {
-            selectedCategories.value = [];
-        } else {
-            selectedCategories.value.splice(index, 1);
-        }
-    }
-};
-
-const toggleAll = () => {
-    selectedCategories.value = [];
-};
-
-const isAllSelected = computed(() => {
-    return selectedCategories.value.length === 0;
-});
-
-const isCategorySelected = (categorySlug) => {
-    return selectedCategories.value.includes(categorySlug);
-};
-
-const isPreferredCategory = (categorySlug) => {
-    return userPreferences.value.includes(categorySlug);
-};
-
-// Close dropdown when clicking outside
-const dropdownRef = ref(null);
-const handleClickOutside = (event) => {
-    if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
-        showPreferencesDropdown.value = false;
-    }
-};
-
-onMounted(() => {
-    document.addEventListener('click', handleClickOutside);
-});
-
-onBeforeUnmount(() => {
-    document.removeEventListener('click', handleClickOutside);
-});
 </script>
 
 <template>
@@ -216,11 +80,11 @@ onBeforeUnmount(() => {
         <div class="flex flex-col gap-10">
             <div class="flex flex-col items-center gap-4 text-center">
                 <h2 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-                    <span v-if="currentUser">Welcome back, {{ userProfile?.displayName || 'Friend' }}! 👋</span>
+                    <span v-if="user.isLoggedIn">Welcome back, {{ user.name || 'Friend' }}! 👋</span>
                     <span v-else>Discover Home-Based Businesses</span>
                 </h2>
                 <p class="max-w-2xl text-lg text-slate-600 dark:text-slate-400">
-                    <span v-if="currentUser && userPreferences.length > 0">
+                    <span v-if="user.isLoggedIn && user.preferences.categories.length > 0">
                         Here are businesses tailored to your preferences
                     </span>
                     <span v-else>
@@ -247,40 +111,19 @@ onBeforeUnmount(() => {
                             placeholder="Search for products or businesses..." 
                             type="text" />
                     </div>
-                    
-                    <!-- Preferences Heart Icon with Dropdown -->
-                    <div v-if="currentUser && userPreferences.length > 0" class="relative" ref="dropdownRef">
-                        <button 
-                            @click="showPreferencesDropdown = !showPreferencesDropdown"
-                            class="h-14 w-14 shrink-0 flex items-center justify-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 transition-colors"
-                            title="Your preferences">
-                            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
-                            </svg>
-                        </button>
-                        
-                        <!-- Dropdown -->
-                        <div v-if="showPreferencesDropdown"
-                            class="absolute right-0 mt-2 w-64 rounded-lg bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700 z-50">
-                            <div class="p-4">
-                                <div class="flex items-center gap-2 mb-3">
-                                    <svg class="h-5 w-5 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
-                                    </svg>
-                                    <h3 class="font-semibold text-slate-900 dark:text-white">Your Favorites</h3>
-                                </div>
-                                <ul class="space-y-2">
-                                    <li v-for="(name, index) in preferenceNames" :key="index"
-                                        class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                                        <svg class="h-4 w-4 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                                        </svg>
-                                        {{ name }}
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+
+                    <!-- Edit Preferences Icon Button (only for logged-in users) -->
+                    <button 
+                        v-if="showEditPreferencesButton" 
+                        @click="showPreferencePrompt = true"
+                        class="h-14 w-14 shrink-0 flex items-center justify-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 transition-colors"
+                        title="Edit your preferences">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -308,6 +151,64 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
+            <!-- User Preference Prompt (only for logged-in first-time users) -->
+            <div v-if="showPreferencePrompt"
+                class="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-6 shadow-lg dark:border-primary/30 dark:from-primary/10 dark:to-primary/20">
+                <div class="flex flex-col items-center gap-4 text-center">
+                    <div class="rounded-full bg-primary/10 p-3">
+                        <svg class="h-8 w-8 text-primary" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <path
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="mb-2 text-xl font-bold text-slate-900 dark:text-white">What are your favorite
+                            categories?</h3>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">Select multiple categories to personalize
+                            your experience</p>
+                    </div>
+                    <div class="flex w-full max-w-2xl flex-col gap-3">
+                        <div class="flex flex-wrap gap-2 justify-center">
+                            <button
+                                v-for="category in categories"
+                                :key="category.slug"
+                                @click="togglePreferenceSelection(category.slug)"
+                                :class="[
+                                    'rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
+                                    isPreferenceSelected(category.slug)
+                                        ? 'bg-primary text-white hover:bg-primary/90'
+                                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700'
+                                ]">
+                                {{ category.name }}
+                            </button>
+                        </div>
+                        
+                        <!-- Clear All button (only show if there are selections) -->
+                        <div v-if="selectedPreferences.length > 0" class="text-center">
+                            <button 
+                                @click="clearAllPreferences"
+                                class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 underline">
+                                Clear all selections
+                            </button>
+                        </div>
+
+                        <div class="flex gap-2 justify-center">
+                            <button 
+                                @click="savePreference"
+                                class="rounded-lg bg-primary px-6 py-2.5 font-semibold text-white transition-all hover:bg-primary/90">
+                                {{ selectedPreferences.length > 0 ? 'Save Preferences' : 'Clear All Preferences' }}
+                            </button>
+                            <button @click="skipPreference"
+                                class="rounded-lg px-6 py-2.5 font-semibold text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-300 dark:border-slate-600">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div v-if="loading" class="flex justify-center items-center min-h-[300px]">
                 <Loading size="lg" />
             </div>
@@ -315,9 +216,7 @@ onBeforeUnmount(() => {
             <template v-if="!loading">
                 <!-- Categories Section -->
                 <div>
-                    <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">
-                        {{ currentUser && userPreferences.length > 0 ? 'Your Preferences' : 'Categories' }}
-                    </h3>
+                    <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">{{ categoryHeading }}</h3>
                     <div class="flex flex-wrap gap-3">
                         <!-- All Button -->
                         <button
