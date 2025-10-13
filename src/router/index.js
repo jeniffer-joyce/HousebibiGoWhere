@@ -11,6 +11,7 @@ import SellerProfile from '../views/sellers/SellerProfile.vue'
 import AddNewProduct from '../views/sellers/AddNewProduct.vue'  
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
+import ProductDetails from '../views/ProductDetails.vue'
 
 const routes = [
     {
@@ -49,6 +50,10 @@ const routes = [
     {
         path: '/seller-orders/',
         component: SellerOrders
+    },
+    {
+        path: '/product-details/',
+        component: ProductDetails
     }
 ]
 
