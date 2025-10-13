@@ -106,12 +106,10 @@
                 aria-label="Toggle password visibility"
                 tabindex="-1"
               >
-                <!-- closed eye -->
                 <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                 </svg>
-                <!-- crossed eye -->
                 <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 013.563-4.773M6.223 6.223A9.965 9.965 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.953 9.953 0 01-4.152 5.016M6.223 6.223L3 3m3.223 3.223L21 21"/>
                 </svg>
@@ -135,7 +133,7 @@
             />
           </div>
 
-          <!-- Gender + Birthday with Age Gate -->
+          <!-- Gender + Birthday -->
           <div class="grid grid-cols-2 gap-3">
             <div>
               <select
@@ -182,6 +180,47 @@
             </p>
           </div>
 
+          <!-- User Preferences (Buyers Only) -->
+          <div v-if="role === 'buyer'" class="mt-6 rounded-xl border border-[#10A9C7]/20 bg-gradient-to-br from-[#10A9C7]/5 to-[#10A9C7]/10 dark:from-[#10A9C7]/10 dark:to-[#10A9C7]/20 p-5 shadow-sm">
+            <div class="flex flex-col gap-4">
+              <div class="flex items-start gap-3">
+                <div class="rounded-full bg-[#10A9C7]/10 p-2 mt-0.5">
+                  <svg class="h-5 w-5 text-[#10A9C7]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <h3 class="text-base font-bold text-slate-900 dark:text-gray-100">What are your favorite categories?</h3>
+                  <p class="text-xs text-slate-600 dark:text-gray-400 mt-1">Select multiple categories to personalize your experience (optional)</p>
+                </div>
+              </div>
+              
+              <div v-if="categoriesLoading" class="flex justify-center py-4">
+                <div class="animate-spin h-6 w-6 border-2 border-[#10A9C7] border-t-transparent rounded-full"></div>
+              </div>
+              
+              <div v-else-if="categories.length > 0" class="flex flex-wrap gap-2">
+                <button
+                  v-for="category in categories"
+                  :key="category.slug"
+                  type="button"
+                  @click="togglePreference(category.slug)"
+                  :class="[
+                    'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    selectedPreferences.includes(category.slug)
+                      ? 'bg-[#10A9C7] text-white hover:bg-[#10A9C7]/90'
+                      : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600'
+                  ]">
+                  {{ category.name }}
+                </button>
+              </div>
+              
+              <p v-else class="text-xs text-slate-500 dark:text-gray-400 text-center py-2">
+                Unable to load categories. You can set your preferences later!
+              </p>
+            </div>
+          </div>
+
           <!-- reCAPTCHA -->
           <div class="mt-4">
             <div class="flex justify-center">
@@ -221,6 +260,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { registerUserWithUsername } from '../firebase/auth/authService'
+import { getCategories } from '../firebase/services/home/categories.js'
 
 const router = useRouter()
 
@@ -238,6 +278,11 @@ const phone = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
+
+// Preferences
+const categories = ref([])
+const categoriesLoading = ref(true)
+const selectedPreferences = ref([])
 
 // Validation
 const usernameValid = computed(() => /^[A-Za-z0-9]{8,20}$/.test(username.value.trim()))
@@ -268,6 +313,46 @@ const canSubmit = computed(() =>
   displayName.value.trim().length > 0 &&
   uenRequiredOk.value
 )
+
+// Preferences functions
+const togglePreference = (categorySlug) => {
+  const index = selectedPreferences.value.indexOf(categorySlug)
+  if (index === -1) {
+    selectedPreferences.value.push(categorySlug)
+  } else {
+    selectedPreferences.value.splice(index, 1)
+  }
+}
+
+// Load categories
+onMounted(async () => {
+  try {
+    const cats = await getCategories()
+    categories.value = cats
+  } catch (error) {
+    console.error('Error loading categories:', error)
+  } finally {
+    categoriesLoading.value = false
+  }
+
+  // Load reCAPTCHA
+  if (!recaptchaSiteKey) {
+    console.error('Missing VITE_RECAPTCHA_SITE_KEY in .env.local')
+    return
+  }
+  await loadRecaptchaScript()
+  renderRecaptcha()
+
+  themeObserver = new MutationObserver(() => {
+    const el = document.getElementById('recaptcha-container')
+    if (!el || !window.grecaptcha) return
+    el.innerHTML = ''
+    widgetId = null
+    captchaToken.value = ''
+    renderRecaptcha()
+  })
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+})
 
 // --- reCAPTCHA (v2 Checkbox) ---
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
@@ -367,11 +452,11 @@ async function onSubmit() {
         birthday: birthday.value,
         phone: phone.value.trim(),
         uen: role.value === 'seller' ? uen.value.trim() : null,
+        preferences: role.value === 'buyer' ? selectedPreferences.value : [],
       },
       captchaToken: captchaToken.value,
     })
     resetRecaptcha()
-    // CHANGED: Redirect to homepage instead of login
     router.push('/')
   } catch (err) {
     console.error(err)
@@ -394,3 +479,13 @@ function mapError(err) {
   return 'Something went wrong. Please try again.'
 }
 </script>
+
+<style scoped>
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+</style>
