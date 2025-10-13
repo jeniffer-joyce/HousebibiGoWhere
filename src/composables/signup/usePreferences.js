@@ -16,6 +16,7 @@ export function usePreferences(selectedCategories, categories) {
       if (!loading && isLoggedIn && !hasSet) {
         // First-time user - show prompt
         showPreferencePrompt.value = true;
+        selectedPreferences.value = [];
       } else if (!loading && isLoggedIn && hasSet) {
         // Returning user with saved preferences
         showPreferencePrompt.value = false;
@@ -39,6 +40,14 @@ export function usePreferences(selectedCategories, categories) {
     },
     { immediate: true }
   );
+
+  // Watch for when prompt opens - reload current preferences
+  watch(showPreferencePrompt, (isOpen) => {
+    if (isOpen && user.isLoggedIn) {
+      // When opening prompt, load current saved preferences
+      selectedPreferences.value = [...user.preferences.categories];
+    }
+  });
 
   function togglePreferenceSelection(slug) {
     const index = selectedPreferences.value.indexOf(slug);
@@ -87,8 +96,17 @@ export function usePreferences(selectedCategories, categories) {
       return;
     }
 
+    // If user has already set preferences before, just close the prompt
+    if (user.preferences.hasSetPreferences) {
+      // Just close without saving - revert to saved preferences
+      selectedPreferences.value = [...user.preferences.categories];
+      showPreferencePrompt.value = false;
+      console.log('Cancelled - reverted to saved preferences');
+      return;
+    }
+
+    // First-time user clicking skip - mark as prompted
     try {
-      // Mark as prompted (even though they skipped)
       await markPreferencesPrompted(user.uid);
       
       // Update local user state
