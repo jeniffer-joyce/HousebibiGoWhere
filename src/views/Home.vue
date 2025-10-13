@@ -21,6 +21,11 @@ const userPreferences = ref([]);
 const userProfile = ref(null);
 const showPreferencesDropdown = ref(false);
 
+// Only show edit button if user is logged in
+const showEditPreferencesButton = computed(() => {
+    return user.isLoggedIn && !showPreferencePrompt.value;
+});
+
 // Arrows
 const scrollContainer = ref(null);
 const scrollAmount = 300;
