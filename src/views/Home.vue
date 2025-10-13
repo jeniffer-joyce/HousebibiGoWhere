@@ -1,8 +1,7 @@
 <script setup>
-import { onMounted, ref, computed, watch } from 'vue';
+import { onMounted, ref, computed, watch, onBeforeUnmount } from 'vue';
 import { getCategories } from '@/firebase/services/home/categories.js';
 import { getBusinesses } from '@/firebase/services/home/business.js';
-import { searchWithGemini } from '@/firebase/services/gemini.js';
 import { auth, db } from '@/firebase/firebase_config.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -15,12 +14,12 @@ const loading = ref(true);
 const searchQuery = ref('');
 const isSearching = ref(false);
 const searchSuggestions = ref([]);
-const showSuggestions = ref(false);
 
 // User state
 const currentUser = ref(null);
 const userPreferences = ref([]);
 const userProfile = ref(null);
+const showPreferencesDropdown = ref(false);
 
 // Arrows
 const scrollContainer = ref(null);
@@ -34,47 +33,41 @@ function scrollRight() {
     scrollContainer.value.scrollBy({ left: scrollAmount, behavior: "smooth" });
 }
 
-// Debounced search with Gemini for suggestions
+// Debounced search with simple keyword matching
 let searchTimeout;
 watch(searchQuery, (newQuery) => {
     clearTimeout(searchTimeout);
     
     if (!newQuery.trim()) {
         searchSuggestions.value = [];
-        showSuggestions.value = false;
         return;
     }
     
     isSearching.value = true;
-    showSuggestions.value = true;
     
-    searchTimeout = setTimeout(async () => {
-        try {
-            searchSuggestions.value = await searchWithGemini(newQuery, businesses.value);
-        } catch (error) {
-            console.error('Search error:', error);
-            // Fallback to simple search
-            searchSuggestions.value = businesses.value.filter(b => 
-                b.name.toLowerCase().includes(newQuery.toLowerCase()) ||
-                b.description?.toLowerCase().includes(newQuery.toLowerCase())
-            );
-        } finally {
-            isSearching.value = false;
-        }
+    searchTimeout = setTimeout(() => {
+        // Simple keyword search
+        const queryLower = newQuery.toLowerCase();
+        const keywords = queryLower.split(' ').filter(k => k.length > 0);
+        
+        searchSuggestions.value = businesses.value.filter(business => {
+            const searchText = `${business.name} ${business.description || ''} ${business.category || ''}`.toLowerCase();
+            // Check if any keyword matches
+            return keywords.some(keyword => searchText.includes(keyword));
+        });
+        
+        isSearching.value = false;
     }, 500);
 });
 
 // Select a suggestion
 const selectSuggestion = (business) => {
     searchQuery.value = '';
-    showSuggestions.value = false;
     searchSuggestions.value = [];
     
-    // Find and select the category of this business
     if (business.category) {
         selectedCategories.value = [business.category];
         
-        // Scroll to the business card
         setTimeout(() => {
             const element = document.querySelector(`[data-business="${business.name}"]`);
             if (element) {
@@ -92,7 +85,7 @@ async function fetchUserProfile(uid) {
             userProfile.value = userDoc.data();
             userPreferences.value = userProfile.value.preferences || [];
             
-            // Auto-select user preferences on load if they have any
+            // Auto-select user preferences on load
             if (userPreferences.value.length > 0) {
                 selectedCategories.value = [...userPreferences.value];
             }
@@ -128,7 +121,6 @@ const sortedCategories = computed(() => {
         return categories.value;
     }
     
-    // Separate preferred and non-preferred categories
     const preferred = [];
     const other = [];
     
@@ -140,12 +132,20 @@ const sortedCategories = computed(() => {
         }
     });
     
-    // Sort preferred categories by the order they appear in userPreferences
+    // Sort preferred by order in userPreferences
     preferred.sort((a, b) => {
         return userPreferences.value.indexOf(a.slug) - userPreferences.value.indexOf(b.slug);
     });
     
     return [...preferred, ...other];
+});
+
+// Get preference names for dropdown
+const preferenceNames = computed(() => {
+    return userPreferences.value.map(slug => {
+        const cat = categories.value.find(c => c.slug === slug);
+        return cat ? cat.name : slug;
+    });
 });
 
 const filteredBusinesses = computed(() => {
@@ -158,13 +158,6 @@ const filteredBusinesses = computed(() => {
         const bIndex = selectedCategories.value.indexOf(b.category);
         return aIndex - bIndex;
     });
-});
-
-const categoryHeading = computed(() => {
-    if (currentUser.value && userPreferences.value.length > 0) {
-        return 'Your Preferences';
-    }
-    return 'Categories';
 });
 
 const toggleCategory = (categorySlug) => {
@@ -195,6 +188,22 @@ const isCategorySelected = (categorySlug) => {
 const isPreferredCategory = (categorySlug) => {
     return userPreferences.value.includes(categorySlug);
 };
+
+// Close dropdown when clicking outside
+const dropdownRef = ref(null);
+const handleClickOutside = (event) => {
+    if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
+        showPreferencesDropdown.value = false;
+    }
+};
+
+onMounted(() => {
+    document.addEventListener('click', handleClickOutside);
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <template>
@@ -213,29 +222,64 @@ const isPreferredCategory = (categorySlug) => {
                         Explore a world of unique products and services, right from your neighborhood.
                     </span>
                 </p>
-                <div class="relative mt-4 w-full max-w-xl">
-                    <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                        <svg v-if="!isSearching" fill="currentColor" height="24" viewBox="0 0 256 256" width="24"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z">
-                            </path>
-                        </svg>
-                        <!-- Loading spinner when searching -->
-                        <svg v-else class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </span>
-                    <input
-                        v-model="searchQuery"
-                        class="h-14 w-full rounded-xl border-slate-300 bg-white pl-12 pr-4 text-lg text-slate-800 placeholder-slate-500 shadow-sm focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-400 dark:focus:border-primary"
-                        placeholder="Search for products or businesses..." 
-                        type="text" />
+                <div class="relative mt-4 w-full max-w-xl flex items-center gap-3">
+                    <div class="relative flex-1">
+                        <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                            <svg v-if="!isSearching" fill="currentColor" height="24" viewBox="0 0 256 256" width="24"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z">
+                                </path>
+                            </svg>
+                            <svg v-else class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span>
+                        <input
+                            v-model="searchQuery"
+                            class="h-14 w-full rounded-xl border-slate-300 bg-white pl-12 pr-4 text-lg text-slate-800 placeholder-slate-500 shadow-sm focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-400 dark:focus:border-primary"
+                            placeholder="Search for products or businesses..." 
+                            type="text" />
+                    </div>
+                    
+                    <!-- Preferences Heart Icon with Dropdown -->
+                    <div v-if="currentUser && userPreferences.length > 0" class="relative" ref="dropdownRef">
+                        <button 
+                            @click="showPreferencesDropdown = !showPreferencesDropdown"
+                            class="h-14 w-14 shrink-0 flex items-center justify-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 transition-colors"
+                            title="Your preferences">
+                            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                        
+                        <!-- Dropdown -->
+                        <div v-if="showPreferencesDropdown"
+                            class="absolute right-0 mt-2 w-64 rounded-lg bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700 z-50">
+                            <div class="p-4">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <svg class="h-5 w-5 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <h3 class="font-semibold text-slate-900 dark:text-white">Your Favorites</h3>
+                                </div>
+                                <ul class="space-y-2">
+                                    <li v-for="(name, index) in preferenceNames" :key="index"
+                                        class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                                        <svg class="h-4 w-4 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        {{ name }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Search Results Section (only shows when searching) -->
+            <!-- Search Results Section -->
             <div v-if="searchQuery.trim() && !loading" class="rounded-xl border border-primary/20 bg-white dark:bg-slate-900 p-6 shadow-lg">
                 <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Search Results</h3>
                 <div v-if="isSearching" class="flex justify-center items-center py-8">
@@ -259,31 +303,6 @@ const isPreferredCategory = (categorySlug) => {
                 </div>
             </div>
 
-            <!-- User Preferences Display (only show if logged in and has preferences) -->
-            <div v-if="currentUser && userPreferences.length > 0 && !loading" 
-                class="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-6 shadow-lg dark:border-primary/30 dark:from-primary/10 dark:to-primary/20">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="rounded-full bg-primary/10 p-2">
-                        <svg class="h-6 w-6 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold text-slate-900 dark:text-white">Your Favorite Categories</h3>
-                        <p class="text-sm text-slate-600 dark:text-slate-400">Based on your preferences</p>
-                    </div>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <span v-for="prefSlug in userPreferences" :key="prefSlug"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-primary/20 px-3 py-1.5 text-sm font-medium text-primary dark:bg-primary/30">
-                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                        </svg>
-                        {{ categories.find(c => c.slug === prefSlug)?.name || prefSlug }}
-                    </span>
-                </div>
-            </div>
-
             <div v-if="loading" class="flex justify-center items-center min-h-[300px]">
                 <Loading size="lg" />
             </div>
@@ -291,7 +310,9 @@ const isPreferredCategory = (categorySlug) => {
             <template v-if="!loading">
                 <!-- Categories Section -->
                 <div>
-                    <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">{{ categoryHeading }}</h3>
+                    <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">
+                        {{ currentUser && userPreferences.length > 0 ? 'Your Preferences' : 'Categories' }}
+                    </h3>
                     <div class="flex flex-wrap gap-3">
                         <!-- All Button -->
                         <button
