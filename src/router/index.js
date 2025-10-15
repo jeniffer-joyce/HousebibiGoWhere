@@ -11,6 +11,7 @@ import SellerProfile from '../views/sellers/SellerProfile.vue'
 import AddNewProduct from '../views/sellers/AddNewProduct.vue'  
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
+import ShopDetails from "../views/buyers/ShopDetails.vue";
 
 const routes = [
     {
@@ -49,7 +50,14 @@ const routes = [
     {
         path: '/seller-orders/',
         component: SellerOrders
+    },
+    {
+        path: '/shop-details/:id',
+        component: ShopDetails,
+        name: ShopDetails, 
+        props: true
     }
+    
 ]
 
 const router = createRouter({
