@@ -44,10 +44,18 @@
                   required
                   class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40">
                   <option value="">Select category</option>
+                  <option value="food-and-beverages">Food & Beverages</option>
                   <option value="handmade-crafts">Handmade Crafts</option>
-                  <option value="homemade-crafts">Homemade Crafts</option>
-                  <option value="personalized-gifts">Personalized Gifts</option>
                   <option value="home-decor">Home Decor</option>
+                  <option value="personalized-gifts">Personalized Gifts</option>
+                  <option value="beauty-and-skincare">Beauty & Skincare</option>
+                  <option value="art-and-prints">Art & Prints</option>
+                  <option value="clothing-and-accessories">Clothing & Accessories</option>
+                  <option value="plants-and-gardening">Plants & Gardening</option>
+                  <option value="stationery-and-paper-goods">Stationery & Paper Goods</option>
+                  <option value="pet-supplies">Pet Supplies</option>
+                  <option value="catering">Catering</option>
+                  <option value="tutoring">Tutoring</option>
                 </select>
               </div>
 
@@ -175,7 +183,7 @@
                     type="button"
                     @click="imageSource = 'unsplash'"
                     :class="[
-                      'flex-1 py-2.5 px-4 rounded-lg font-medium transition-all',
+                      'flex-1 py-2.5 px-4 rounded-lg font-medium transition-all text-sm',
                       imageSource === 'unsplash'
                         ? 'bg-primary text-white shadow-md'
                         : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -187,9 +195,23 @@
                   </button>
                   <button
                     type="button"
+                    @click="imageSource = 'upload'"
+                    :class="[
+                      'flex-1 py-2.5 px-4 rounded-lg font-medium transition-all text-sm',
+                      imageSource === 'upload'
+                        ? 'bg-primary text-white shadow-md'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ]">
+                    <span class="flex items-center justify-center gap-2">
+                      <span class="text-lg">📤</span>
+                      Upload
+                    </span>
+                  </button>
+                  <button
+                    type="button"
                     @click="imageSource = 'url'"
                     :class="[
-                      'flex-1 py-2.5 px-4 rounded-lg font-medium transition-all',
+                      'flex-1 py-2.5 px-4 rounded-lg font-medium transition-all text-sm',
                       imageSource === 'url'
                         ? 'bg-primary text-white shadow-md'
                         : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -208,6 +230,79 @@
                     @select="handleUnsplashSelect"
                     :placeholder="`Search for ${form.category || 'product'} images...`"
                   />
+                </div>
+
+                <!-- File Upload -->
+                <div v-else-if="imageSource === 'upload'">
+                  <div class="space-y-3">
+                    <!-- Upload Area -->
+                    <div class="relative">
+                      <input
+                        ref="fileInput"
+                        type="file"
+                        accept="image/*"
+                        @change="handleFileUpload"
+                        class="hidden"
+                      />
+                      
+                      <!-- Upload Button/Preview -->
+                      <div v-if="!uploadedImagePreview" 
+                        @click="$refs.fileInput.click()"
+                        class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                        <div class="flex flex-col items-center gap-3">
+                          <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            <span class="text-3xl">📸</span>
+                          </div>
+                          <div>
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Click to upload image
+                            </p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              PNG, JPG, GIF up to 10MB
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Image Preview -->
+                      <div v-else class="relative">
+                        <img 
+                          :src="uploadedImagePreview" 
+                          alt="Preview"
+                          class="w-full h-48 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          @click="clearUploadedImage"
+                          class="absolute top-2 right-2 p-2 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors shadow-lg">
+                          <span class="material-symbols-outlined text-base">delete</span>
+                        </button>
+                        <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                          <p class="truncate">{{ uploadedFileName }}</p>
+                          <p class="text-xs">{{ uploadedFileSize }}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Upload Progress -->
+                    <div v-if="uploading" class="space-y-2">
+                      <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600 dark:text-gray-400">Uploading...</span>
+                        <span class="text-gray-900 dark:text-white font-medium">{{ uploadProgress }}%</span>
+                      </div>
+                      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                        <div 
+                          class="bg-primary h-full transition-all duration-300"
+                          :style="{ width: uploadProgress + '%' }">
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Upload Error -->
+                    <p v-if="uploadError" class="text-sm text-red-500">
+                      {{ uploadError }}
+                    </p>
+                  </div>
                 </div>
 
                 <!-- Manual URL Input -->
@@ -276,6 +371,9 @@
 
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
+import { storage } from '@/firebase/firebase_config'
+// ✅ Correct - CDN syntax (matches your firebase_config.js)
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js'
 import UnsplashImagePicker from '@/components/UnsplashImagePicker.vue'
 
 const props = defineProps({
@@ -287,8 +385,17 @@ const emit = defineEmits(['close', 'save'])
 const saving = ref(false)
 const imgError = ref(false)
 const hasMultipleSizes = ref(false)
-const imageSource = ref('unsplash') // 'unsplash' or 'url'
+const imageSource = ref('unsplash') // 'unsplash', 'upload', or 'url'
 const selectedUnsplashImage = ref(null)
+
+// File upload states
+const fileInput = ref(null)
+const uploadedImagePreview = ref(null)
+const uploadedFileName = ref('')
+const uploadedFileSize = ref('')
+const uploading = ref(false)
+const uploadProgress = ref(0)
+const uploadError = ref(null)
 
 const form = reactive({
   item_name: '',
@@ -347,6 +454,7 @@ watch(imageSource, (newSource) => {
     // Switching to manual URL
     selectedUnsplashImage.value = null
     form.imageAttribution = null
+    clearUploadedImage()
     form.imageSource = 'url'
   } else if (newSource === 'unsplash') {
     // Switching to Unsplash
@@ -354,9 +462,109 @@ watch(imageSource, (newSource) => {
       form.img_url = ''
       form.imageAttribution = null
     }
+    clearUploadedImage()
     form.imageSource = 'unsplash'
+  } else if (newSource === 'upload') {
+    // Switching to file upload
+    selectedUnsplashImage.value = null
+    form.imageAttribution = null
+    form.imageSource = 'upload'
   }
 })
+
+// Handle file upload
+async function handleFileUpload(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    uploadError.value = 'Please select an image file'
+    return
+  }
+
+  // Validate file size (10MB max)
+  const maxSize = 10 * 1024 * 1024 // 10MB
+  if (file.size > maxSize) {
+    uploadError.value = 'File size must be less than 10MB'
+    return
+  }
+
+  uploadError.value = null
+  uploading.value = true
+  uploadProgress.value = 0
+
+  try {
+    // Create preview
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      uploadedImagePreview.value = e.target.result
+    }
+    reader.readAsDataURL(file)
+
+    // Store file info
+    uploadedFileName.value = file.name
+    uploadedFileSize.value = formatFileSize(file.size)
+
+    // Upload to Firebase Storage
+    const timestamp = Date.now()
+    const fileName = `products/${timestamp}_${file.name}`
+    const imageRef = storageRef(storage, fileName)
+    const uploadTask = uploadBytesResumable(imageRef, file)
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        // Progress
+        uploadProgress.value = Math.round(
+          (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+        )
+      },
+      (error) => {
+        // Error
+        console.error('Upload error:', error)
+        uploadError.value = 'Upload failed. Please try again.'
+        uploading.value = false
+      },
+      async () => {
+        // Success
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
+        form.img_url = downloadURL
+        form.imageSource = 'upload'
+        uploading.value = false
+        console.log('✅ Image uploaded successfully')
+      }
+    )
+  } catch (error) {
+    console.error('Error handling file:', error)
+    uploadError.value = 'Failed to process image'
+    uploading.value = false
+  }
+}
+
+// Clear uploaded image
+function clearUploadedImage() {
+  uploadedImagePreview.value = null
+  uploadedFileName.value = ''
+  uploadedFileSize.value = ''
+  uploadProgress.value = 0
+  uploadError.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+  if (imageSource.value === 'upload') {
+    form.img_url = ''
+  }
+}
+
+// Format file size
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
 
 function toggleMultipleSizes() {
   hasMultipleSizes.value = !hasMultipleSizes.value
@@ -395,6 +603,9 @@ function resetForm() {
   selectedUnsplashImage.value = null
   imgError.value = false
   saving.value = false
+  
+  // Clear upload states
+  clearUploadedImage()
 }
 
 async function handleSubmit() {
