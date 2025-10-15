@@ -210,9 +210,24 @@ onMounted(() => {
 
                                 <!-- Menu Items -->
                                 <div class="py-1">
+                                <!-- Menu Items -->
+                                <div class="py-1">
+                                    <!-- Dashboard Link for Buyers -->
+                                    <RouterLink 
+                                        v-if="user.role !== 'seller'"
+                                        to="/buyer/dashboard"
+                                        @click="showProfileDropdown = false"
+                                        class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                        </svg>
+                                        Dashboard
+                                    </RouterLink>
+
+                                    <!-- Profile Link for Sellers -->
                                     <RouterLink 
                                         v-if="user.role === 'seller'"
-                                        to="/sellers/profile"
+                                        to="/sellers/SellerProfile"
                                         @click="showProfileDropdown = false"
                                         class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,7 +245,9 @@ onMounted(() => {
                                         Logout
                                     </button>
                                 </div>
+                                </div>
                             </div>
+
                         </Transition>
                     </div>
                 </div>
