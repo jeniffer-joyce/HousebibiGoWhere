@@ -171,7 +171,7 @@
           <div class="flex flex-col items-center">
             <div class="mb-4 h-32 w-32 overflow-hidden rounded-full bg-gradient-to-br from-[#10A9C7] to-[#0891b2] shadow-lg">
               <img 
-                src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400" 
+                src="/HousebibiGoWhere/src/assets/" 
                 alt="Jeremiah"
                 class="h-full w-full object-cover"
               />
