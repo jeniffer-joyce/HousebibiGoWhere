@@ -6,7 +6,7 @@
       <Loading size="lg" />
     </div>
 
-    <!-- Existing content -->
+    <!-- Content -->
     <div v-else class="max-w-4xl mx-auto">
       <!-- ===========================
            Profile Card
@@ -43,7 +43,7 @@
           Located @ {{ seller.address || '—' }}
         </p>
 
-        <div class="flex items-center gap-2 mt-2 text-gray-500 dark:text-gray-400">
+        <div class="flex flex-wrap items-center justify-center gap-2 mt-2 text-gray-500 dark:text-gray-400">
           <span class="material-symbols-outlined text-lg text-yellow-500">star</span>
           <span class="font-medium">{{ (seller.rating ?? 0).toFixed(1) }} / 5.0</span>
           <span class="text-gray-400 dark:text-gray-600">·</span>
@@ -61,260 +61,224 @@
       <!-- /Profile Card -->
 
       <!-- ===========================
-           Tabs
+           Products
            =========================== -->
-      <div class="mt-8">
-        <div class="border-b border-gray-200 dark:border-gray-800">
-          <nav aria-label="Tabs" class="-mb-px flex gap-6 px-4">
+      <section class="mt-8">
+        <!-- Control bar: Search (left) + Filter (right) -->
+        <div class="mb-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+          <!-- Search input (LEFT) -->
+          <div class="relative max-w-md w-full md:w-80">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+            <input
+              v-model.trim="searchTerm"
+              type="text"
+              placeholder="Search items…"
+              class="w-full h-10 pl-10 pr-9 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
             <button
-              v-for="t in tabs"
-              :key="t"
-              @click="activeTab = t"
-              class="shrink-0 border-b-2 px-1 pb-4 text-sm font-medium transition-colors"
-              :class="activeTab === t
-                ? 'border-primary text-primary'
-                : 'border-transparent text-gray-500 hover:border-gray-300 dark:text-gray-400 dark:hover:border-gray-700 hover:text-gray-700 dark:hover:text-gray-300'">
-              {{ t }}
+              v-if="searchTerm"
+              @click="searchTerm = ''"
+              class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+              title="Clear">
+              <span class="material-symbols-outlined text-gray-500 text-base">close</span>
             </button>
-          </nav>
-        </div>
-
-        <!-- ===========================
-             Products / Services Grid
-             =========================== -->
-        <div v-if="activeTab === 'Products'" class="py-6" id="product_list">
-          <!-- Control bar: Search (left) + Filter (right) -->
-          <div class="mb-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-            <!-- Search input (LEFT) -->
-            <div class="relative max-w-md w-full md:w-80">
-              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
-              <input
-                v-model.trim="searchTerm"
-                type="text"
-                placeholder="Search items…"
-                class="w-full h-10 pl-10 pr-9 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-              <button
-                v-if="searchTerm"
-                @click="searchTerm = ''"
-                class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
-                title="Clear">
-                <span class="material-symbols-outlined text-gray-500 text-base">close</span>
-              </button>
-            </div>
-
-            <!-- Filter dropdown (RIGHT) -->
-            <div class="relative filter-menu-root">
-              <button
-                @click="toggleFilterMenu"
-                @keydown.escape="showFilter = false"
-                class="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800">
-                <span class="material-symbols-outlined text-base">filter_alt</span>
-                <span>{{ currentFilterLabel }}</span>
-                <span class="material-symbols-outlined text-base transition-transform" :class="showFilter ? 'rotate-180' : ''">expand_more</span>
-              </button>
-
-              <!-- Menu -->
-              <div
-                v-show="showFilter"
-                class="absolute right-0 mt-2 w-56 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg overflow-hidden z-10">
-                <button
-                  class="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
-                  :class="filter === 'all' ? 'text-primary font-semibold' : 'text-gray-700 dark:text-gray-200'"
-                  @click="setFilter('all')">
-                  <span>All</span>
-                  <span class="text-xs text-gray-500">({{ totalCount }})</span>
-                </button>
-                <button
-                  class="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 border-t border-gray-100 dark:border-gray-800"
-                  :class="filter === 'product' ? 'text-primary font-semibold' : 'text-gray-700 dark:text-gray-200'"
-                  @click="setFilter('product')">
-                  <span>Products</span>
-                  <span class="text-xs text-gray-500">({{ productCount }})</span>
-                </button>
-                <button
-                  class="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 border-t border-gray-100 dark:border-gray-800"
-                  :class="filter === 'service' ? 'text-primary font-semibold' : 'text-gray-700 dark:text-gray-200'"
-                  @click="setFilter('service')">
-                  <span>Services</span>
-                  <span class="text-xs text-gray-500">({{ serviceCount }})</span>
-                </button>
-              </div>
-            </div>
           </div>
 
-          <!-- Render grid only if we actually have items -->
-          <div
-            v-if="hasAnyFiltered"
-            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
-            id="product_grid">
+          <!-- Filter dropdown (RIGHT) -->
+          <div class="relative filter-menu-root self-start md:self-auto">
+            <button
+              @click="toggleFilterMenu"
+              @keydown.escape="showFilter = false"
+              class="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800">
+              <span class="material-symbols-outlined text-base">filter_alt</span>
+              <span>{{ currentFilterLabel }}</span>
+              <span class="material-symbols-outlined text-base transition-transform" :class="showFilter ? 'rotate-180' : ''">expand_more</span>
+            </button>
 
-            <!-- Single card -->
+            <!-- Menu -->
             <div
-              v-for="(p, idx) in filteredItems"
-              :key="idx"
-              class="group relative flex flex-col overflow-hidden rounded-lg bg-creamy-white dark:bg-gray-800/50 h-full">
-
-              <!-- Image + hover overlay + stock badge + multi-image controls -->
-              <div class="relative">
-                <!-- Image with fallback (now uses cardImage) -->
-                <div
-                  class="aspect-square w-full bg-cover bg-center"
-                  :style="{ backgroundImage: `url('${cardImage(p, idx)}')` }"
-                ></div>
-
-                <!-- Prev/Next arrows (only if multiple images) -->
-                <button
-                  v-if="hasMultipleImages(p)"
-                  @click.stop="prevImage(idx, p)"
-                  class="hidden group-hover:flex absolute left-2 top-1/2 -translate-y-1/2 items-center justify-center size-8 rounded-full bg-black/40 text-white hover:bg-black/60">
-                  <span class="material-symbols-outlined text-base">chevron_left</span>
-                </button>
-                <button
-                  v-if="hasMultipleImages(p)"
-                  @click.stop="nextImage(idx, p)"
-                  class="hidden group-hover:flex absolute right-2 top-1/2 -translate-y-1/2 items-center justify-center size-8 rounded-full bg-black/40 text-white hover:bg-black/60">
-                  <span class="material-symbols-outlined text-base">chevron_right</span>
-                </button>
-
-                <!-- Dots -->
-                <div
-                  v-if="hasMultipleImages(p)"
-                  class="pointer-events-none absolute bottom-2 left-0 right-0 flex items-center justify-center gap-1">
-                  <span
-                    v-for="(img, i) in imagesOf(p)"
-                    :key="i"
-                    class="size-1.5 rounded-full"
-                    :class="(imgIndex[idx] ?? 0) === i ? 'bg-white' : 'bg-white/50'">
-                  </span>
-                </div>
-
-                <!-- Stock/Slots badge (unified) -->
-                <span
-                  class="absolute top-2 left-2 rounded-full px-2.5 py-1 text-xs font-semibold shadow"
-                  :class="stockClass(p)">
-                  {{ stockLabel(p) }}
-                </span>
-
-                <!-- Hover overlay with EDIT button (type-aware label) -->
-                <div
-                  class="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition
-                         group-hover:bg-black/30 group-hover:opacity-100">
-                  <button
-                    @click="onEdit(p)"
-                    class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold
-                           bg-white text-gray-900 shadow hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800">
-                    <span class="material-symbols-outlined text-base">settings</span>
-                    {{ isService(p) ? 'Edit Service' : 'Edit Product' }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Card body (equal height support via grow + mt-auto spacer) -->
-              <div class="p-4 flex flex-col grow">
-                <div>
-                  <h3 class="font-medium text-gray-900 dark:text-white line-clamp-2 min-h-[3rem]">
-                    {{ p.name || (isService(p) ? 'Untitled Service' : 'Untitled Product') }}
-                  </h3>
-
-                  <!-- Price or Price Range: service-aware -->
-                  <p class="mt-1 text-sm text-primary font-semibold">
-                    {{ isService(p) ? servicePriceDisplay(p) : priceDisplay(p) }}
-                  </p>
-                </div>
-
-                <!-- Service: packages (labels) -->
-                <div v-if="isService(p) && hasPackages(p)" class="mt-3 flex flex-wrap gap-1.5">
-                  <span
-                    v-for="(pk, i) in p.packages"
-                    :key="i"
-                    class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs
-                           border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200">
-                    {{ pk?.name || 'Package' }}
-                  </span>
-                </div>
-
-                <!-- Product: sizes (grey out when qty 0) -->
-                <div v-else-if="hasSizes(p)" class="mt-3 flex flex-wrap gap-1.5">
-                  <span
-                    v-for="(s, i) in p.size"
-                    :key="i"
-                    class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs"
-                    :class="sizeChipClass(p, i)">
-                    {{ s }}
-                  </span>
-                </div>
-
-                <!-- Service: timeslots (grey when full/past) -->
-                <div v-if="isService(p) && Array.isArray(p.timeslots) && p.timeslots.length" class="mt-3 flex flex-wrap gap-1.5">
-                  <span
-                    v-for="(slot, i) in p.timeslots"
-                    :key="i"
-                    class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs"
-                    :class="timeslotChipClass(slot)"
-                    :title="slotInPast(slot) ? 'Past slot' : `${slot.label} • ${Math.max(0, (slot.capacity||0) - (slot.booked||0))} left`">
-                    {{ slot.label }}
-                  </span>
-                </div>
-
-                <!-- spacer to push future buttons to the bottom -->
-                <div class="mt-auto"></div>
-              </div>
+              v-show="showFilter"
+              class="absolute right-0 mt-2 w-56 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg overflow-hidden z-10">
+              <button
+                class="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                :class="filter === 'all' ? 'text-primary font-semibold' : 'text-gray-700 dark:text-gray-200'"
+                @click="setFilter('all')">
+                <span>All</span>
+                <span class="text-xs text-gray-500">({{ totalCount }})</span>
+              </button>
+              <button
+                class="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 border-t border-gray-100 dark:border-gray-800"
+                :class="filter === 'product' ? 'text-primary font-semibold' : 'text-gray-700 dark:text-gray-200'"
+                @click="setFilter('product')">
+                <span>Products</span>
+                <span class="text-xs text-gray-500">({{ productCount }})</span>
+              </button>
+              <button
+                class="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 border-t border-gray-100 dark:border-gray-800"
+                :class="filter === 'service' ? 'text-primary font-semibold' : 'text-gray-700 dark:text-gray-200'"
+                @click="setFilter('service')">
+                <span>Services</span>
+                <span class="text-xs text-gray-500">({{ serviceCount }})</span>
+              </button>
             </div>
           </div>
-
-          <!-- Empty state (respects filter + search) -->
-          <div v-else class="py-16 flex items-center justify-center">
-            <h3 class="text-gray-500 dark:text-gray-400 text-lg font-medium">{{ emptyMessage }}</h3>
-          </div>
-
-          <!-- Add button always visible -->
-          <div class="mt-8 flex justify-center">
-            <button @click="showAddModal = true"
-                    class="flex items-center justify-center gap-2 h-12 px-8 bg-accent text-white font-bold text-sm rounded-lg shadow-lg hover:bg-vibrant-coral/90 transition-all transform hover:scale-105">
-              <span class="material-symbols-outlined">add_circle</span>
-              <span>Add New Product</span>
-            </button>
-          </div>
         </div>
 
-        <!-- Wishlist (placeholder) -->
+        <!-- Render grid only if we actually have items -->
         <div
-          v-else-if="activeTab === 'Wishlist'"
-          id="wishlist_list"
-          class="py-16 flex items-center justify-center">
-          <h3 class="text-gray-500 dark:text-gray-400 text-lg font-medium">No wishlist items yet.</h3>
+          v-if="hasAnyFiltered"
+          class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+          id="product_grid">
+
+          <!-- Single card -->
+          <div
+            v-for="(p, idx) in filteredItems"
+            :key="idx"
+            class="group relative flex flex-col overflow-hidden rounded-lg bg-creamy-white dark:bg-gray-800/50 h-full">
+
+            <!-- Image + hover overlay + stock badge + multi-image controls -->
+            <div class="relative">
+              <!-- Image with fallback (now uses cardImage) -->
+              <div
+                class="aspect-square w-full bg-cover bg-center"
+                :style="{ backgroundImage: `url('${cardImage(p, idx)}')` }"
+              ></div>
+
+              <!-- Prev/Next arrows (only if multiple images) -->
+              <button
+                v-if="hasMultipleImages(p)"
+                @click.stop="prevImage(idx, p)"
+                class="hidden group-hover:flex absolute left-2 top-1/2 -translate-y-1/2 items-center justify-center size-8 rounded-full bg-black/40 text-white hover:bg-black/60">
+                <span class="material-symbols-outlined text-base">chevron_left</span>
+              </button>
+              <button
+                v-if="hasMultipleImages(p)"
+                @click.stop="nextImage(idx, p)"
+                class="hidden group-hover:flex absolute right-2 top-1/2 -translate-y-1/2 items-center justify-center size-8 rounded-full bg-black/40 text-white hover:bg-black/60">
+                <span class="material-symbols-outlined text-base">chevron_right</span>
+              </button>
+
+              <!-- Dots -->
+              <div
+                v-if="hasMultipleImages(p)"
+                class="pointer-events-none absolute bottom-2 left-0 right-0 flex items-center justify-center gap-1">
+                <span
+                  v-for="(img, i) in imagesOf(p)"
+                  :key="i"
+                  class="size-1.5 rounded-full"
+                  :class="(imgIndex[idx] ?? 0) === i ? 'bg-white' : 'bg-white/50'">
+                </span>
+              </div>
+
+              <!-- Stock/Slots badge (unified) -->
+              <span
+                class="absolute top-2 left-2 rounded-full px-2.5 py-1 text-xs font-semibold shadow"
+                :class="stockClass(p)">
+                {{ stockLabel(p) }}
+              </span>
+
+              <!-- Hover overlay with EDIT button (type-aware label) -->
+              <div
+                class="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition
+                       group-hover:bg-black/30 group-hover:opacity-100">
+                <button
+                  @click="onEdit(p)"
+                  class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold
+                         bg-white text-gray-900 shadow hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800">
+                  <span class="material-symbols-outlined text-base">settings</span>
+                  {{ isService(p) ? 'Edit Service' : 'Edit Product' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Card body -->
+            <div class="p-4 flex flex-col grow">
+              <div>
+                <h3 class="font-medium text-gray-900 dark:text-white line-clamp-2 min-h-[3rem] break-words">
+                  {{ p.name || (isService(p) ? 'Untitled Service' : 'Untitled Product') }}
+                </h3>
+
+                <!-- Price or Price Range: service-aware -->
+                <p class="mt-1 text-sm text-primary font-semibold">
+                  {{ isService(p) ? servicePriceDisplay(p) : priceDisplay(p) }}
+                </p>
+              </div>
+
+              <!-- Service: packages (labels) -->
+              <div v-if="isService(p) && hasPackages(p)" class="mt-3 flex flex-wrap gap-1.5">
+                <span
+                  v-for="(pk, i) in p.packages"
+                  :key="i"
+                  class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs
+                         border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200">
+                  {{ pk?.name || 'Package' }}
+                </span>
+              </div>
+
+              <!-- Product: sizes (grey out when qty 0) -->
+              <div v-else-if="hasSizes(p)" class="mt-3 flex flex-wrap gap-1.5">
+                <span
+                  v-for="(s, i) in p.size"
+                  :key="i"
+                  class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs"
+                  :class="sizeChipClass(p, i)">
+                  {{ s }}
+                </span>
+              </div>
+
+              <!-- Service: timeslots (grey when full/past) -->
+              <div v-if="isService(p) && Array.isArray(p.timeslots) && p.timeslots.length" class="mt-3 flex flex-wrap gap-1.5">
+                <span
+                  v-for="(slot, i) in p.timeslots"
+                  :key="i"
+                  class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs"
+                  :class="timeslotChipClass(slot)"
+                  :title="slotInPast(slot) ? 'Past slot' : `${slot.label} • ${Math.max(0, (slot.capacity||0) - (slot.booked||0))} left`">
+                  {{ slot.label }}
+                </span>
+              </div>
+
+              <!-- spacer -->
+              <div class="mt-auto"></div>
+            </div>
+          </div>
         </div>
 
-        <!-- Reviews (placeholder) -->
-        <div
-          v-else
-          id="reviews_list"
-          class="py-16 flex items-center justify-center">
-          <h3 class="text-gray-500 dark:text-gray-400 text-lg font-medium">No reviews yet.</h3>
+        <!-- Empty state -->
+        <div v-else class="py-16 flex items-center justify-center">
+          <h3 class="text-gray-500 dark:text-gray-400 text-lg font-medium">{{ emptyMessage }}</h3>
         </div>
-      </div>
+
+        <!-- Add button always visible -->
+        <div class="mt-8 flex justify-center">
+          <button @click="showAddModal = true"
+                  class="flex items-center justify-center gap-2 h-12 px-8 bg-accent text-white font-bold text-sm rounded-lg shadow-lg hover:bg-vibrant-coral/90 transition-all transform hover:scale-105">
+            <span class="material-symbols-outlined">add_circle</span>
+            <span>Add New Product</span>
+          </button>
+        </div>
+      </section>
     </div>
-    <AddProductModal 
-  :show="showAddModal" 
-  @close="showAddModal = false" 
-  @save="handleAddProduct" 
-/>
+
+    <!-- Add Product Modal -->
+    <AddProductModal
+      :show="showAddModal"
+      @close="showAddModal = false"
+      @save="handleAddProduct"
+    />
   </main>
 </template>
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { getSellerProducts } from '@/firebase/services/sellers/products.js'
+import { getSellerProducts, createProduct } from '@/firebase/services/sellers/products.js'
 import Loading from '@/components/status/Loading.vue'
 import AddProductModal from '@/components/modals/AddProductModal.vue'
-import { createProduct } from '@/firebase/services/sellers/products.js'
-
 
 // Get seller ID (replace with actual from route/store later)
 const sellerID = 'A0000001'
 
-/* Seller data - keep hardcoded for now until you create sellers collection */
+/* Seller data */
 const seller = reactive({
   userID: 'A0000001',
   dateCreated: '2023-01-15 10:30:00 UTC+8',
@@ -326,7 +290,7 @@ const seller = reactive({
   bio: 'Handmade crafts and unique home decor items. Bringing warmth and style to your living space.',
   logo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAvDcbMzFfeOb3_h2t6uZzdwHccl2CtXAV_HefE3Vq9CTAeiMu4sCE6Jhdva_sb7S3PV3u9zSaANk2iz7iFIRPCHqAvHuCd-xacQWdeUyun9Iy7oICCCN_X1QqwJ1lyHqbtjGYzhOn5mKV_i9eD1o6fGeWgjfIB87h1dAcVufqCvvW4N0925h4gJ92uxp7J-7z5vz7SHWEf4IObyuH5WZLYNVL2GAYYWtkDBuyJtHtigkoLtjT0cc6ghqtBLxUoRxa4OnNWmD2O1c0b',
   address: '216 Wadapp St, Singapore',
-  products: [] // Will be loaded from Firebase
+  products: [] // Loaded from Firebase
 })
 
 const loading = ref(true)
@@ -336,7 +300,6 @@ onMounted(async () => {
   try {
     const products = await getSellerProducts(sellerID)
     seller.products = products
-    console.log('Loaded products:', products) // Debug log
   } catch (error) {
     console.error('Error loading products:', error)
   } finally {
@@ -344,17 +307,17 @@ onMounted(async () => {
   }
 })
 
+/* Add Product Modal */
 const showAddModal = ref(false)
-
 async function handleAddProduct(productData) {
   try {
     const newId = await createProduct(productData)
-    seller.products.push({ 
-      id: newId, 
+    seller.products.push({
+      id: newId,
       type: 'product',
-      name: productData.item_name, 
+      name: productData.item_name,
       img: productData.img_url,
-      ...productData 
+      ...productData
     })
     showAddModal.value = false
     alert('✅ Product added!')
@@ -363,15 +326,9 @@ async function handleAddProduct(productData) {
     alert('❌ Failed to add product')
   }
 }
-/* -----------------------------
- * Tabs & UI state
- * ----------------------------- */
-const tabs = ['Products', 'Wishlist', 'Reviews']
-const activeTab = ref('Products')
-const addProductModal = ref(false)
 
 /* -----------------------------
- * Filter + Search state
+ * Filter + Search
  * ----------------------------- */
 const filter = ref('all') // 'all' | 'product' | 'service'
 const searchTerm = ref('')
@@ -524,7 +481,6 @@ const serviceHasCapacity = (p = {}) =>
 const imgIndex = reactive({}) // { [cardIdx]: currentImageIndex }
 
 function imagesOf(p = {}) {
-  // Accepts p.images (array), p.img (array or string), else placeholder
   if (Array.isArray(p.images) && p.images.length) return p.images
   if (Array.isArray(p.img) && p.img.length) return p.img
   if (typeof p.img === 'string' && p.img) return [p.img]
@@ -584,6 +540,3 @@ function onEdit(item) {
   console.log('Edit item:', item)
 }
 </script>
-
-
-// ... rest of your existing code (tabs, filters, imgIndex, etc. - KEEP EVERYTHING ELSE THE SAME)
