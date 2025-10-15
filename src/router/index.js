@@ -13,6 +13,7 @@ import EditProduct from '../views/sellers/EditProduct.vue'
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
 
+
 const routes = [
     {
         path: '/',
@@ -54,7 +55,8 @@ const routes = [
     {
         path: '/seller-orders/',
         component: SellerOrders
-    },
+    }
+    
 ]
 
 const router = createRouter({
