@@ -52,8 +52,10 @@ const routes = [
         component: SellerOrders
     },
     {
-        path: '/product-details/',
-        component: ProductDetails
+        path: '/product-details/:id',
+        component: ProductDetails,
+        name: "ProductDetails",
+        props: true 
     }
 ]
 

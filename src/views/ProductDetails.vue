@@ -1,21 +1,72 @@
+<script setup>
+import { onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { useProduct } from '@/composables/useProduct'
+
+const route = useRoute()
+
+// Get product ID from route params
+const productId = computed(() => route.params.id)
+
+// Use the product composable
+const {
+    product,
+    seller,
+    loading,
+    error,
+    selectedImage,
+    formattedPrice,
+    productImages,
+    mainImage,
+    stockStatus,
+    loadProduct,
+    selectImage
+} = useProduct(productId)
+
+// Load product on mount
+onMounted(() => {
+    loadProduct()
+})
+</script>
+
 <template>
     <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 gap-12 lg:grid-cols-2">
+        <!-- Loading State -->
+        <div v-if="loading" class="flex items-center justify-center py-20">
+            <div class="text-center">
+                <svg class="animate-spin h-12 w-12 text-primary mx-auto" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <p class="mt-4 text-gray-600 dark:text-gray-400">Loading product...</p>
+            </div>
+        </div>
+
+        <!-- Product Not Found -->
+        <div v-else-if="!product" class="text-center py-20">
+            <p class="text-xl text-gray-600 dark:text-gray-400">Product not found</p>
+        </div>
+
+        <!-- Product Content -->
+        <div v-else class="grid grid-cols-1 gap-12 lg:grid-cols-2">
+            <!-- Left Column - Images & Reviews -->
             <div class="flex flex-col gap-4">
+                <!-- Product Images -->
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <!-- Main Image -->
                     <div class="col-span-3 h-96 rounded-lg bg-cover bg-center bg-no-repeat"
-                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAbSRuz3FetWn7UFv4qwxCNpB9ioeJizbQNhq-RL-HJAVL-YW2TTPrkTEKJ-MkutYJkN4OBcKWQGOfi-suSdrqXDPbids746FhsKwz4r2yZWP1A0BV-QJTxeF9GUubd9lvmdzY2EMOSjC3EebGdOfrqowwlUuXWpu7qgiTJqcG4JXBYM1nMRNqllF02BzVtLC6o5XA1RXa_3bO2N3zj_rMXQv5p_Wc6PodBTi47s__530kMc23D1ZyNinTxIhlszGf4ncdDvAeA1-yN");'>
+                        :style="`background-image: url('${mainImage}');`">
                     </div>
-                    <div class="h-40 rounded-lg bg-cover bg-center bg-no-repeat"
-                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCJOfJMirDlLI7uhqcQgDJx90GJYk96sQs9atZCbglb-P0_mK_IZbFoRfxN90-kOZ9bmJXhcPVDVHMnysbH1RZe0JDiE8TlAxweg6gmEtAMAWrYzX4nmPaQ11RHdBDDYFwZpCvo9-xvIujZPUN16MdGS8hJY0FdSjBS1vd0TVPBKo8H4pYCRLF-svUSNl4cMCtmb29XMrdIDOUMhDp-MmdTV8n5OMmJ_j-Pr0DTb5hF2nu3Sc100lWrtJB7PtZRMs-Nnoja4mr3GHRc");'>
-                    </div>
-                    <div class="h-40 rounded-lg bg-cover bg-center bg-no-repeat"
-                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuADGyMHT9TEigQJObaqTPyY_vClqhtN0_GG_Tppz5Ezzl7mA3jrLi8gvZU9OOXZXsOosSxsYgR6h6yw3rVnU_KemYWp2KAw7erkVe6g5-k2hlU1VQ639h03HhgEC1W_QIFnuTrTkAnln1_5RcMwBqKG9VLeKK__2wvgFOTYqvxDRmrQgLxG5m05ChWOPFmyvxB5Mh33IqGY0ANgd5C_5Tq5LI0PySdiQXCPKu81Yl80yHj_QG6Pri4qDRr4mpGTbP4avK5A3EJ2l3to");'>
-                    </div>
-                    <div class="h-40 rounded-lg bg-cover bg-center bg-no-repeat"
-                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAbSRuz3FetWn7UFv4qwxCNpB9ioeJizbQNhq-RL-HJAVL-YW2TTPrkTEKJ-MkutYJkN4OBcKWQGOfi-suSdrqXDPbids746FhsKwz4r2yZWP1A0BV-QJTxeF9GUubd9lvmdzY2EMOSjC3EebGdOfrqowwlUuXWpu7qgiTJqcG4JXBYM1nMRNqllF02BzVtLC6o5XA1RXa_3bO2N3zj_rMXQv5p_Wc6PodBTi47s__530kMc23D1ZyNinTxIhlszGf4ncdDvAeA1-yN");'>
+
+                    <!-- Thumbnail Images -->
+                    <div v-for="(image, index) in productImages.slice(0, 3)" :key="index" @click="selectImage(index)"
+                        class="h-40 rounded-lg bg-cover bg-center bg-no-repeat cursor-pointer border-2 transition-all"
+                        :class="selectedImage === index ? 'border-primary' : 'border-transparent hover:border-gray-300'"
+                        :style="`background-image: url('${image}');`">
                     </div>
                 </div>
+
+                <!-- Customer Reviews Section -->
                 <div class="mt-8">
                     <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Customer Reviews</h2>
                     <div class="mt-4 flex items-center gap-8 rounded-lg bg-white p-6 shadow-sm dark:bg-background-dark">
@@ -68,6 +119,8 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Sample Reviews (You can make this dynamic too) -->
                     <div class="mt-6 space-y-6">
                         <div class="flex gap-4">
                             <div class="h-12 w-12 flex-shrink-0 rounded-full bg-cover bg-center"
@@ -86,37 +139,18 @@
                                     <span class="material-symbols-outlined text-yellow-500">star</span>
                                 </div>
                                 <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                                    Absolutely love this mug! The craftsmanship is superb, and it feels great in my
-                                    hand. It's become my favorite mug for my morning coffee.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex gap-4">
-                            <div class="h-12 w-12 flex-shrink-0 rounded-full bg-cover bg-center"
-                                style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC-bKTWwRpFZ9J9-2O6k_FD0cA8QJugKp-c5YCXUOwmDYbeYGoYz3yN8W_kDioTfX3-OE0jhPu0G2dxK_OqXooLstQxPi41yOWQOf1A_dAKrv0ipVN_CzUnzwATmM4Hs3rNKef6sd5E7McWkIEzMptxF9LYzBW3CsVKo3YrRnjcVXDYiURlfaHLClWUp21iLUxTOjfM9d3AdR0kHlwemcRnVzSqMkQu02fKAwjbKU-Qp8QpxKW5uTpBab5axP0R-aVhD1_7CxOUkg6M");'>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <h4 class="font-semibold text-gray-800 dark:text-white">Ethan Bennett</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">1 month ago</p>
-                                </div>
-                                <div class="mt-1 flex items-center">
-                                    <span class="material-symbols-outlined text-yellow-500">star</span>
-                                    <span class="material-symbols-outlined text-yellow-500">star</span>
-                                    <span class="material-symbols-outlined text-yellow-500">star</span>
-                                    <span class="material-symbols-outlined text-yellow-500">star</span>
-                                    <span class="material-symbols-outlined text-gray-400">star_outline</span>
-                                </div>
-                                <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                                    Beautiful mug, exactly as described. The texture is lovely, and it keeps my tea warm
-                                    for a long time. A great addition to my collection.
+                                    Absolutely love this product! The craftsmanship is superb, and it feels great.
+                                    It's become my favorite.
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Right Column - Product Details -->
             <div class="space-y-8">
+                <!-- Breadcrumb -->
                 <div>
                     <nav aria-label="Breadcrumb">
                         <ol class="flex items-center space-x-2 text-sm">
@@ -127,42 +161,65 @@
                                 <span class="material-symbols-outlined text-sm text-gray-400">chevron_right</span>
                             </li>
                             <li>
-                                <span class="font-medium text-gray-700 dark:text-gray-300">Handmade Crafts</span>
+                                <span class="font-medium text-gray-700 dark:text-gray-300">{{ product.category ||
+                                    'Products' }}</span>
                             </li>
                         </ol>
                     </nav>
+
+                    <!-- Product Name -->
                     <h1 class="mt-4 text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-                        Handcrafted Ceramic Mug</h1>
-                    <p class="mt-4 text-3xl text-gray-900 dark:text-white">$25.00</p>
+                        {{ product.item_name }}
+                    </h1>
+
+                    <!-- Price -->
+                    <p class="mt-4 text-3xl text-gray-900 dark:text-white">{{ formattedPrice }}</p>
                 </div>
+
+                <!-- Description -->
                 <div class="mt-6">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-white">Description</h3>
                     <p class="mt-2 text-base text-gray-600 dark:text-gray-300">
-                        This unique ceramic mug is handcrafted with love, perfect for your morning coffee or tea. Its
-                        earthy tones and textured finish make it a standout piece in any
-                        collection. Each mug is individually made, ensuring no two are exactly alike.
+                        {{ product.description || 'No description available.' }}
                     </p>
                 </div>
-                <div class="mt-6">
-                    <p class="text-sm font-medium text-green-600">In stock (5 available)</p>
+
+                <!-- Size (if available) -->
+                <div v-if="product.size" class="mt-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Size</h3>
+                    <p class="mt-2 text-base text-gray-600 dark:text-gray-300">{{ product.size }}</p>
                 </div>
+
+                <!-- Stock Status -->
                 <div class="mt-6">
+                    <p class="text-sm font-medium" :class="stockStatus.color">
+                        {{ stockStatus.text }}
+                    </p>
+                </div>
+
+                <!-- Seller Info -->
+                <div v-if="seller" class="mt-6">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-white">Seller</h3>
                     <div class="mt-2 flex items-center gap-4 rounded-lg bg-white p-4 shadow-sm dark:bg-background-dark">
                         <div class="h-16 w-16 rounded-full bg-cover bg-center"
-                            style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDj_2iAfxEiLuHihx79x_Np6-9vtk4snBSgFKA4yReLdZCTuWR8DA9EBohdDMYIeRdg0ouIv37TNGv04-l_yBJ4BAetpWlm2s6fndf9iMX7ozWBFP7fW54CltvKuV-zSNWlegujNN0ds2uFhwUw3Zyjyw-8AdvhX-yTsqX2TL8LaTVlewYoFU0VZ_I_6I_gtW5ubOfN4SX437BXkB0gra2StUwLfakvnSduBTZeqtysYpDRwqKDG-5wu2O8LuKMs3adP26FlmnOjbYa");'>
+                            :style="`background-image: url('${seller.profile_image || seller.logo || 'https://via.placeholder.com/150'}');`">
                         </div>
                         <div>
-                            <p class="font-semibold text-gray-800 dark:text-white">The Cozy Corner</p>
+                            <p class="font-semibold text-gray-800 dark:text-white">
+                                {{ seller.business_name || seller.name || 'Unknown Seller' }}
+                            </p>
                             <a class="text-sm text-primary hover:underline" href="#">View Shop</a>
                         </div>
                     </div>
                 </div>
+
+                <!-- Add to Cart Button -->
                 <div class="mt-10">
-                    <button
-                        class="flex w-full items-center justify-center rounded-md border border-transparent bg-primary px-8 py-3 text-base font-medium text-white shadow-lg hover:bg-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                        type="submit">
-                        Add to Cart
+                    <button :disabled="stockStatus.color === 'text-red-600'"
+                        class="flex w-full items-center justify-center rounded-md border border-transparent px-8 py-3 text-base font-medium text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        :class="stockStatus.color === 'text-red-600' ? 'bg-gray-400' : 'bg-primary hover:bg-primary/80'"
+                        type="button">
+                        {{ stockStatus.color === 'text-red-600' ? 'Out of Stock' : 'Add to Cart' }}
                     </button>
                 </div>
             </div>
