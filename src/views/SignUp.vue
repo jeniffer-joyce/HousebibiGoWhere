@@ -311,6 +311,11 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { registerUserWithUsername } from '../firebase/auth/authService'
+import { getCategories } from '../firebase/services/home/categories.js'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
 
 const router = useRouter()
 
@@ -381,21 +386,77 @@ function goNextFromManual(){
 
 /* reCAPTCHA */
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
-const captchaToken = ref(''); const captchaError = ref(false)
-let widgetId = null; let themeObserver
-const currentTheme = () => document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-function resetRecaptcha(){ if(window.grecaptcha && widgetId!==null) window.grecaptcha.reset(widgetId); captchaToken.value='' }
-function loadRecaptchaScript(){ return new Promise((res,rej)=>{ if(window.grecaptcha?.render) return res(); const s=document.createElement('script'); s.src='https://www.google.com/recaptcha/api.js?render=explicit'; s.async=true; s.defer=true; s.onload=()=>res(); s.onerror=()=>rej(new Error('recaptcha/script-failed')); document.head.appendChild(s) }) }
-function renderRecaptcha(){ widgetId = window.grecaptcha.render('recaptcha-container',{ sitekey:recaptchaSiteKey, theme:currentTheme(), callback:(t)=>{captchaToken.value=t; captchaError.value=false}, 'expired-callback':()=>{captchaToken.value=''; captchaError.value=true} }) }
-const validateCaptcha = ()=>{ if(!captchaToken.value){ captchaError.value=true; return false } return true }
+const captchaToken = ref('')
+const captchaError = ref(false)
+let widgetId = null
+let themeObserver
 
-/* Lifecycle */
-onMounted(async ()=>{
-  fixStep()
-  if(!recaptchaSiteKey) return
-  await loadRecaptchaScript(); renderRecaptcha()
-  themeObserver = new MutationObserver(()=>{ const el=document.getElementById('recaptcha-container'); if(!el||!window.grecaptcha) return; el.innerHTML=''; widgetId=null; captchaToken.value=''; renderRecaptcha() })
-  themeObserver.observe(document.documentElement,{attributes:true, attributeFilter:['class']})
+function currentTheme () {
+  return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+}
+
+function resetRecaptcha() {
+  if (window.grecaptcha && widgetId !== null) {
+    window.grecaptcha.reset(widgetId)
+  }
+  captchaToken.value = ''
+}
+
+function loadRecaptchaScript() {
+  return new Promise((resolve, reject) => {
+    if (window.grecaptcha?.render) return resolve()
+    const s = document.createElement('script')
+    s.src = 'https://www.google.com/recaptcha/api.js?render=explicit'
+    s.async = true
+    s.defer = true
+    s.onload = () => resolve()
+    s.onerror = () => reject(new Error('recaptcha/script-failed'))
+    document.head.appendChild(s)
+  })
+}
+
+function renderRecaptcha() {
+  const theme = currentTheme()
+  widgetId = window.grecaptcha.render('recaptcha-container', {
+    sitekey: recaptchaSiteKey,
+    theme,
+    callback: (token) => {
+      captchaToken.value = token
+      captchaError.value = false
+    },
+    'expired-callback': () => {
+      captchaToken.value = ''
+      captchaError.value = true
+    }
+  })
+}
+
+// If query parameter exists, override default (this is for users who press 'Get Started Now' on
+// for sellers' page)
+onMounted(() => {
+  if (route.query.role === 'seller') {
+    role.value = 'seller'
+  }
+})
+
+
+onMounted(async () => {
+  if (!recaptchaSiteKey) {
+    console.error('Missing VITE_RECAPTCHA_SITE_KEY in .env.local')
+    return
+  }
+  await loadRecaptchaScript()
+  renderRecaptcha()
+
+  themeObserver = new MutationObserver(() => {
+    const el = document.getElementById('recaptcha-container')
+    if (!el || !window.grecaptcha) return
+    el.innerHTML = ''
+    widgetId = null
+    captchaToken.value = ''
+    renderRecaptcha()
+  })
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 })
 onBeforeUnmount(()=>{ themeObserver?.disconnect(); resetRecaptcha() })
 
