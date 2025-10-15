@@ -163,20 +163,71 @@
                 </div>
               </div>
 
-              <!-- Image URL -->
+              <!-- Product Image Section -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Image URL <span class="text-red-500">*</span>
+                  Product Image <span class="text-red-500">*</span>
                 </label>
-                <input
-                  v-model="form.img_url"
-                  type="url"
-                  required
-                  placeholder="https://example.com/image.jpg"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40"
-                />
-                <div v-if="form.img_url" class="mt-3 flex justify-center">
-                  <img :src="form.img_url" class="h-32 w-32 object-cover rounded-lg" @error="imgError = true" />
+
+                <!-- Image Source Tabs -->
+                <div class="flex gap-2 mb-4">
+                  <button
+                    type="button"
+                    @click="imageSource = 'unsplash'"
+                    :class="[
+                      'flex-1 py-2.5 px-4 rounded-lg font-medium transition-all',
+                      imageSource === 'unsplash'
+                        ? 'bg-primary text-white shadow-md'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ]">
+                    <span class="flex items-center justify-center gap-2">
+                      <span class="text-lg">🎨</span>
+                      AI Images
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    @click="imageSource = 'url'"
+                    :class="[
+                      'flex-1 py-2.5 px-4 rounded-lg font-medium transition-all',
+                      imageSource === 'url'
+                        ? 'bg-primary text-white shadow-md'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ]">
+                    <span class="flex items-center justify-center gap-2">
+                      <span class="text-lg">🔗</span>
+                      Image URL
+                    </span>
+                  </button>
+                </div>
+
+                <!-- Unsplash Image Picker -->
+                <div v-if="imageSource === 'unsplash'">
+                  <UnsplashImagePicker
+                    v-model="selectedUnsplashImage"
+                    @select="handleUnsplashSelect"
+                    :placeholder="`Search for ${form.category || 'product'} images...`"
+                  />
+                </div>
+
+                <!-- Manual URL Input -->
+                <div v-else-if="imageSource === 'url'">
+                  <input
+                    v-model="form.img_url"
+                    type="url"
+                    :required="!form.img_url"
+                    placeholder="https://example.com/image.jpg"
+                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40"
+                  />
+                  <div v-if="form.img_url" class="mt-3 flex justify-center">
+                    <img 
+                      :src="form.img_url" 
+                      class="h-32 w-32 object-cover rounded-lg" 
+                      @error="imgError = true"
+                      @load="imgError = false" 
+                    />
+                  </div>
+                  <p v-if="imgError" class="mt-2 text-sm text-red-500">Failed to load image. Please check the URL.</p>
                 </div>
               </div>
 
@@ -210,8 +261,8 @@
             </button>
             <button
               @click="handleSubmit"
-              :disabled="saving"
-              class="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50">
+              :disabled="saving || !isFormValid"
+              class="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
               <span v-if="saving" class="material-symbols-outlined animate-spin text-base">progress_activity</span>
               <span>{{ saving ? 'Adding...' : 'Add Product' }}</span>
             </button>
@@ -224,7 +275,8 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
+import UnsplashImagePicker from '@/components/UnsplashImagePicker.vue'
 
 const props = defineProps({
   show: Boolean
@@ -235,6 +287,8 @@ const emit = defineEmits(['close', 'save'])
 const saving = ref(false)
 const imgError = ref(false)
 const hasMultipleSizes = ref(false)
+const imageSource = ref('unsplash') // 'unsplash' or 'url'
+const selectedUnsplashImage = ref(null)
 
 const form = reactive({
   item_name: '',
@@ -244,7 +298,64 @@ const form = reactive({
   quantity: null,
   sizes: [{ name: 'S', price: 0, quantity: 0 }],
   img_url: '',
+  imageAttribution: null,
+  imageSource: 'unsplash',
   availability: true
+})
+
+// Validate form has image
+const isFormValid = computed(() => {
+  return form.img_url && form.img_url.trim().length > 0
+})
+
+// Update search placeholder based on category
+watch(() => form.category, (newCategory) => {
+  if (imageSource.value === 'unsplash' && selectedUnsplashImage.value === null) {
+    // Category changed, could trigger new search suggestions
+  }
+})
+
+// Handle Unsplash image selection
+function handleUnsplashSelect(photo) {
+  if (photo) {
+    selectedUnsplashImage.value = photo
+    
+    // Use the Unsplash URL directly (hotlink - required by Unsplash)
+    form.img_url = photo.urls.regular
+    
+    // Store attribution info (required by Unsplash)
+    form.imageAttribution = {
+      photographerName: photo.attribution.photographerName,
+      photographerLink: photo.attribution.photographerLink,
+      photoLink: photo.links.html,
+      unsplashLink: 'https://unsplash.com'
+    }
+    
+    form.imageSource = 'unsplash'
+    imgError.value = false
+  } else {
+    // User cleared the Unsplash selection
+    selectedUnsplashImage.value = null
+    form.img_url = ''
+    form.imageAttribution = null
+  }
+}
+
+// Watch image source changes
+watch(imageSource, (newSource) => {
+  if (newSource === 'url') {
+    // Switching to manual URL
+    selectedUnsplashImage.value = null
+    form.imageAttribution = null
+    form.imageSource = 'url'
+  } else if (newSource === 'unsplash') {
+    // Switching to Unsplash
+    if (!selectedUnsplashImage.value) {
+      form.img_url = ''
+      form.imageAttribution = null
+    }
+    form.imageSource = 'unsplash'
+  }
 })
 
 function toggleMultipleSizes() {
@@ -263,10 +374,36 @@ function removeSize(idx) {
 }
 
 function close() {
+  resetForm()
   emit('close')
 }
 
+function resetForm() {
+  form.item_name = ''
+  form.category = ''
+  form.description = ''
+  form.price = null
+  form.quantity = null
+  form.sizes = [{ name: 'S', price: 0, quantity: 0 }]
+  form.img_url = ''
+  form.imageAttribution = null
+  form.imageSource = 'unsplash'
+  form.availability = true
+  
+  hasMultipleSizes.value = false
+  imageSource.value = 'unsplash'
+  selectedUnsplashImage.value = null
+  imgError.value = false
+  saving.value = false
+}
+
 async function handleSubmit() {
+  // Validate image
+  if (!form.img_url) {
+    alert('Please select or provide a product image')
+    return
+  }
+
   saving.value = true
   
   try {
@@ -275,9 +412,17 @@ async function handleSubmit() {
       category: form.category,
       description: form.description,
       img_url: form.img_url,
-      availability: form.availability
+      imageSource: form.imageSource,
+      availability: form.availability,
+      createdAt: new Date().toISOString()
     }
 
+    // Add attribution only for Unsplash images
+    if (form.imageSource === 'unsplash' && form.imageAttribution) {
+      productData.imageAttribution = form.imageAttribution
+    }
+
+    // Handle pricing based on size mode
     if (hasMultipleSizes.value) {
       productData.size = form.sizes.map(s => s.name)
       productData.price = form.sizes.map(s => s.price)
@@ -289,6 +434,10 @@ async function handleSubmit() {
     }
 
     emit('save', productData)
+    resetForm()
+  } catch (error) {
+    console.error('Error preparing product data:', error)
+    alert('Failed to add product. Please try again.')
   } finally {
     saving.value = false
   }
@@ -301,5 +450,18 @@ async function handleSubmit() {
 }
 .modal-enter-from, .modal-leave-to {
   opacity: 0;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>
