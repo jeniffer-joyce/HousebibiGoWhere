@@ -8,7 +8,8 @@ import Categories from '../views/Categories.vue'
 import About from '../views/About.vue'
 import ForSellers from '../views/ForSellers.vue'
 import SellerProfile from '../views/sellers/SellerProfile.vue'
-import AddNewProduct from '../views/sellers/AddNewProduct.vue'  
+import AddNewProduct from '../views/sellers/AddNewProduct.vue'
+import EditProduct from '../views/sellers/EditProduct.vue'  
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
 
@@ -46,6 +47,10 @@ const routes = [
     {
         path: '/add-new-product/',
         component: AddNewProduct
+    },
+    {
+        path: '/edit-product/',
+        component: EditProduct,
     },
     {
         path: '/seller-orders/',
