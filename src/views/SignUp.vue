@@ -66,7 +66,7 @@
               autocomplete="username"
             />
             <p v-if="username && !usernameValid" class="text-xs text-red-500 mt-1">
-              Username must be 8–20 characters long and contain only letters and numbers.
+              Username must be 8–20 characters long and contain only letters and numbers
             </p>
           </div>
 
@@ -82,7 +82,7 @@
               autocomplete="email"
             />
             <p v-if="email && !emailValid" class="text-xs text-red-500 mt-1">
-              Please enter a valid email address.
+              Please enter a valid email address
             </p>
           </div>
 
@@ -116,7 +116,7 @@
               </button>
             </div>
             <p v-if="password && !passwordStrong" class="text-xs text-red-500 mt-1">
-              Password must be at least 8 characters and include an uppercase, lowercase, and special character.
+              Password must be at least 8 characters and include an uppercase, lowercase, and special character
             </p>
           </div>
 
@@ -159,7 +159,7 @@
                 placeholder="Birthday"
               />
               <p v-if="birthday && !birthdayValid" class="text-xs text-red-500 mt-1">
-                You must be at least 18 years old to create an account.
+                You must be at least 18 years old to create an account
               </p>
             </div>
           </div>
@@ -176,7 +176,7 @@
               autocomplete="tel"
             />
             <p v-if="phone && !phoneValid" class="text-xs text-red-500 mt-1">
-              Enter 8 digits (e.g., 8xxxxxxx / 9xxxxxxx) or +65XXXXXXXX.
+              Use 8 digits starting with 8 or 9 (e.g., 8xxxxxxx / 9xxxxxxx) or +65 8xxxxxxx / +65 9xxxxxxx
             </p>
           </div>
 
@@ -290,7 +290,8 @@ const emailValid = computed(() => /\S+@\S+\.\S+/.test(email.value))
 const passwordStrong = computed(() => /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}$/.test(password.value))
 const phoneValid = computed(() => {
   const v = phone.value.trim()
-  return v === '' || /^(\+65)?\s?\d{8}$/.test(v)
+  if (v === '') return true // optional field
+  return /^(?:\+65\s*)?[89]\d{7}$/.test(v)  // +65 optional; first digit 8 or 9; total 8 digits
 })
 const birthdayValid = computed(() => {
   if (!birthday.value) return true
