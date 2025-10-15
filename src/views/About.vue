@@ -1,17 +1,17 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-slate-950">
-    <!-- Hero Section -->
+    <!-- Hero Section with uploaded image -->
     <section class="relative h-[500px] bg-cover bg-center" 
-      style="background-image: url('/HousebibiGoWhere/src/assets/home_business.png');">
-      <!-- Dark overlay -->
-      <div class="absolute inset-0 bg-black/50"></div>
+      style="background-image: url('/src/assets/home_business.png');">
+      <!-- Lighter overlay to show the image better -->
+      <div class="absolute inset-0 bg-black/40"></div>
       
       <!-- Content -->
       <div class="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
-        <h1 class="text-4xl font-bold text-white sm:text-5xl md:text-6xl mb-6">
+        <h1 class="text-4xl font-bold text-white sm:text-5xl md:text-6xl mb-6 drop-shadow-lg">
           Empowering Home-Based Businesses
         </h1>
-        <p class="max-w-3xl text-lg text-white/90 sm:text-xl mb-8">
+        <p class="max-w-3xl text-lg text-white/95 sm:text-xl mb-8 drop-shadow-md">
           Connect with a community of passionate creators and discover unique, handcrafted goods.
           Whether you're a seller looking to expand your reach or a buyer seeking one-of-a-kind
           items, HousebibiGoWhere is your destination.
@@ -146,11 +146,11 @@
             <div class="mb-4 h-32 w-32 overflow-hidden rounded-full bg-gradient-to-br from-[#10A9C7] to-[#0891b2] shadow-lg">
               <img 
                 src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400" 
-                alt="Mirabelle"
+                alt="Jeniffer"
                 class="h-full w-full object-cover"
               />
             </div>
-            <h3 class="text-base font-semibold text-slate-900 dark:text-white">Mirabelle</h3>
+            <h3 class="text-base font-semibold text-slate-900 dark:text-white">Jeniffer</h3>
             <p class="text-sm text-slate-600 dark:text-slate-400">Marketing Director</p>
           </div>
 
@@ -159,11 +159,11 @@
             <div class="mb-4 h-32 w-32 overflow-hidden rounded-full bg-gradient-to-br from-[#10A9C7] to-[#0891b2] shadow-lg">
               <img 
                 src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400" 
-                alt="Jeniffer"
+                alt="Mirabelle"
                 class="h-full w-full object-cover"
               />
             </div>
-            <h3 class="text-base font-semibold text-slate-900 dark:text-white">Jeniffer</h3>
+            <h3 class="text-base font-semibold text-slate-900 dark:text-white">Mirabelle</h3>
             <p class="text-sm text-slate-600 dark:text-slate-400">Community Manager</p>
           </div>
 
@@ -171,7 +171,7 @@
           <div class="flex flex-col items-center">
             <div class="mb-4 h-32 w-32 overflow-hidden rounded-full bg-gradient-to-br from-[#10A9C7] to-[#0891b2] shadow-lg">
               <img 
-                src="/HousebibiGoWhere/src/assets/" 
+                src="/src/assets/JeremiahMugshot.jpeg" 
                 alt="Jeremiah"
                 class="h-full w-full object-cover"
               />
@@ -228,46 +228,10 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue';
-
-// Infinite scroll functionality
-let scrollTimeout;
-
-const handleScroll = () => {
-  clearTimeout(scrollTimeout);
-  
-  scrollTimeout = setTimeout(() => {
-    const scrollHeight = document.documentElement.scrollHeight;
-    const scrollTop = window.scrollY || document.documentElement.scrollTop;
-    const clientHeight = window.innerHeight;
-    
-    // Check if user has scrolled to the bottom
-    if (scrollTop + clientHeight >= scrollHeight - 50) {
-      // Smoothly scroll back to top
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-    }
-  }, 100);
-};
-
-onMounted(() => {
-  window.addEventListener('scroll', handleScroll);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll);
-  clearTimeout(scrollTimeout);
-});
+// No infinite scroll - page scrolls normally
 </script>
 
 <style scoped>
-/* Smooth scroll behavior */
-html {
-  scroll-behavior: smooth;
-}
-
 /* Animation for team member cards on hover */
 .flex.flex-col.items-center:hover img {
   transform: scale(1.1);
