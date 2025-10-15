@@ -261,6 +261,10 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { registerUserWithUsername } from '../firebase/auth/authService'
 import { getCategories } from '../firebase/services/home/categories.js'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
 
 const router = useRouter()
 
@@ -401,6 +405,15 @@ function renderRecaptcha() {
     }
   })
 }
+
+// If query parameter exists, override default (this is for users who press 'Get Started Now' on
+// for sellers' page)
+onMounted(() => {
+  if (route.query.role === 'seller') {
+    role.value = 'seller'
+  }
+})
+
 
 onMounted(async () => {
   if (!recaptchaSiteKey) {
