@@ -18,10 +18,18 @@ export const user = reactive({
     categories: [], // User's preferred categories
     hasSetPreferences: false // Whether user has set/skipped preferences
   },
+  isSigningUp: false, // NEW: Track if user is in signup process
 })
 
 // Listen for login/logout changes automatically
 onAuthStateChanged(auth, async (firebaseUser) => {
+  // If user is in signup process, skip the auth state change handling
+  // This prevents the "user not found" message during signup
+  if (user.isSigningUp) {
+    console.log('Skipping auth state change during signup')
+    return
+  }
+
   user.loading = true
   if (firebaseUser) {
     // Logged in
@@ -37,13 +45,16 @@ onAuthStateChanged(auth, async (firebaseUser) => {
       let attempts = 0
       let docSnap = null
       
-      // Retry up to 3 times with delays (in case Firestore write is delayed after signup)
-      while (attempts < 3) {
+      // Retry up to 5 times with longer delays for signup scenarios
+      while (attempts < 5) {
         docSnap = await getDoc(docRef)
         if (docSnap.exists()) break
         attempts++
-        if (attempts < 3) {
-          await new Promise(resolve => setTimeout(resolve, 500)) // Wait 500ms before retry
+        if (attempts < 5) {
+          // Progressive backoff: 500ms, 1000ms, 1500ms, 2000ms
+          const delay = attempts * 500
+          console.log(`User document not found, retry ${attempts}/5 in ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
         }
       }
       
@@ -62,7 +73,7 @@ onAuthStateChanged(auth, async (firebaseUser) => {
           user.avatar = data.logo
         }
       } else {
-        console.warn("User document not found in Firestore after retries, defaulting to buyer role")
+        console.warn("User document not found in Firestore after 5 retries, defaulting to buyer role")
         user.role = "buyer"
         user.preferences.categories = []
         user.preferences.hasSetPreferences = false
