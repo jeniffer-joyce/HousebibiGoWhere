@@ -51,6 +51,10 @@ onMounted(() => {
   })
 })
 
+router.afterEach(() => {
+  showProfileDropdown.value = false
+})
+
 /* Mobile nav */
 const showMobileNav = ref(false)
 const toggleMobileNav = () => { showMobileNav.value = !showMobileNav.value }
@@ -71,7 +75,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
     </RouterLink>
 
     <!-- Desktop nav links -->
-    <nav class="hidden md:flex items-center gap-6">
+    <nav class="hidden [@media(min-width:880px)]:flex items-center gap-6">
       <RouterLink to="/" class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary">Home</RouterLink>
       <RouterLink to="/categories/" class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary">Categories</RouterLink>
       <RouterLink to="/about/" class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary">About Us</RouterLink>
@@ -101,7 +105,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
     </button>
 
 
-    <div v-if="!user.isLoggedIn && !user.loading" class="hidden md:flex items-center gap-3">
+    <div v-if="!user.isLoggedIn && !user.loading" class="hidden [@media(min-width:880px)]:flex items-center gap-3">
           <RouterLink
             to="/signup/"
             class="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-accent text-white text-sm font-bold hover:bg-accent/90 transition-colors">
@@ -116,7 +120,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
     </div>
 
     <!-- Desktop only: Cart, Wishlist, Profile -->
-    <div v-else-if="user.isLoggedIn && !user.loading" class="hidden md:flex items-center gap-4">
+    <div v-else-if="user.isLoggedIn && !user.loading" class="flex items-center gap-4">
         <!-- Cart Icon -->
         <button @click="() => console.log('Go to cart')"
             class="relative p-2 rounded-lg text-white hover:bg-primary/90">
@@ -148,11 +152,11 @@ const closeMobileNav  = () => { showMobileNav.value = false }
             </button>
 
         <!-- Profile Dropdown -->
-        <div class="relative profile-dropdown-container">
+        <div class="hidden [@media(min-width:880px)]:flex relative profile-dropdown-container">
             <button 
             @click.stop="showProfileDropdown = !showProfileDropdown"
             class="focus:outline-none focus:ring-2 focus:ring-primary rounded-full">
-                <img :src="user.avatar" alt="avatar" class="h-10 w-10 rounded-full cursor-pointer hover:opacity-80 transition-opacity" />
+                <img :src="user.avatar" alt="avatar" class="h-10 w-10 rounded-full cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0" />
             </button>
 
             <!-- Dropdown Menu -->
@@ -165,16 +169,18 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 leave-to-class="transform opacity-0 scale-95">                                
                 <div 
                     v-if="showProfileDropdown"
-                    class="absolute right-0 mt-2 w-56 rounded-lg bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
+                    class="absolute right-0 mt-12 w-56 rounded-lg bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
                                     
                     <!-- User Info -->
-                    <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-                        <p class="text-sm font-medium text-slate-900 dark:text-white">{{ user.name }}</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ user.email }}</p>
-                        <span class="inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
-                            Buyer
-                        </span>
-                    </div>
+                    <RouterLink v-if="user.role !== 'seller'" to="/buyer-profile/">
+                      <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                          <p class="text-sm font-medium text-slate-900 dark:text-white">{{ user.name }}</p>
+                          <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ user.email }}</p>
+                          <span class="inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
+                              Buyer
+                          </span>
+                      </div>
+                    </RouterLink>
 
                     <!-- Menu Items -->
                     <div class="py-1">
@@ -204,12 +210,20 @@ const closeMobileNav  = () => { showMobileNav.value = false }
         </div>
     </div>
 
-    <!-- Hamburger for Mobile -->
-    <button @click="toggleMobileNav" class="md:hidden p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+    <!-- Hamburger / Close Icon -->
+    <button 
+      @click="toggleMobileNav"
+      class="[@media(min-width:880px)]:hidden p-2 rounded-md text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+    >
+      <svg v-if="!showMobileNav" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+
+      <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
       </svg>
     </button>
+
   </div>
 </header>
 
@@ -223,24 +237,54 @@ const closeMobileNav  = () => { showMobileNav.value = false }
       leave-to-class="transform -translate-y-2 opacity-0">
       <div
         v-if="showMobileNav"
-        id="mobile-menu"
-        class="md:hidden border-t border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark">
-        <nav class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+        class="fixed left-0 right-0 top-[64px] z-40 block [@media(min-width:880px)]:hidden border-t border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark shadow-lg"
+      >
+        <nav class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8 block [@media(min-width:880px)]:hidden">
         <div class="flex flex-col gap-2">
         
-        <div v-if="!user.isLoggedIn && !user.loading" class="mt-2 grid grid-cols-2 gap-2">
+        <div v-if="!user.isLoggedIn && !user.loading" class="flex flex-col gap-2">
               <RouterLink
-                to="/signup/"
-                @click="closeMobileNav"
-                class="flex items-center justify-center rounded-lg h-10 bg-accent text-white text-sm font-bold hover:bg-accent/90 transition-colors">
-                Sign Up
-              </RouterLink>
-              <RouterLink
-                to="/login/"
-                @click="closeMobileNav"
-                class="flex items-center justify-center rounded-lg h-10 bg-background text-gray-800 border border-gray-300 text-sm font-bold hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700 transition-colors">
-                Log In
-              </RouterLink>
+                    to="/"
+                    @click="closeMobileNav"
+                    class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+                    Home
+                </RouterLink>
+
+                <RouterLink
+                    to="/categories/"
+                    @click="closeMobileNav"
+                    class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+                    Categories
+                </RouterLink>
+
+                <RouterLink
+                    to="/about/"
+                    @click="closeMobileNav"
+                    class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+                    About Us
+                </RouterLink>
+
+                <RouterLink
+                    to="/for-sellers/"
+                    @click="closeMobileNav"
+                    class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+                    For Sellers
+                </RouterLink>
+
+                  <div class="mt-2 flex gap-2">
+                    <RouterLink
+                      to="/signup/"
+                      @click="closeMobileNav"
+                      class="flex-1 flex items-center justify-center rounded-lg h-10 bg-accent text-white text-sm font-bold hover:bg-accent/90 transition-colors">
+                      Sign Up
+                    </RouterLink>
+                    <RouterLink
+                      to="/login/"
+                      @click="closeMobileNav"
+                      class="flex-1 flex items-center justify-center rounded-lg h-10 bg-background text-gray-800 border border-gray-300 text-sm font-bold hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700 transition-colors">
+                      Log In
+                    </RouterLink>
+                  </div>
         </div>
 
             <div v-else-if="user.isLoggedIn && !user.loading" class="flex flex-col gap-2">
@@ -280,43 +324,8 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                     Dashboard
                 </RouterLink>
 
-                <!-- CART -->
-                <RouterLink
-                    to="/"
-                    @click="closeMobileNav"
-                    class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
-                    <div class="relative flex items-center">
-                        <svg v-if="!isDark" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                            <path fill="#010101" d="M17 18a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2c0-1.11.89-2 2-2M1 2h3.27l.94 2H20a1 1 0 0 1 1 1c0 .17-.05.34-.12.5l-3.58 6.47c-.34.61-1 1.03-1.75 1.03H8.1l-.9 1.63l-.03.12a.25.25 0 0 0 .25.25H19v2H7a2 2 0 0 1-2-2c0-.35.09-.68.24-.96l1.36-2.45L3 4H1zm6 16a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2c0-1.11.89-2 2-2m9-7l2.78-5H6.14l2.36 5z"/>
-                        </svg>
-                        <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                            <path fill="#fff" d="M17 18a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2c0-1.11.89-2 2-2M1 2h3.27l.94 2H20a1 1 0 0 1 1 1c0 .17-.05.34-.12.5l-3.58 6.47c-.34.61-1 1.03-1.75 1.03H8.1l-.9 1.63l-.03.12a.25.25 0 0 0 .25.25H19v2H7a2 2 0 0 1-2-2c0-.35.09-.68.24-.96l1.36-2.45L3 4H1zm6 16a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2c0-1.11.89-2 2-2m9-7l2.78-5H6.14l2.36 5z"/>
-                        </svg>
-                        <span class="absolute -top-2 -right-5 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-xs w-4 h-4">
-                            {{ user.cart.length }}
-                        </span>
-                    </div>
-                </RouterLink>
-
-                <!-- WISHLIST -->
-                <RouterLink
-                    to="/"
-                    @click="closeMobileNav"
-                    class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
-                    <div class="relative flex items-center">
-                        <svg v-if="!isDark" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                            <path fill="#010101" d="m12.1 18.55l-.1.1l-.11-.1C7.14 14.24 4 11.39 4 8.5C4 6.5 5.5 5 7.5 5c1.54 0 3.04 1 3.57 2.36h1.86C13.46 6 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5c0 2.89-3.14 5.74-7.9 10.05Z"/>
-                        </svg>
-                        <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                            <path fill="#fff" d="m12.1 18.55l-.1.1l-.11-.1C7.14 14.24 4 11.39 4 8.5C4 6.5 5.5 5 7.5 5c1.54 0 3.04 1 3.57 2.36h1.86C13.46 6 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5c0 2.89-3.14 5.74-7.9 10.05Z"/>
-                        </svg>
-                        <span class="absolute -top-2 -right-5 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-xs w-4 h-4">
-                            {{ user.wishlist.length }}
-                        </span>
-                    </div>
-                </RouterLink>
               <RouterLink
-                to="/seller-profile"
+                to="/buyer-profile/"
                 @click="closeMobileNav"
                 class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <span class="inline-block h-8 w-8 rounded-full bg-cover bg-center"
@@ -324,8 +333,14 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 <div class="min-w-0">
                   <p class="truncate font-medium">{{ user.name }}</p>
                   <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ user.email }}</p>
+                  <span
+                    class="inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary"
+                  >
+                    {{ user.role === 'seller' ? 'Seller' : 'Buyer' }}
+                  </span>
                 </div>
               </RouterLink>
+
               <button
                 @click="handleLogout"
                 class="mt-1 w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
