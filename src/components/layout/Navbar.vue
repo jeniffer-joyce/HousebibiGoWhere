@@ -207,7 +207,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
     <!-- Hamburger / Close Icon -->
     <button 
       @click="toggleMobileNav"
-      class="[@media(min-width:881px)]:hidden p-2 rounded-md text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+      class="[@media(min-width:880px)]:hidden p-2 rounded-md text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition"
     >
       <svg v-if="!showMobileNav" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -233,7 +233,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
         v-if="showMobileNav"
         class="fixed left-0 right-0 top-[64px] z-40 block [@media(min-width:880px)]:hidden border-t border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark shadow-lg"
       >
-        <nav class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8 block [@media(min-width:881px)]:hidden">
+        <nav class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8 block [@media(min-width:880px)]:hidden">
         <div class="flex flex-col gap-2">
         
         <div v-if="!user.isLoggedIn && !user.loading" class="mt-2 grid grid-cols-2 gap-2">
