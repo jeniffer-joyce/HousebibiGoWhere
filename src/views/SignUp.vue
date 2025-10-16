@@ -1,5 +1,39 @@
 <template>
   <div class="min-h-screen bg-[#F5F7F7] dark:bg-[#0B1220] pb-24">
+    <!-- Loading Overlay -->
+    <div v-if="loading" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-sm mx-4">
+        <div class="flex flex-col items-center gap-4">
+          <!-- Spinner -->
+          <svg class="animate-spin h-12 w-12 text-[#10A9C7]" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          
+          <!-- Message -->
+          <div class="text-center">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              {{ loadingMessage }}
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Please wait, this may take a moment...
+            </p>
+          </div>
+          
+          <!-- Upload Progress (only for sellers with file) -->
+          <div v-if="uploadProgress > 0 && uploadProgress < 100" class="w-full">
+            <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-2">
+              <span>Uploading document...</span>
+              <span>{{ uploadProgress }}%</span>
+            </div>
+            <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div class="h-full bg-[#10A9C7] transition-all duration-300" :style="{ width: uploadProgress + '%' }"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="max-w-xl mx-auto px-4">
       <div class="rounded-2xl shadow-md border p-8 md:p-10 mt-8
                   bg-white border-gray-100 dark:bg-gray-800 dark:border-gray-700">
@@ -30,82 +64,16 @@
           </button>
         </div>
 
-        <!-- Verification (Seller only) -->
+        <!-- Business Information Header (Seller only) -->
         <div v-if="role==='seller'" class="mt-6">
-          <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Verification Method</p>
-
-          <div class="grid gap-3">
-            <!-- MyInfo -->
-            <button type="button" @click="setVerification('myinfo')"
-                    class="w-full text-left rounded-xl border p-4 transition
-                           bg-white border-gray-200 hover:border-[#10A9C7]/50
-                           dark:bg-gray-800 dark:border-gray-700 ring-2"
-                    :class="verificationMethod==='myinfo' ? 'ring-[#10A9C7] border-[#10A9C7]' : 'ring-transparent'">
-              <div class="flex items-start justify-between">
-                <div class="flex items-start gap-3">
-                  <div class="h-10 w-10 grid place-items-center rounded-lg"
-                       :class="verificationMethod==='myinfo' ? 'bg-[#10A9C7]/10' : 'bg-gray-100 dark:bg-gray-700'">
-                    <svg class="h-5 w-5 text-[#10A9C7]" viewBox="0 0 24 24" fill="none">
-                      <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" stroke="currentColor" stroke-width="1.5"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="font-semibold text-gray-900 dark:text-white">
-                      Verify with MyInfo Business
-                      <span class="ml-2 align-middle text-[11px] px-2 py-0.5 rounded-full bg-[#FF7A5C]/10 text-[#FF7A5C]">Instant</span>
-                    </p>
-                    <p class="text-sm text-gray-600 dark:text-gray-300">Log in with Singpass and retrieve business details.</p>
-                  </div>
-                </div>
-                <span class="mt-1 h-5 w-5 rounded-full border dark:border-gray-600 grid place-items-center"
-                      :class="verificationMethod==='myinfo' ? 'border-[#10A9C7]' : 'border-gray-300'">
-                  <span class="h-2.5 w-2.5 rounded-full" :class="verificationMethod==='myinfo' ? 'bg-[#10A9C7]' : 'bg-transparent'"></span>
-                </span>
-              </div>
-              <div v-if="verificationMethod==='myinfo' && step===2" class="mt-3">
-                <button type="button" @click="handleMyInfo"
-                        class="inline-flex items-center gap-2 rounded-lg bg-[#10A9C7] px-4 py-2 text-white font-medium hover:opacity-95">
-                  Continue with Singpass
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                  </svg>
-                </button>
-              </div>
-            </button>
-
-            <!-- Manual -->
-            <button type="button" @click="setVerification('manual')"
-                    class="w-full text-left rounded-xl border p-4 transition
-                           bg-white border-gray-200 hover:border-[#10A9C7]/50
-                           dark:bg-gray-800 dark:border-gray-700 ring-2"
-                    :class="verificationMethod==='manual' ? 'ring-[#10A9C7] border-[#10A9C7]' : 'ring-transparent'">
-              <div class="flex items-start justify-between">
-                <div class="flex items-start gap-3">
-                  <div class="h-10 w-10 grid place-items-center rounded-lg"
-                       :class="verificationMethod==='manual' ? 'bg-[#10A9C7]/10' : 'bg-gray-100 dark:bg-gray-700'">
-                    <svg class="h-5 w-5 text-[#10A9C7]" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" stroke="currentColor" stroke-width="1.5"/>
-                      <path d="M14.06 4.94l3.75 3.75 1.06-1.06a2.5 2.5 0 000-3.54l-.21-.21a2.5 2.5 0 00-3.54 0l-1.06 1.06z" stroke="currentColor" stroke-width="1.5"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="font-semibold text-gray-900 dark:text-white">Verify by completing a form manually</p>
-                    <p class="text-sm text-gray-600 dark:text-gray-300">Upload BizFile+ and ID; our team will review.</p>
-                  </div>
-                </div>
-                <span class="mt-1 h-5 w-5 rounded-full border dark:border-gray-600 grid place-items-center"
-                      :class="verificationMethod==='manual' ? 'border-[#10A9C7]' : 'border-gray-300'">
-                  <span class="h-2.5 w-2.5 rounded-full" :class="verificationMethod==='manual' ? 'bg-[#10A9C7]' : 'bg-transparent'"></span>
-                </span>
-              </div>
-            </button>
-          </div>
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Business Information</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Please provide your business details for verification.</p>
         </div>
 
         <!-- FORM -->
         <form class="mt-5 space-y-4" @submit.prevent="onSubmit" novalidate>
-          <!-- STEP 1: Seller + Manual only -->
-          <div v-if="role==='seller' && verificationMethod==='manual' && step===1" class="space-y-3">
+          <!-- Business Fields (Seller only) -->
+          <div v-if="role==='seller'" class="space-y-3">
             <div>
               <div class="flex items-center justify-between">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Registered Company Name</label>
@@ -120,7 +88,7 @@
             <div>
               <div class="flex items-center justify-between">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Business License Number/UEN</label>
-                <span class="text-xs text-gray-500">{{ uen.length }}/10</span>
+                <span class="text-xs text-gray-500">{{ uen.length }}/20</span>
               </div>
               <input
                 v-model.trim="uen"
@@ -134,7 +102,6 @@
                 ]"
                 placeholder="UEN"
               />
-
             </div>
 
             <div>
@@ -147,7 +114,7 @@
                      class="mt-2 w-full rounded-lg px-4 py-3 border bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400
                             dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
                      :class="invalid(addressLineValid) ? 'border-red-400' : ''"
-                     placeholder="Address (e.g., APT BLK 123A GREENLAND DRIVE 10)" />
+                     placeholder="Address (e.g., BLK 123A GREENLAND DRIVE 10)" />
               <input v-model.trim="unitNo"
                      class="mt-2 w-full rounded-lg px-4 py-3 border bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400
                             dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
@@ -159,8 +126,9 @@
               <div class="mt-1">
                 <label class="inline-flex items-center gap-2 rounded-lg border px-4 py-2 cursor-pointer
                                bg-white border-gray-200 hover:bg-gray-50
-                               dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                  <input type="file" class="hidden" @change="onUpload" accept=".pdf,.jpg,.jpeg,.png" />
+                               dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+                       :class="{ 'opacity-50 cursor-not-allowed': loading }">
+                  <input type="file" class="hidden" @change="onUpload" accept=".pdf,.jpg,.jpeg,.png" :disabled="loading" />
                   <svg class="h-4 w-4 text-[#10A9C7]" viewBox="0 0 24 24" fill="none">
                     <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                   </svg>
@@ -168,7 +136,18 @@
                 </label>
                 <span v-if="licenseFileName" class="ml-2 text-sm text-gray-600 dark:text-gray-300">{{ licenseFileName }}</span>
               </div>
+              <!-- Upload Progress Bar -->
+              <div v-if="uploadProgress > 0 && uploadProgress < 100" class="mt-2">
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-full bg-[#10A9C7] transition-all duration-300" :style="{ width: uploadProgress + '%' }"></div>
+                  </div>
+                  <span class="text-xs text-gray-600 dark:text-gray-400">{{ uploadProgress }}%</span>
+                </div>
+              </div>
               <p v-if="invalid(licenseValid)" class="text-xs text-red-500 mt-1">Please upload your BizFile+ / license</p>
+              <p v-if="uploadError" class="text-xs text-red-500 mt-1">{{ uploadError }}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">PDF, JPG, or PNG. Max 5MB.</p>
             </div>
 
             <label class="mt-1 flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
@@ -176,20 +155,15 @@
               <span>I agree to the <a class="text-[#10A9C7] hover:underline" href="#" target="_blank">Terms & Conditions</a>.</span>
             </label>
             <p v-if="invalid(termsValid)" class="text-xs text-red-500">You must agree to the Terms</p>
-
-            <div class="flex justify-end pt-2">
-              <button type="button" @click="goNextFromManual"
-                      class="inline-flex items-center gap-2 rounded-lg bg-[#10A9C7] px-5 py-2.5 text-white font-semibold hover:opacity-95">
-                Next
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                </svg>
-              </button>
-            </div>
           </div>
 
-          <!-- STEP 2: Account details (everyone) -->
-          <div v-if="step===2" class="space-y-3">
+          <!-- Account Details Section Header -->
+          <div :class="role==='seller' ? 'mt-6' : ''">
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Account Details</p>
+          </div>
+
+          <!-- Account details (everyone) -->
+          <div class="space-y-3">
             <div>
               <input v-model.trim="username" type="text"
                      class="w-full rounded-lg px-4 py-3 border bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400
@@ -272,21 +246,8 @@
               <p v-if="captchaError" class="text-xs text-red-500 mt-1 text-center">Please complete the reCAPTCHA.</p>
             </div>
 
-            <!-- Actions -->
-            <div class="flex items-center justify-between pt-2" v-if="role==='seller' && verificationMethod==='manual'">
-              <button type="button" @click="step=1"
-                      class="rounded-lg px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700
-                             dark:border-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
-                Back
-              </button>
-              <button type="submit" :disabled="!canSubmit || loading"
-                      class="rounded-lg bg-[#FF7A5C] px-5 py-2.5 text-white font-semibold
-                             hover:opacity-95 disabled:bg-gray-300 disabled:cursor-not-allowed">
-                <span v-if="!loading">Sign up</span><span v-else>Creating account…</span>
-              </button>
-            </div>
-
-            <div class="pt-2" v-else>
+            <!-- Submit Button -->
+            <div class="pt-2">
               <button type="submit" :disabled="!canSubmit || loading"
                       class="w-full rounded-lg bg-[#FF7A5C] px-5 py-2.5 text-white font-semibold
                              hover:opacity-95 disabled:bg-gray-300 disabled:cursor-not-allowed">
@@ -311,27 +272,18 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { registerUserWithUsername } from '../firebase/auth/authService'
-import { getCategories } from '../firebase/services/home/categories.js'
+import { auth } from '../firebase/firebase_config'
+import { user } from '@/store/user.js'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-
-
 const router = useRouter()
 
-/* Step control */
-const step = ref(2) // default for buyer / myinfo. For seller+manual we switch to 1.
-function setRole(v){ role.value=v; fixStep() }
-function setVerification(v){ verificationMethod.value=v; fixStep() }
-function fixStep(){
-  step.value = (role.value==='seller' && verificationMethod.value==='manual') ? 1 : 2
-}
-
-/* Role & verification */
+/* Role */
 const role = ref('buyer')
-const verificationMethod = ref('myinfo')
+function setRole(v){ role.value = v }
 
-/* Manual step fields */
+/* Business fields (Seller only) */
 const companyName = ref('')
 const uen = ref('')
 const postalCode = ref('')
@@ -341,7 +293,36 @@ const licenseFile = ref(null)
 const licenseFileName = ref('')
 const termsAccepted = ref(false)
 const triedSubmit = ref(false)
-function onUpload(e){ const f=e.target.files?.[0]; licenseFile.value=f||null; licenseFileName.value=f?.name||'' }
+const uploadProgress = ref(0)
+const uploadError = ref('')
+
+function onUpload(e){ 
+  const f = e.target.files?.[0]
+  licenseFile.value = f || null
+  licenseFileName.value = f?.name || ''
+  uploadError.value = ''
+  uploadProgress.value = 0
+  
+  // Validate file type
+  if (f) {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+    if (!allowedTypes.includes(f.type)) {
+      uploadError.value = 'Please upload a PDF, JPG, or PNG file.'
+      licenseFile.value = null
+      licenseFileName.value = ''
+      return
+    }
+    
+    // Validate file size (5MB)
+    const maxSize = 5 * 1024 * 1024
+    if (f.size > maxSize) {
+      uploadError.value = 'File is too large. Maximum size is 5MB.'
+      licenseFile.value = null
+      licenseFileName.value = ''
+      return
+    }
+  }
+}
 
 /* Account fields */
 const username = ref('')
@@ -355,6 +336,7 @@ const phone = ref('')
 /* UI */
 const showPassword = ref(false)
 const loading = ref(false)
+const loadingMessage = ref('Creating your account...')
 const errorMsg = ref('')
 
 /* Validations */
@@ -372,17 +354,11 @@ const licenseValid = computed(()=>!!licenseFile.value)
 const termsValid = computed(()=>termsAccepted.value===true)
 const invalid = (rule)=> triedSubmit.value && !rule
 
-/* Step 1 gate */
-const manualOk = computed(()=>{
-  if(!(role.value==='seller' && verificationMethod.value==='manual')) return true
+/* Business validation gate */
+const businessOk = computed(()=>{
+  if(role.value !== 'seller') return true
   return companyNameValid.value && uenValid.value && postalValid.value && addressLineValid.value && licenseValid.value && termsValid.value
 })
-
-function goNextFromManual(){
-  triedSubmit.value = true
-  if(!manualOk.value) return
-  step.value = 2
-}
 
 /* reCAPTCHA */
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
@@ -431,14 +407,20 @@ function renderRecaptcha() {
   })
 }
 
-// If query parameter exists, override default (this is for users who press 'Get Started Now' on
-// for sellers' page)
+function validateCaptcha() {
+  if (!captchaToken.value) {
+    captchaError.value = true
+    return false
+  }
+  return true
+}
+
+// If query parameter exists, override default (for users who press 'Get Started Now' on sellers' page)
 onMounted(() => {
   if (route.query.role === 'seller') {
     role.value = 'seller'
   }
 })
-
 
 onMounted(async () => {
   if (!recaptchaSiteKey) {
@@ -458,25 +440,38 @@ onMounted(async () => {
   })
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 })
+
 onBeforeUnmount(()=>{ themeObserver?.disconnect(); resetRecaptcha() })
 
 /* Submit */
-function handleMyInfo(){ /* start Singpass/MyInfo flow here */ }
-
 const canSubmit = computed(()=>(
   usernameValid.value && emailValid.value && passwordStrong.value &&
   phoneValid.value && birthdayValid.value && displayName.value.trim().length>0 &&
-  (role.value!=='seller' || verificationMethod.value!=='manual' || manualOk.value)
+  businessOk.value
 ))
 
 async function onSubmit(){
-  if(step.value!==2) return
+  triedSubmit.value = true
   if(!canSubmit.value || loading.value) return
   if(!validateCaptcha()) return
 
-  loading.value = true; errorMsg.value=''
+  console.log('Starting signup process...')
+  loading.value = true
+  user.isSigningUp = true // Prevent auth state change from interfering
+  errorMsg.value = ''
+  uploadProgress.value = 0
+  const startTime = Date.now() // Track when signup started
+  
   try{
-    await registerUserWithUsername({
+    // Update message based on role
+    if (role.value === 'seller' && licenseFile.value) {
+      loadingMessage.value = 'Uploading your business license...'
+    } else {
+      loadingMessage.value = 'Creating your account...'
+    }
+    
+    console.log('Calling registerUserWithUsername...')
+    const newUser = await registerUserWithUsername({
       username: username.value.trim(),
       email: email.value.trim(),
       password: password.value,
@@ -486,22 +481,72 @@ async function onSubmit(){
         gender: gender.value,
         birthday: birthday.value,
         phone: phone.value.trim(),
-        verificationMethod: role.value==='seller' ? verificationMethod.value : null,
-        ...(role.value==='seller' && verificationMethod.value==='manual'
-          ? { companyName: companyName.value.trim(), uen: uen.value.trim(),
-              postalCode: postalCode.value.trim(), addressLine: addressLine.value.trim(),
-              unitNo: unitNo.value.trim() || null, licenseFileName: licenseFileName.value }
-          : { uen: role.value==='seller' ? null : null }),
+        ...(role.value==='seller'
+          ? { 
+              companyName: companyName.value.trim(), 
+              uen: uen.value.trim(),
+              postalCode: postalCode.value.trim(), 
+              addressLine: addressLine.value.trim(),
+              unitNo: unitNo.value.trim() || null,
+            }
+          : {}),
       },
-      captchaToken: captchaToken.value
+      captchaToken: captchaToken.value,
+      // Pass the actual file for sellers
+      licenseFile: role.value === 'seller' ? licenseFile.value : null,
+      // Progress callback
+      onUploadProgress: (progress) => {
+        uploadProgress.value = progress
+        if (progress === 100) {
+          loadingMessage.value = 'Finalizing your account...'
+        }
+      }
     })
-    resetRecaptcha()
-    router.push('/')
+    
+    console.log('Registration complete!')
+    
+    // Calculate remaining time to reach 5 seconds
+    const elapsedTime = Date.now() - startTime
+    const remainingTime = Math.max(0, 5000 - elapsedTime)
+    
+    console.log(`Elapsed time: ${elapsedTime}ms, Remaining time: ${remainingTime}ms`)
+    
+    // Update message to success
+    loadingMessage.value = 'Account created successfully!'
+    
+    // Wait for remaining time to complete full 5 seconds
+    if (remainingTime > 0) {
+      console.log(`Waiting ${remainingTime}ms...`)
+      await new Promise(resolve => setTimeout(resolve, remainingTime))
+      console.log('Wait complete!')
+    }
+    
+    console.log('About to show alert, loading value:', loading.value)
+    
+    // Keep loading overlay visible and show alert
+    alert('Account created successfully!')
+    
+    console.log('Alert dismissed, about to redirect')
+    
+    // Clear signup flag before redirect
+    user.isSigningUp = false
+    
+    // Redirect based on role (loading will disappear with page change)
+    if (role.value === 'seller') {
+      window.location.href = '/seller-profile'
+    } else {
+      window.location.href = '/'
+    }
+    
   }catch(err){
-    console.error(err)
+    console.error('Signup error:', err)
     errorMsg.value = mapError(err)
+    uploadProgress.value = 0
+    loading.value = false
+    user.isSigningUp = false // Clear flag on error
+    loadingMessage.value = 'Creating your account...'
     resetRecaptcha()
-  }finally{ loading.value=false }
+  }
 }
 
 function mapError(err){
@@ -512,6 +557,19 @@ function mapError(err){
   if (code.includes('invalid-email')) return 'Please enter a valid email.'
   if (code.includes('weak-password')) return 'Password must be stronger.'
   if (code.includes('captcha')) return 'Please complete the reCAPTCHA.'
+  if (code.includes('upload/invalid-file-type')) return 'Please upload a PDF, JPG, or PNG file.'
+  if (code.includes('upload/file-too-large')) return 'File is too large. Maximum size is 5MB.'
+  if (code.includes('upload/failed')) return 'File upload failed. Please try again.'
   return 'Something went wrong. Please try again.'
 }
 </script>
+
+<style scoped>
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+</style>

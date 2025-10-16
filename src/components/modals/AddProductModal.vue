@@ -48,12 +48,9 @@
                   <option value="handmade-crafts">Handmade Crafts</option>
                   <option value="home-decor">Home Decor</option>
                   <option value="personalized-gifts">Personalized Gifts</option>
-                  <option value="beauty-and-skincare">Beauty & Skincare</option>
-                  <option value="art-and-prints">Art & Prints</option>
                   <option value="clothing-and-accessories">Clothing & Accessories</option>
                   <option value="plants-and-gardening">Plants & Gardening</option>
-                  <option value="stationery-and-paper-goods">Stationery & Paper Goods</option>
-                  <option value="pet-supplies">Pet Supplies</option>
+                  <option value="stationery-and-paper-goods">Stationery</option>
                   <option value="catering">Catering</option>
                   <option value="tutoring">Tutoring</option>
                 </select>

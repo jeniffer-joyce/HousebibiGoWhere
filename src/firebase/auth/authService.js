@@ -17,6 +17,9 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
 
+// --- File Upload ---
+import { uploadBusinessLicense } from '../services/fileUpload.js'
+
 // Helpers
 const isEmail = (s) => /\S+@\S+\.\S+/.test(s)
 const toKey = (s) => (s || '').trim().toLowerCase()
@@ -66,6 +69,7 @@ async function reserveUsername(usernameLower, payload) {
 /**
  * Register user with username + email/password.
  * Requires a valid reCAPTCHA token (captchaToken).
+ * For sellers, can optionally upload business license file.
  */
 export async function registerUserWithUsername({
   username,
@@ -74,7 +78,9 @@ export async function registerUserWithUsername({
   displayName,
   role = 'buyer',
   extra = {},
-  captchaToken, // <-- pass from your SignUp.vue
+  captchaToken,
+  licenseFile = null, // <-- NEW: actual File object
+  onUploadProgress = null, // <-- NEW: optional progress callback
 }) {
   // 0) Verify captcha first (server-side via Worker)
   await verifyCaptchaToken(captchaToken)
@@ -100,7 +106,25 @@ export async function registerUserWithUsername({
   // 2) Optional displayName
   if (displayName) await updateProfile(cred.user, { displayName })
 
-  // 3) Firestore profile
+  // 3) Upload business license if seller and file provided
+  let licenseFileURL = null
+  if (role === 'seller' && licenseFile) {
+    try {
+      licenseFileURL = await uploadBusinessLicense(
+        licenseFile, 
+        cred.user.uid,
+        onUploadProgress
+      )
+    } catch (uploadError) {
+      // If upload fails, we should probably delete the auth user
+      // to avoid partial registration
+      console.error('License upload failed:', uploadError)
+      // You might want to delete the user here: await cred.user.delete()
+      throw uploadError
+    }
+  }
+
+  // 4) Firestore profile
   const profile = {
     uid: cred.user.uid,
     email,
@@ -109,10 +133,20 @@ export async function registerUserWithUsername({
     role,
     createdAt: serverTimestamp(),
     ...extra,
+    // Add the file URL instead of just filename
+    ...(licenseFileURL ? { licenseFileURL, licenseFileName: licenseFile.name } : {}),
   }
+  
+  // Remove the old licenseFileName from extra if it exists (we're replacing it)
+  delete profile.licenseFileName
+  if (licenseFileURL) {
+    profile.licenseFileURL = licenseFileURL
+    profile.licenseFileName = licenseFile.name
+  }
+
   await setDoc(doc(db, 'users', cred.user.uid), profile)
 
-  // 4) Reserve username (atomic)
+  // 5) Reserve username (atomic)
   await reserveUsername(uname, { uid: cred.user.uid, email })
 
   return cred.user
