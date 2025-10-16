@@ -13,7 +13,6 @@ import {
   doc,
   getDoc,
   setDoc,
-  runTransaction,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
 
@@ -92,14 +91,6 @@ export async function registerUserWithUsername({
     throw e
   }
 
-  // Quick pre-check (user-friendly; not a lock)
-  const pre = await getDoc(doc(db, 'usernames', uname))
-  if (pre.exists()) {
-    const e = new Error('username-already-in-use')
-    e.code = 'username-already-in-use'
-    throw e
-  }
-
   // 1) Create auth user
   const cred = await createUserWithEmailAndPassword(auth, email, password)
 
@@ -124,11 +115,11 @@ export async function registerUserWithUsername({
     }
   }
 
-  // 4) Firestore profile
+  // 4) Firestore profile (includes username in the document)
   const profile = {
     uid: cred.user.uid,
     email,
-    username: uname,
+    username: uname, // Store username in users collection
     displayName: displayName || '',
     role,
     createdAt: serverTimestamp(),
@@ -145,9 +136,6 @@ export async function registerUserWithUsername({
   }
 
   await setDoc(doc(db, 'users', cred.user.uid), profile)
-
-  // 5) Reserve username (atomic)
-  await reserveUsername(uname, { uid: cred.user.uid, email })
 
   return cred.user
 }
