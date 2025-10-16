@@ -2,6 +2,13 @@
 import { ref } from 'vue';
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue';
 
+// Sidebar collapsed state
+const isSidebarCollapsed = ref(false);
+
+function handleSidebarToggle(collapsed) {
+    isSidebarCollapsed.value = collapsed;
+}
+
 // Mock data for conversations
 const conversations = ref([
     {
@@ -107,10 +114,12 @@ const activeConversation = computed(() =>
 <template>
     <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
         <!-- Sidebar Navigation -->
-        <BuyerSideBar />
+        <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
 
         <!-- Main Content Area -->
-        <main class="flex-1 ml-64 flex">
+        <main 
+            class="flex-1 flex transition-all duration-300"
+            :class="isSidebarCollapsed ? 'ml-20' : 'ml-64'">
             <!-- Conversations List -->
             <div class="w-80 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700">
                 <!-- Header -->
