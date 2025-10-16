@@ -2,6 +2,13 @@
 import { ref } from 'vue';
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue';
 
+// Sidebar collapsed state
+const isSidebarCollapsed = ref(false);
+
+function handleSidebarToggle(collapsed) {
+    isSidebarCollapsed.value = collapsed;
+}
+
 // Mock data for favorite businesses
 const favorites = ref([
     {
@@ -83,10 +90,12 @@ function toggleFavorite(businessId) {
 <template>
     <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
         <!-- Sidebar Navigation -->
-        <BuyerSideBar />
+        <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
 
         <!-- Main Content Area -->
-        <main class="flex-1 ml-64 p-8">
+        <main 
+            class="flex-1 p-8 transition-all duration-300"
+            :class="isSidebarCollapsed ? 'ml-20' : 'ml-64'">
             <!-- Header -->
             <div class="flex items-center justify-between mb-8">
                 <div>

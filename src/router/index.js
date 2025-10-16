@@ -12,6 +12,11 @@ import AddNewProduct from '../views/sellers/AddNewProduct.vue'
 import EditProduct from '../views/sellers/EditProduct.vue'  
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
+import BuyerDashboard from "../views/buyers/BuyerDashboard.vue";
+import BuyerOrders from "../views/buyers/BuyerOrders.vue";
+import BuyerProfile from "../views/buyers/BuyerProfile.vue";
+import BuyerFavourites from "../views/buyers/Favourites.vue";
+import BuyerMessages from "../views/buyers/messages.vue";
 
 
 const routes = [
@@ -55,7 +60,27 @@ const routes = [
     {
         path: '/seller-orders/',
         component: SellerOrders
-    }
+    },
+    {
+        path: '/buyer-dashboard/',
+        component: BuyerDashboard
+    },
+    {
+        path: '/buyer-orders/',
+        component: BuyerOrders
+    },
+    {
+        path: '/buyer-profile/',
+        component: BuyerProfile
+    },
+    {
+        path: '/buyer-favourites/',
+        component: BuyerFavourites
+    },
+    {
+        path: '/buyer-messages/',
+        component: BuyerMessages
+    },
     
 ]
 
