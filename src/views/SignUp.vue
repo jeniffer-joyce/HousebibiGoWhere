@@ -67,13 +67,26 @@
         <!-- Business Information Header (Seller only) -->
         <div v-if="role==='seller'" class="mt-6">
           <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Business Information</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Please provide your business details for verification.</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Please provide your business details for verification. <br></br>All details will be verified via SingPass and ACRA.</p>
         </div>
 
         <!-- FORM -->
         <form class="mt-5 space-y-4" @submit.prevent="onSubmit" novalidate>
           <!-- Business Fields (Seller only) -->
           <div v-if="role==='seller'" class="space-y-3">
+            <div>
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-200">NRIC/FIN</label>
+                <span class="text-xs text-gray-500">{{ nric.length }}/9</span>
+              </div>
+              <input v-model.trim="nric" maxlength="9"
+                     class="w-full rounded-lg px-4 py-3 border bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400
+                            dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                     :class="invalid(nricValid) ? 'border-red-400' : ''" 
+                     placeholder="e.g., S1234567A" />
+              <p v-if="invalid(nricValid)" class="text-xs text-red-500 mt-1">Please enter a valid NRIC/FIN</p>
+            </div>
+
             <div>
               <div class="flex items-center justify-between">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Registered Company Name</label>
@@ -213,14 +226,24 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-              <select v-model="gender"
-                      class="w-full rounded-lg px-4 py-3 border bg-gray-50 border-gray-200 text-gray-700
-                             dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
-                <option value="" disabled selected>Gender</option>
-                <option value="Female">Female</option>
-                <option value="Male">Male</option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
+              <select
+  v-model="gender"
+  class="w-full rounded-lg px-4 py-3 pr-10 border bg-gray-50 border-gray-200 text-gray-700
+         appearance-none relative
+         dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+  style="background-image: linear-gradient(45deg, transparent 50%, gray 50%), linear-gradient(135deg, gray 50%, transparent 50%);
+         background-position: right 1rem center, right 0.75rem center;
+         background-size: 6px 6px, 6px 6px;
+         background-repeat: no-repeat;">
+  <option value="" disabled selected>Gender</option>
+  <option value="Female">Female</option>
+  <option value="Male">Male</option>
+  <option value="Prefer not to say">Prefer not to say</option>
+</select>
+
+
+
+
               <div>
                 <input v-model="birthday" type="date"
                        class="w-full rounded-lg px-4 py-3 border bg-gray-50 border-gray-200
@@ -284,6 +307,7 @@ const role = ref('buyer')
 function setRole(v){ role.value = v }
 
 /* Business fields (Seller only) */
+const nric = ref('')
 const companyName = ref('')
 const uen = ref('')
 const postalCode = ref('')
@@ -347,6 +371,12 @@ const phoneValid = computed(()=>{ const v=phone.value.trim(); if(!v) return true
 const birthdayValid = computed(()=>{ if(!birthday.value) return true; const b=new Date(birthday.value), t=new Date(); let a=t.getFullYear()-b.getFullYear(); const before=t.getMonth()<b.getMonth()||(t.getMonth()===b.getMonth()&&t.getDate()<b.getDate()); if(before) a--; return a>=18 })
 
 const companyNameValid = computed(()=>companyName.value.trim().length>0 && companyName.value.trim().length<=100)
+const nricValid = computed(() => {
+  const val = nric.value.trim().toUpperCase()
+  // Singapore NRIC/FIN format: Letter + 7 digits + Letter
+  // Valid starting letters: S, T, F, G, M
+  return /^[STFGM]\d{7}[A-Z]$/.test(val)
+})
 const uenValid = computed(() => uen.value.trim().length > 0)
 const postalValid = computed(()=>/^\d{6}$/.test(postalCode.value.trim()))
 const addressLineValid = computed(()=>addressLine.value.trim().length>0)
@@ -357,7 +387,7 @@ const invalid = (rule)=> triedSubmit.value && !rule
 /* Business validation gate */
 const businessOk = computed(()=>{
   if(role.value !== 'seller') return true
-  return companyNameValid.value && uenValid.value && postalValid.value && addressLineValid.value && licenseValid.value && termsValid.value
+  return nricValid.value && companyNameValid.value && uenValid.value && postalValid.value && addressLineValid.value && licenseValid.value && termsValid.value
 })
 
 /* reCAPTCHA */
@@ -483,6 +513,7 @@ async function onSubmit(){
         phone: phone.value.trim(),
         ...(role.value==='seller'
           ? { 
+              nric: nric.value.trim().toUpperCase(),
               companyName: companyName.value.trim(), 
               uen: uen.value.trim(),
               postalCode: postalCode.value.trim(), 
