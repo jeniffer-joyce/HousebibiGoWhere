@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import { user } from '@/store/user.js';
 import { useCategories } from '@/composables/home/useCategories';
 import { usePreferences } from '@/composables/signup/usePreferences';
@@ -65,6 +65,29 @@ function clearAllPreferences() {
 // Arrows
 const scrollContainer = ref(null);
 const scrollAmount = 300;
+const canScroll = ref(false);
+
+// Check if content overflows horizontally
+function checkScrollable() {
+  if (!scrollContainer.value) return;
+  const el = scrollContainer.value;
+  canScroll.value = el.scrollWidth > el.clientWidth;
+}
+
+// Run on load, when filteredBusinesses changes, and when window resizes
+onMounted(() => {
+  checkScrollable();
+  window.addEventListener('resize', checkScrollable);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', checkScrollable);
+});
+
+watch(filteredBusinesses, async () => {
+  await nextTick();
+  checkScrollable();
+});
 
 function scrollLeft() {
     scrollContainer.value.scrollBy({ left: -scrollAmount, behavior: "smooth" });
@@ -261,12 +284,13 @@ function scrollRight() {
                     <div v-else class="relative">
                         <!-- Left Arrow -->
                         <button
-                            @click="scrollLeft"
-                            class="absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
-                            aria-label="Scroll left">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                            </svg>
+                        v-if="canScroll"
+                        @click="scrollLeft"
+                        class="absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
+                        aria-label="Scroll left">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
                         </button>
 
                         <!-- Scroll Container -->
@@ -285,12 +309,13 @@ function scrollRight() {
 
                         <!-- Right Arrow -->
                         <button
-                            @click="scrollRight"
-                            class="absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
-                            aria-label="Scroll right">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                            </svg>
+                        v-if="canScroll"
+                        @click="scrollRight"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
+                        aria-label="Scroll right">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
                         </button>
                     </div>
                 </div>
