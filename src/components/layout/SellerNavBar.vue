@@ -1,11 +1,37 @@
-<script setup>
-import { ref, onMounted, computed } from 'vue'
+<script setup> 
+import { ref, onMounted, computed, watch } from 'vue'
 import { user } from '@/store/user.js'
-import { auth } from '@/firebase/firebase_config'
+import { auth, db } from '@/firebase/firebase_config'
 import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
+/* 🔽 NEW: Firestore helpers to read displayName */
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+
+/* 🔽 NEW: reactive name shown in the navbar */
+const displayName = ref('')
+
+/* 🔽 NEW: robust loader that prefers Firestore, falls back to Auth */
+async function loadName () {
+  try {
+    const uid = user?.uid || auth.currentUser?.uid
+    const authName = (auth.currentUser?.displayName || '').trim()
+    const authEmail = (auth.currentUser?.email || '').trim()
+
+    if (uid) {
+      const snap = await getDoc(doc(db, 'users', uid))
+      displayName.value =
+        (snap.exists() && (snap.data().displayName || '').trim()) ||
+        authName ||
+        authEmail
+    } else {
+      displayName.value = authName || authEmail || ''
+    }
+  } catch {
+    displayName.value = (auth.currentUser?.displayName || auth.currentUser?.email || '').trim()
+  }
+}
 
 /* ------------------------------
  * Theme (light/dark)
@@ -17,7 +43,13 @@ onMounted(() => {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
   isDark.value = savedTheme ? savedTheme === 'dark' : prefersDark
   document.documentElement.classList.toggle('dark', isDark.value)
+
+  /* 🔽 ensure name loads on first mount */
+  loadName()
 })
+
+/* 🔽 refresh name when login state or uid changes */
+watch(() => [user.isLoggedIn, user.uid], () => { loadName() })
 
 const toggleDarkMode = () => {
   isDark.value = !isDark.value
@@ -151,7 +183,8 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 v-if="showProfileDropdown"
                 class="absolute right-0 mt-2 w-56 rounded-lg bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
                 <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-                  <p class="text-sm font-medium text-slate-900 dark:text-white">{{ user.name }}</p>
+                  <!-- 🔽 CHANGED: use Firestore displayName -->
+                  <p class="text-sm font-medium text-slate-900 dark:text-white">{{ displayName }}</p>
                   <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ user.email }}</p>
                   <span class="inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
                     Seller
@@ -255,7 +288,8 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 <span class="inline-block h-8 w-8 rounded-full bg-cover bg-center"
                   :style="{ backgroundImage: `url('${user.avatar || '/avatar.png'}')` }"></span>
                 <div class="min-w-0">
-                  <p class="truncate font-medium">{{ user.name }}</p>
+                  <!-- 🔽 CHANGED: use Firestore displayName -->
+                  <p class="truncate font-medium">{{ displayName }}</p>
                   <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ user.email }}</p>
                 </div>
               </RouterLink>

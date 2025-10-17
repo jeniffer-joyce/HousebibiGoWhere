@@ -17,7 +17,7 @@ import BuyerOrders from "../views/buyers/BuyerOrders.vue";
 import BuyerProfile from "../views/buyers/BuyerProfile.vue";
 import BuyerFavourites from "../views/buyers/Favourites.vue";
 import BuyerMessages from "../views/buyers/messages.vue";
-
+import CompleteProfile from '../views/CompleteProfile.vue';
 
 const routes = [
     {
@@ -80,6 +80,10 @@ const routes = [
     {
         path: '/buyer-messages/',
         component: BuyerMessages
+    },
+    { 
+        path: '/complete-profile/', 
+        component: CompleteProfile 
     },
     
 ]

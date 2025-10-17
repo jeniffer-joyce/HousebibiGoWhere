@@ -6,6 +6,40 @@ import { usePreferences } from '@/composables/signup/usePreferences';
 import { useSearch } from '@/composables/useSearch';
 import Loading from '@/components/status/Loading.vue'
 
+// 🔹 NEW: use the same Firebase ESM CDN style your project already uses elsewhere
+import { auth, db } from '@/firebase/firebase_config'
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+
+// 🔹 Local reactive displayName (Firestore preferred)
+const displayName = ref('')
+
+// 🔹 Robust loader: prefer Firestore, then Auth displayName, then email
+async function loadName () {
+  try {
+    const uid = user?.uid || auth.currentUser?.uid
+    const authName = (auth.currentUser?.displayName || '').trim()
+    const authEmail = (auth.currentUser?.email || '').trim()
+
+    if (uid) {
+      const snap = await getDoc(doc(db, 'users', uid))
+      displayName.value =
+        (snap.exists() && (snap.data().displayName || '').trim()) ||
+        authName ||
+        authEmail
+    } else {
+      displayName.value = authName || authEmail || ''
+    }
+  } catch (e) {
+    const fallback = (auth.currentUser?.displayName || auth.currentUser?.email || '').trim()
+    displayName.value = fallback
+    // console.debug('Name fallback due to error:', e) // optional
+  }
+}
+
+onMounted(loadName)
+// Also refresh name when store flips from logged-out to logged-in or uid changes
+watch(() => [user.isLoggedIn, user.uid], () => { loadName() })
+
 const {
     loading,
     categories,
@@ -154,7 +188,8 @@ function scrollCategoriesRight() {
         <div class="flex flex-col gap-10">
             <div class="flex flex-col items-center gap-4 text-center">
                 <h2 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-                    <span v-if="user.isLoggedIn">Welcome back, {{ user.name || 'Friend' }}! 👋</span>
+                    <!-- 👇 only this line changed to use the loaded displayName -->
+                    <span v-if="user.isLoggedIn">Welcome back, {{ displayName || 'Friend' }}! 👋</span>
                     <span v-else>Discover Home-Based Businesses</span>
                 </h2>
                 <p class="max-w-2xl text-lg text-slate-600 dark:text-slate-400">
