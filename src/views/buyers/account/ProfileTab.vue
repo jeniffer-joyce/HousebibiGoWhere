@@ -21,7 +21,7 @@
           >
             Change Photo
           </button>
-          <p class="mt-2 text-xs text-slate-400">Member since {{ memberSince }}</p>
+          <p class="mt-2 text-xs text-slate-400">Buyer since {{ memberSince }}</p>
         </div>
       </div>
 

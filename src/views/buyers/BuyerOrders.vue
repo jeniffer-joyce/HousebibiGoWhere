@@ -1,221 +1,391 @@
-<script setup>
-import { ref } from 'vue';
-import BuyerSideBar from '@/components/layout/BuyerSideBar.vue';
-
-// Sidebar collapsed state
-const isSidebarCollapsed = ref(false);
-
-function handleSidebarToggle(collapsed) {
-    isSidebarCollapsed.value = collapsed;
-}
-
-// Mock data for orders
-const orders = ref([
-    {
-        id: 1,
-        orderNumber: 'ORD-001',
-        title: 'Delicious homemade meals',
-        business: 'The Cozy Kitchen',
-        date: 'July 10, 2024',
-        status: 'Delivered',
-        amount: '$45.00',
-        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'
-    },
-    {
-        id: 2,
-        orderNumber: 'ORD-002',
-        title: 'Handcrafted clothing',
-        business: 'Fashion Finds',
-        date: 'July 5, 2024',
-        status: 'In Transit',
-        amount: '$89.99',
-        image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400&h=300&fit=crop'
-    },
-    {
-        id: 3,
-        orderNumber: 'ORD-003',
-        title: 'Unique handmade crafts',
-        business: 'Crafty Corner',
-        date: 'June 28, 2024',
-        status: 'Delivered',
-        amount: '$34.50',
-        image: 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=400&h=300&fit=crop'
-    },
-    {
-        id: 4,
-        orderNumber: 'ORD-004',
-        title: 'Fresh baked goods',
-        business: 'The Cozy Kitchen',
-        date: 'June 15, 2024',
-        status: 'Delivered',
-        amount: '$28.00',
-        image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop'
-    }
-]);
-
-const activeFilter = ref('all');
-
-const filteredOrders = computed(() => {
-    if (activeFilter.value === 'all') return orders.value;
-    return orders.value.filter(order => 
-        order.status.toLowerCase() === activeFilter.value.toLowerCase()
-    );
-});
-
-function getStatusColor(status) {
-    switch(status.toLowerCase()) {
-        case 'delivered':
-            return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-        case 'in transit':
-            return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-        case 'processing':
-            return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-        case 'cancelled':
-            return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-        default:
-            return 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200';
-    }
-}
-</script>
-
 <template>
-    <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
-        <!-- Sidebar Navigation -->
-        <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
+  <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+    <!-- Left sidebar (unchanged) -->
+    <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
 
-        <!-- Main Content Area -->
-        <main 
-            class="flex-1 p-8 transition-all duration-300"
-            :class="isSidebarCollapsed ? 'ml-20' : 'ml-64'">
+    <!-- Page -->
+    <main
+      class="flex-1 transition-all duration-300"
+      :class="isSidebarCollapsed ? 'ml-20' : 'ml-64'"
+    >
+      <div class="mx-auto w-full max-w-7xl px-6 sm:px-8 py-8 space-y-6">
+        <!-- Header row -->
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-white">My Orders</h1>
+
+          <!-- Search -->
+          <div class="w-full sm:w-[420px]">
+            <div
+              class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5
+                     dark:border-slate-700 dark:bg-slate-800"
+            >
+              <svg class="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 21l-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>
+              </svg>
+              <input
+                v-model.trim="q"
+                type="text"
+                placeholder="Search product, order # or shop"
+                class="w-full bg-transparent text-sm text-slate-700 placeholder-slate-400 focus:outline-none
+                       dark:text-slate-200"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+          <div class="grid grid-cols-7 gap-2">
+            <button
+              v-for="t in tabDefs"
+              :key="t.key"
+              @click="activeFilter = t.key"
+              class="relative w-full rounded-xl px-4 py-3 text-center text-sm font-semibold transition-colors"
+              :class="
+                activeFilter === t.key
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'
+              "
+            >
+              <span>{{ t.label }}</span>
+              <span
+                v-if="t.count > 0 && t.key !== 'all'"
+                class="ml-2 inline-flex items-center justify-center rounded-full bg-primary/15 px-2 text-xs font-semibold text-primary"
+              >
+                {{ t.count }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div
+          v-if="filteredOrders.length === 0"
+          class="rounded-2xl border border-slate-200 bg-white p-16 text-center dark:border-slate-700 dark:bg-slate-800"
+        >
+          <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+            <svg viewBox="0 0 24 24" class="h-7 w-7 text-primary">
+              <path
+                fill="currentColor"
+                d="M10 2H6a2 2 0 0 0-2 2v2h6V2m10 8V6a2 2 0 0 0-2-2h-4v4h6m0 2H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2Z"
+              />
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-slate-900 dark:text-white">No orders yet</h3>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            You don’t have any orders in “{{ tabLabel(activeFilter) }}”.
+          </p>
+          <RouterLink
+            to="/categories/"
+            class="mt-6 inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
+          >
+            Browse products
+          </RouterLink>
+        </div>
+
+        <!-- Orders list -->
+        <div v-else class="space-y-5">
+          <article
+            v-for="o in filteredOrders"
+            :key="o.id"
+            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+          >
             <!-- Header -->
-            <div class="flex items-center justify-between mb-8">
-                <div>
-                    <h1 class="text-3xl font-bold text-slate-900 dark:text-white">My Orders</h1>
-                    <p class="text-slate-600 dark:text-slate-400 mt-1">Track and manage your orders</p>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex flex-wrap items-center gap-3">
+                <span
+                  class="inline-flex items-center rounded bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700 dark:bg-sky-900 dark:text-sky-200"
+                >
+                  Store
+                </span>
+                <h3 class="text-sm font-semibold text-slate-900 dark:text-white">
+                  {{ o.storeName }}
+                </h3>
+
+                <!-- View Shop -->
+                <RouterLink
+                  :to="o.shopUrl || '#'"
+                  class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 12l2-2 7-7 7 7 2 2M5 10v10a1 1 0 0 0 1 1h3m10-11v10a1 1 0 0 1-1 1h-3m-6 0h6"/>
+                  </svg>
+                  View Shop
+                </RouterLink>
+
+                <!-- Order number -->
+                <span class="text-xs text-slate-500 dark:text-slate-400">
+                  • Order #:
+                  <span class="font-medium text-slate-700 dark:text-slate-200">{{ o.orderNumber }}</span>
+                </span>
+              </div>
+
+              <!-- Status chip (top-right) -->
+              <span
+                class="rounded-full px-3 py-1 text-xs font-semibold uppercase"
+                :class="statusChipClass(o.status)"
+              >
+                {{ tabLabel(o.status) }}
+              </span>
+            </div>
+
+            <!-- Body -->
+            <div class="mt-5 grid grid-cols-[110px_1fr_auto] gap-5">
+              <!-- Image -->
+              <img :src="o.image" :alt="o.title" class="h-28 w-28 rounded-lg object-cover" />
+
+              <!-- Info -->
+              <div class="min-w-0">
+                <RouterLink
+                  :to="o.productUrl || '#'"
+                  class="line-clamp-2 text-sm font-semibold text-slate-900 hover:underline dark:text-white"
+                >
+                  {{ o.title }}
+                </RouterLink>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Qty: {{ o.quantity }} • Placed: {{ o.date }}
+                </p>
+                <p v-if="o.status === 'to_receive'" class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  Your parcel has been shipped. Confirm after you’ve received and checked the items.
+                </p>
+                <p v-else-if="o.status === 'completed'" class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  Delivered • Thanks for shopping with {{ o.storeName }}!
+                </p>
+              </div>
+
+              <!-- Totals + actions -->
+              <div class="flex flex-col items-end justify-between">
+                <div class="text-right">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Order Total</p>
+                  <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ o.total }}</p>
                 </div>
-                <div class="flex items-center gap-4">
-                    <!-- Search -->
-                    <div class="relative">
-                        <input
-                            type="text"
-                            placeholder="Search orders"
-                            class="w-64 pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
-                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                    </div>
-                    <!-- Notifications -->
-                    <button class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                        </svg>
+
+                <!-- Actions (status-based) -->
+                <div class="flex flex-wrap items-center gap-2">
+                  <!-- To Receive: confirm + refund -->
+                  <template v-if="o.status === 'to_receive'">
+                    <button
+                      type="button"
+                      class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
+                    >
+                      Order Received
                     </button>
-                    <!-- Profile -->
-                    <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="Profile" class="h-10 w-10 rounded-full border-2 border-primary" />
+                    <button
+                      type="button"
+                      class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                    >
+                      Request Refund
+                    </button>
+                  </template>
+
+                  <!-- Completed: return/refund -->
+                  <template v-else-if="o.status === 'completed'">
+                    <button
+                      type="button"
+                      class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                    >
+                      Request Return/Refund
+                    </button>
+                  </template>
+
+                  <!-- To Ship / To Pay: cancel -->
+                  <template v-else-if="o.status === 'to_ship' || o.status === 'to_pay'">
+                    <button
+                      type="button"
+                      class="rounded-lg border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-900/20"
+                    >
+                      Cancel Order
+                    </button>
+                  </template>
+
+                  <!-- Cancelled: show 'View Refund Details' -->
+                  <template v-else-if="o.status === 'cancelled'">
+                    <button
+                      type="button"
+                      class="rounded-lg border border-violet-300 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-300 dark:hover:bg-violet-900/20"
+                    >
+                      View Refund Details
+                    </button>
+                  </template>
+
+                  <!-- Contact seller always -->
+                  <button
+                    type="button"
+                    class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    Contact Seller
+                  </button>
                 </div>
+              </div>
             </div>
-
-            <!-- Filter Tabs -->
-            <div class="flex gap-4 mb-6 border-b border-slate-200 dark:border-slate-700">
-                <button
-                    @click="activeFilter = 'all'"
-                    :class="[
-                        'pb-3 px-4 font-medium transition-colors',
-                        activeFilter === 'all'
-                            ? 'text-primary border-b-2 border-primary'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    ]">
-                    All Orders
-                </button>
-                <button
-                    @click="activeFilter = 'delivered'"
-                    :class="[
-                        'pb-3 px-4 font-medium transition-colors',
-                        activeFilter === 'delivered'
-                            ? 'text-primary border-b-2 border-primary'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    ]">
-                    Delivered
-                </button>
-                <button
-                    @click="activeFilter = 'in transit'"
-                    :class="[
-                        'pb-3 px-4 font-medium transition-colors',
-                        activeFilter === 'in transit'
-                            ? 'text-primary border-b-2 border-primary'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    ]">
-                    In Transit
-                </button>
-            </div>
-
-            <!-- Orders List -->
-            <div class="space-y-4">
-                <div
-                    v-for="order in filteredOrders"
-                    :key="order.id"
-                    class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="flex gap-6">
-                        <!-- Order Image -->
-                        <img :src="order.image" :alt="order.title" class="w-32 h-32 rounded-lg object-cover" />
-                        
-                        <!-- Order Details -->
-                        <div class="flex-1">
-                            <div class="flex items-start justify-between mb-2">
-                                <div>
-                                    <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-1">{{ order.title }}</h3>
-                                    <p class="text-sm text-slate-600 dark:text-slate-400">{{ order.business }}</p>
-                                </div>
-                                <span :class="['px-3 py-1 rounded-full text-sm font-medium', getStatusColor(order.status)]">
-                                    {{ order.status }}
-                                </span>
-                            </div>
-                            
-                            <div class="grid grid-cols-3 gap-4 mt-4">
-                                <div>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">Order Number</p>
-                                    <p class="text-sm font-medium text-slate-900 dark:text-white">{{ order.orderNumber }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">Order Date</p>
-                                    <p class="text-sm font-medium text-slate-900 dark:text-white">{{ order.date }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">Total Amount</p>
-                                    <p class="text-sm font-medium text-slate-900 dark:text-white">{{ order.amount }}</p>
-                                </div>
-                            </div>
-
-                            <div class="flex gap-3 mt-4">
-                                <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                                    View Details
-                                </button>
-                                <button class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                                    Track Order
-                                </button>
-                                <button v-if="order.status === 'Delivered'" class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                                    Write Review
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Empty State -->
-                <div v-if="filteredOrders.length === 0" class="text-center py-16">
-                    <svg class="h-24 w-24 mx-auto text-slate-300 dark:text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
-                    </svg>
-                    <h3 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">No orders found</h3>
-                    <p class="text-slate-600 dark:text-slate-400">You haven't placed any orders yet.</p>
-                </div>
-            </div>
-        </main>
-    </div>
+          </article>
+        </div>
+      </div>
+    </main>
+  </div>
 </template>
 
-<style scoped>
-button {
-    transition: all 0.2s ease;
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
+
+/* sidebar */
+const isSidebarCollapsed = ref(false)
+function handleSidebarToggle(v) { isSidebarCollapsed.value = v }
+
+/* search */
+const q = ref('')
+
+/* tabs */
+const activeFilter = ref('all')
+
+/* dummy orders */
+const orders = ref([])
+onMounted(() => {
+  // Prefer a numeric placedAt (ms) for real data; `date` kept for display.
+  orders.value = [
+    {
+      id: 'o-1001',
+      orderNumber: 'ORD-1001',
+      storeName: 'Grafen Korea Official Store',
+      shopUrl: '/store/grafen-korea',
+      productUrl: '/product/abc123',
+      title: '[GRAFEN] Root Booster Shampoo 500ml | Anti-Hair Loss Shampoo',
+      image: 'https://images.unsplash.com/photo-1584270354949-c26b0d5b2f3f?q=80&w=600&auto=format&fit=crop',
+      quantity: 1,
+      date: '18 Oct 2025',
+      placedAt: new Date('2025-10-18').getTime(),
+      status: 'to_receive',
+      total: '$18.03'
+    },
+    {
+      id: 'o-1002',
+      orderNumber: 'ORD-1002',
+      storeName: 'LYDIMOON SG Store',
+      shopUrl: '/store/lydimoon',
+      productUrl: '/product/xyz789',
+      title: '[LYDIMOON] Niacinamide Body Wash: Whitening & Exfoliating',
+      image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=600&auto=format&fit=crop',
+      quantity: 2,
+      date: '15 Oct 2025',
+      placedAt: new Date('2025-10-15').getTime(),
+      status: 'to_ship',
+      total: '$24.00'
+    },
+    {
+      id: 'o-1003',
+      orderNumber: 'ORD-1003',
+      storeName: 'Cozy Kitchen',
+      shopUrl: '/store/cozy-kitchen',
+      productUrl: '/product/meal42',
+      title: 'Delicious Homemade Meals • Family Bundle',
+      image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop',
+      quantity: 1,
+      date: '08 Oct 2025',
+      placedAt: new Date('2025-10-08').getTime(),
+      status: 'completed',
+      total: '$45.00'
+    },
+    {
+      id: 'o-1004',
+      orderNumber: 'ORD-1004',
+      storeName: 'Crafty Corner',
+      shopUrl: '/store/crafty-corner',
+      productUrl: '/product/craft55',
+      title: 'Unique Handmade Crafts • Gift Set',
+      image: 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?q=80&w=600&auto=format&fit=crop',
+      quantity: 1,
+      date: '02 Oct 2025',
+      placedAt: new Date('2025-10-02').getTime(),
+      status: 'cancelled',
+      total: '$34.50'
+    },
+    {
+      id: 'o-1005',
+      orderNumber: 'ORD-1005',
+      storeName: 'Pay Later Mart',
+      shopUrl: '/store/pay-later-mart',
+      productUrl: '/product/pay001',
+      title: 'Premium Tea Sampler Box',
+      image: 'https://images.unsplash.com/photo-1529881131844-8037e6daf7ec?q=80&w=600&auto=format&fit=crop',
+      quantity: 1,
+      date: '01 Oct 2025',
+      placedAt: new Date('2025-10-01').getTime(),
+      status: 'to_pay',
+      total: '$19.90'
+    }
+  ]
+})
+
+/* utilities */
+function safePlacedAt(o) {
+  if (typeof o.placedAt === 'number') return o.placedAt
+  // Fallback: try to parse `date` string
+  const dt = new Date(o.date || '').getTime()
+  return Number.isFinite(dt) ? dt : 0
 }
-</style>
+
+/* list & sort by purchase date (desc) */
+const orderListSorted = computed(() =>
+  (Array.isArray(orders.value) ? orders.value : [])
+    .slice()
+    .sort((a, b) => safePlacedAt(b) - safePlacedAt(a))
+)
+
+/* tabs + counts */
+const tabDefs = computed(() =>
+  [
+    { key: 'all', label: 'All' },
+    { key: 'to_pay', label: 'To Pay' },
+    { key: 'to_ship', label: 'To Ship' },
+    { key: 'to_receive', label: 'To Receive' },
+    { key: 'completed', label: 'Completed' },
+    { key: 'cancelled', label: 'Cancelled' },
+    { key: 'return', label: 'Return Refund' }
+  ].map(t => ({
+    ...t,
+    count: t.key === 'all'
+      ? orderListSorted.value.length
+      : orderListSorted.value.filter(o => o.status === t.key).length
+  }))
+)
+
+/* filter + search (on sorted list) */
+const filteredOrders = computed(() => {
+  let arr = activeFilter.value === 'all'
+    ? orderListSorted.value
+    : orderListSorted.value.filter(o => o.status === activeFilter.value)
+
+  const term = q.value.toLowerCase()
+  if (term) {
+    arr = arr.filter(o =>
+      (o.title || '').toLowerCase().includes(term) ||
+      (o.orderNumber || '').toLowerCase().includes(term) ||
+      (o.storeName || '').toLowerCase().includes(term)
+    )
+  }
+  return arr
+})
+
+/* helpers */
+function tabLabel(key) {
+  const map = {
+    to_pay: 'To Pay', to_ship: 'To Ship', to_receive: 'To Receive',
+    completed: 'Completed', cancelled: 'Cancelled', return: 'Return Refund', all: 'All'
+  }
+  return map[key] || 'All'
+}
+function statusChipClass(statusKey) {
+  const map = {
+    to_pay: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+    to_ship: 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200',
+    to_receive: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    completed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+    cancelled: 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200',
+    return: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200'
+  }
+  return map[statusKey] || 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
+}
+</script>
