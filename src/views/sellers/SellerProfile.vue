@@ -263,8 +263,7 @@ import { getSellerProducts, createProduct } from '@/firebase/services/sellers/pr
 import Loading from '@/components/status/Loading.vue'
 import AddProductModal from '@/components/modals/AddProductModal.vue'
 
-/* Hardcoded avatar/logo for the profile card */
-const hardcodedLogo = 'https://via.placeholder.com/256x256?text=Cozy+Corner'
+
 
 /* Get seller ID (replace with actual from route/store later) */
 const sellerID = 'A0000001'
@@ -278,7 +277,7 @@ const seller = reactive({
   uen: '12345678A',
   rating: 4.8,
   bio: 'Handmade crafts and unique home decor items. Bringing warmth and style to your living space.',
-  logo: hardcodedLogo,
+  logo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAvDcbMzFfeOb3_h2t6uZzdwHccl2CtXAV_HefE3Vq9CTAeiMu4sCE6Jhdva_sb7S3PV3u9zSaANk2iz7iFIRPCHqAvHuCd-xacQWdeUyun9Iy7oICCCN_X1QqwJ1lyHqbtjGYzhOn5mKV_i9eD1o6fGeWgjfIB87h1dAcVufqCvvW4N0925h4gJ92uxp7J-7z5vz7SHWEf4IObyuH5WZLYNVL2GAYYWtkDBuyJtHtigkoLtjT0cc6ghqtBLxUoRxa4OnNWmD2O1c0b',
   address: '216 Wadapp St, Singapore',
   products: [] // Loaded from Firebase
 })
