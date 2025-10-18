@@ -1,7 +1,10 @@
 // src/firebase/services/sellers/products.js
 import { db } from '../../firebase_config.js';
-import { collection, query, getDocs, doc, getDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { collection, query, where, getDocs, doc, getDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+
+
+// Fetch products for a specific seller by sellerID
 export async function getSellerProducts(sellerID) {
   console.log('🔍 Loading products from Firestore...');
   
@@ -42,6 +45,7 @@ export async function getSellerProducts(sellerID) {
   }
 }
 
+// Fetch seller information by sellerID
 export async function getSellerInfo(sellerID) {
   try {
     const docRef = doc(db, "sellers", sellerID);
@@ -57,6 +61,7 @@ export async function getSellerInfo(sellerID) {
   }
 }
 
+// Create a new product
 export async function createProduct(productData) {
   console.log('📝 Creating new product in Firestore...');
   

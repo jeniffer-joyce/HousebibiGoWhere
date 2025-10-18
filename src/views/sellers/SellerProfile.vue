@@ -13,19 +13,18 @@
            =========================== -->
       <div class="flex flex-col items-center text-center p-6 bg-creamy-white dark:bg-gray-800/50 rounded-xl shadow-sm">
         <div class="relative mb-4">
-          <!-- Avatar: safe fallback if logo missing -->
+          <!-- Avatar -->
           <div
             class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-32"
-            :style="{ backgroundImage: `url('${seller.logo || placeholderImg}')` }"
+            :style="{ backgroundImage: `url('https://lh3.googleusercontent.com/aida-public/AB6AXuAvDcbMzFfeOb3_h2t6uZzdwHccl2CtXAV_HefE3Vq9CTAeiMu4sCE6Jhdva_sb7S3PV3u9zSaANk2iz7iFIRPCHqAvHuCd-xacQWdeUyun9Iy7oICCCN_X1QqwJ1lyHqbtjGYzhOn5mKV_i9eD1o6fGeWgjfIB87h1dAcVufqCvvW4N0925h4gJ92uxp7J-7z5vz7SHWEf4IObyuH5WZLYNVL2GAYYWtkDBuyJtHtigkoLtjT0cc6ghqtBLxUoRxa4OnNWmD2O1c0b')` }"
           ></div>
         </div>
 
-        <!-- Name + Verified badge -->
+        <!-- Name + Verified badge (hardcoded) -->
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
           <span class="inline-flex items-center gap-2">
-            {{ seller.name || 'Unnamed Seller' }}
+            The Cozy Corner
             <span
-              v-if="seller.verified"
               class="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full
                      bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 align-middle">
               <span class="material-symbols-outlined text-base leading-none">verified</span>
@@ -35,17 +34,17 @@
         </h1>
 
         <p class="mt-2 text-gray-600 dark:text-gray-400">
-          {{ seller.bio || 'No bio yet.' }}
+          Handmade crafts and unique home decor items. Bringing warmth and style to your living space.
         </p>
 
         <p class="mt-2 text-gray-600 dark:text-gray-400">
           <span class="material-symbols-outlined text-lg text-red-500">location_on</span>
-          Located @ {{ seller.address || '—' }}
+          Located @ 216 Wadapp St, Singapore
         </p>
 
         <div class="flex flex-wrap items-center justify-center gap-2 mt-2 text-gray-500 dark:text-gray-400">
           <span class="material-symbols-outlined text-lg text-yellow-500">star</span>
-          <span class="font-medium">{{ (seller.rating ?? 0).toFixed(1) }} / 5.0</span>
+          <span class="font-medium">4.8 / 5.0</span>
           <span class="text-gray-400 dark:text-gray-600">·</span>
           <span>20 Followings</span>
           <span class="text-gray-400 dark:text-gray-600">·</span>
@@ -130,21 +129,19 @@
           class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
           id="product_grid">
 
-          <!-- Single card -->
+          <!-- Cards (unchanged) -->
           <div
             v-for="(p, idx) in filteredItems"
             :key="idx"
             class="group relative flex flex-col overflow-hidden rounded-lg bg-creamy-white dark:bg-gray-800/50 h-full">
-
-            <!-- Image + hover overlay + stock badge + multi-image controls -->
+            <!-- ... (card content stays the same) ... -->
+            <!-- Image -->
             <div class="relative">
-              <!-- Image with fallback (now uses cardImage) -->
               <div
                 class="aspect-square w-full bg-cover bg-center"
                 :style="{ backgroundImage: `url('${cardImage(p, idx)}')` }"
               ></div>
 
-              <!-- Prev/Next arrows (only if multiple images) -->
               <button
                 v-if="hasMultipleImages(p)"
                 @click.stop="prevImage(idx, p)"
@@ -158,7 +155,6 @@
                 <span class="material-symbols-outlined text-base">chevron_right</span>
               </button>
 
-              <!-- Dots -->
               <div
                 v-if="hasMultipleImages(p)"
                 class="pointer-events-none absolute bottom-2 left-0 right-0 flex items-center justify-center gap-1">
@@ -170,14 +166,12 @@
                 </span>
               </div>
 
-              <!-- Stock/Slots badge (unified) -->
               <span
                 class="absolute top-2 left-2 rounded-full px-2.5 py-1 text-xs font-semibold shadow"
                 :class="stockClass(p)">
                 {{ stockLabel(p) }}
               </span>
 
-              <!-- Hover overlay with EDIT button (type-aware label) -->
               <div
                 class="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition
                        group-hover:bg-black/30 group-hover:opacity-100">
@@ -191,20 +185,17 @@
               </div>
             </div>
 
-            <!-- Card body -->
             <div class="p-4 flex flex-col grow">
               <div>
                 <h3 class="font-medium text-gray-900 dark:text-white line-clamp-2 min-h-[3rem] break-words">
                   {{ p.name || (isService(p) ? 'Untitled Service' : 'Untitled Product') }}
                 </h3>
 
-                <!-- Price or Price Range: service-aware -->
                 <p class="mt-1 text-sm text-primary font-semibold">
                   {{ isService(p) ? servicePriceDisplay(p) : priceDisplay(p) }}
                 </p>
               </div>
 
-              <!-- Service: packages (labels) -->
               <div v-if="isService(p) && hasPackages(p)" class="mt-3 flex flex-wrap gap-1.5">
                 <span
                   v-for="(pk, i) in p.packages"
@@ -215,7 +206,6 @@
                 </span>
               </div>
 
-              <!-- Product: sizes (grey out when qty 0) -->
               <div v-else-if="hasSizes(p)" class="mt-3 flex flex-wrap gap-1.5">
                 <span
                   v-for="(s, i) in p.size"
@@ -226,7 +216,6 @@
                 </span>
               </div>
 
-              <!-- Service: timeslots (grey when full/past) -->
               <div v-if="isService(p) && Array.isArray(p.timeslots) && p.timeslots.length" class="mt-3 flex flex-wrap gap-1.5">
                 <span
                   v-for="(slot, i) in p.timeslots"
@@ -238,7 +227,6 @@
                 </span>
               </div>
 
-              <!-- spacer -->
               <div class="mt-auto"></div>
             </div>
           </div>
@@ -275,20 +263,22 @@ import { getSellerProducts, createProduct } from '@/firebase/services/sellers/pr
 import Loading from '@/components/status/Loading.vue'
 import AddProductModal from '@/components/modals/AddProductModal.vue'
 
-// Get seller ID (replace with actual from route/store later)
+/* Hardcoded avatar/logo for the profile card */
+const hardcodedLogo = 'https://via.placeholder.com/256x256?text=Cozy+Corner'
+
+/* Get seller ID (replace with actual from route/store later) */
 const sellerID = 'A0000001'
 
-/* Seller data */
+/* Seller data (NOTE: removed the temporary hardcoded dateCreated) */
 const seller = reactive({
   userID: 'A0000001',
-  dateCreated: '2023-01-15 10:30:00 UTC+8',
   name: 'The Cozy Corner',
   verified: true,
   account_type: 'seller',
   uen: '12345678A',
   rating: 4.8,
   bio: 'Handmade crafts and unique home decor items. Bringing warmth and style to your living space.',
-  logo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAvDcbMzFfeOb3_h2t6uZzdwHccl2CtXAV_HefE3Vq9CTAeiMu4sCE6Jhdva_sb7S3PV3u9zSaANk2iz7iFIRPCHqAvHuCd-xacQWdeUyun9Iy7oICCCN_X1QqwJ1lyHqbtjGYzhOn5mKV_i9eD1o6fGeWgjfIB87h1dAcVufqCvvW4N0925h4gJ92uxp7J-7z5vz7SHWEf4IObyuH5WZLYNVL2GAYYWtkDBuyJtHtigkoLtjT0cc6ghqtBLxUoRxa4OnNWmD2O1c0b',
+  logo: hardcodedLogo,
   address: '216 Wadapp St, Singapore',
   products: [] // Loaded from Firebase
 })
@@ -334,7 +324,6 @@ const filter = ref('all') // 'all' | 'product' | 'service'
 const searchTerm = ref('')
 const showFilter = ref(false)
 
-/* Filter button label */
 const currentFilterLabel = computed(() => {
   if (filter.value === 'product') return `Products (${productCount.value})`
   if (filter.value === 'service') return `Services (${serviceCount.value})`
@@ -350,7 +339,6 @@ function setFilter(next) {
   showFilter.value = false
 }
 
-/* click-outside fallback for the filter menu */
 watch(showFilter, (open) => {
   const onDocClick = (e) => {
     const container = e?.target?.closest?.('.filter-menu-root')
@@ -360,18 +348,18 @@ watch(showFilter, (open) => {
 })
 
 /* -----------------------------
- * Null-safe utilities & lists
+ * Utilities & lists
  * ----------------------------- */
 const placeholderImg = 'https://via.placeholder.com/600x600?text=No+Image'
 const arr = (v) => (Array.isArray(v) ? v : [])
 const items = computed(() => arr(seller.products).filter(Boolean))
 
-/* Counts for filter menu */
+/* Counts */
 const productCount = computed(() => items.value.filter(p => !isService(p)).length)
 const serviceCount = computed(() => items.value.filter(p => isService(p)).length)
 const totalCount   = computed(() => items.value.length)
 
-/* Filter + search pipeline */
+/* Filter + search */
 const filteredItems = computed(() => {
   let base = items.value
   if (filter.value === 'product') base = base.filter(p => !isService(p))
@@ -445,7 +433,7 @@ const sizeChipClass = (p = {}, i) =>
     : 'border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-500 line-through opacity-60'
 
 /* -----------------------------
- * Service helpers
+ * Service helpers (kept if you still show services)
  * ----------------------------- */
 const isService = (p = {}) => p?.type === 'service'
 const hasPackages = (p = {}) => isService(p) && Array.isArray(p.packages) && p.packages.length > 0

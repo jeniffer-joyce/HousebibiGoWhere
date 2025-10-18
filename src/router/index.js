@@ -55,8 +55,10 @@ const routes = [
         component: SellerOrders
     },
     {
-        path: '/business-homepage/',
-        component: BusinessHomepage
+        path: '/:username/',
+        name: 'business-home',
+        component: BusinessHomepage,
+        props: r => ({ username: String(r.params.username || '').toLowerCase() })
     },
     {
         path: '/buyer-dashboard/',
