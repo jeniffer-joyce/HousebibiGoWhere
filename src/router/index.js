@@ -14,9 +14,28 @@ import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
 import BuyerDashboard from "../views/buyers/BuyerDashboard.vue";
 import BuyerOrders from "../views/buyers/BuyerOrders.vue";
-import BuyerProfile from "../views/buyers/BuyerProfile.vue";
+import BuyerAccount from "../views/buyers/BuyerAccount.vue";
 import BuyerFavourites from "../views/buyers/Favourites.vue";
 import BuyerMessages from "../views/buyers/messages.vue";
+import CompleteProfile from '../views/CompleteProfile.vue';
+
+import ProfileTab from '../views/buyers/account/ProfileTab.vue'          
+import AddressesTab from '../views/buyers/account/AddressesTab.vue'      
+import PaymentsTab from '../views/buyers/account/PaymentsTab.vue'        
+import NotificationsTab from '../views/buyers/account/NotificationsTab.vue' 
+import ChangePasswordTab from '../views/buyers/account/ChangePasswordTab.vue' 
+import PrivacySettingsTab from '../views/buyers/account/PrivacySettingsTab.vue'
+import EmailChangeDone from '../firebase/auth/EmailChangeDone.vue'
+
+import { auth } from '@/firebase/firebase_config' 
+import { onAuthStateChanged } from 'firebase/auth' 
+// ✅ define authReady here so the guard can await it
+const authReady = new Promise((resolve) => { 
+  const off = onAuthStateChanged(auth, () => { 
+    off();                                     
+    resolve();                                 
+  });                                          
+});                                           
 
 const routes = [
     {
@@ -69,8 +88,24 @@ const routes = [
         component: BuyerOrders
     },
     {
-        path: '/buyer-profile/',
-        component: BuyerProfile
+        path: '/buyer-account/',
+        component: BuyerAccount,
+        children: [                                              
+            { path: 'profile', component: ProfileTab },                
+            { path: 'addresses', component: AddressesTab },     
+            { path: 'banks-cards', component: PaymentsTab },    
+            { path: 'notifications', component: NotificationsTab }, 
+            { path: 'password', component: ChangePasswordTab }, 
+            { path: 'privacy', component: PrivacySettingsTab }, 
+        ]        
+    },
+    {
+        path: '/buyer-account/email-change-done',
+        component: EmailChangeDone, 
+    },
+    {
+        path: '/buyer-account/change-email',
+        component: () => import('../views/buyers/ChangeEmail.vue'),
     },
     {
         path: '/buyer-favourites/',
@@ -80,12 +115,34 @@ const routes = [
         path: '/buyer-messages/',
         component: BuyerMessages
     },
-   
+    { 
+        path: '/complete-profile/', 
+        component: CompleteProfile 
+    },
+    
 ]
 
 const router = createRouter({
     history: createWebHistory(),
     routes
+})
+router.beforeEach(async (to, from, next) => {
+  // 1️⃣ wait for firebase to restore any existing session
+  await authReady
+
+  // 2️⃣ detect if user returned from hosted handler
+  const cameFromHosted =
+    typeof to.query.mode === 'string' && typeof to.query.oobCode === 'string'
+
+  if (cameFromHosted) {
+    try {
+      await auth.currentUser?.reload()
+    } catch (e) {
+      console.warn('Auth reload after hosted redirect failed', e)
+    }
+  }
+
+  next()
 })
 
 router.beforeEach((to, from, next) => {
