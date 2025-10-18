@@ -9,9 +9,9 @@ import About from '../views/About.vue'
 // Seller Views
 import ForSellers from '../views/ForSellers.vue'
 import SellerProfile from '../views/sellers/SellerProfile.vue'
-import EditProduct from '../views/sellers/EditProduct.vue'  
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
+import BusinessHomepage from "../views/sellers/BusinessHomepage.vue";
 // Buyer Views
 import BuyerDashboard from "../views/buyers/BuyerDashboard.vue";
 import BuyerOrders from "../views/buyers/BuyerOrders.vue";
@@ -51,12 +51,12 @@ const routes = [
         component: SellerProfile
     },
     {
-        path: '/edit-product/',
-        component: EditProduct,
-    },
-    {
         path: '/seller-orders/',
         component: SellerOrders
+    },
+    {
+        path: '/business-homepage/',
+        component: BusinessHomepage
     },
     {
         path: '/buyer-dashboard/',
