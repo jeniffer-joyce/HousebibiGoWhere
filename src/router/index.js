@@ -18,7 +18,6 @@ import BuyerProfile from "../views/buyers/BuyerProfile.vue";
 import BuyerFavourites from "../views/buyers/Favourites.vue";
 import BuyerMessages from "../views/buyers/messages.vue";
 
-
 const routes = [
     {
         path: '/',
@@ -81,7 +80,7 @@ const routes = [
         path: '/buyer-messages/',
         component: BuyerMessages
     },
-    
+   
 ]
 
 const router = createRouter({
