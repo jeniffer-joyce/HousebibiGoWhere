@@ -65,9 +65,20 @@
         </div>
 
         <!-- Business Information Header (Seller only) -->
-        <div v-if="role==='seller'" class="mt-6">
-          <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Business Information</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Please provide your business details for verification. <br></br>All details will be verified via SingPass and ACRA.</p>
+        <br></br>
+        <div v-if="role==='seller'" class="mb-6">
+          <button
+            type="button"
+            @click="showSingPassModal = true"
+            class="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2">
+            <span>🇸🇬 Verify with SingPass</span>
+          </button>
+          
+          <div v-if="isSingPassVerified" class="mt-2 p-3 bg-green-50 rounded-lg">
+            <p class="text-sm text-green-800">
+              ✓ Verified: {{ verifiedBusinessData.businessName }}
+            </p>
+          </div>
         </div>
 
         <!-- FORM -->
@@ -288,6 +299,11 @@
         </form>
       </div>
     </div>
+  <SingPassVerificationModal 
+      :show="showSingPassModal"
+      @close="showSingPassModal = false"
+      @verified="handleSingPassVerified"
+    />
   </div>
 </template>
 
@@ -298,10 +314,38 @@ import { registerUserWithUsername } from '../firebase/auth/authService'
 import { auth } from '../firebase/firebase_config'
 import { user } from '@/store/user.js'
 import { useRoute } from 'vue-router'
+import SingPassVerificationModal from '@/components/SingPassVerificationModal.vue'
+import { verifySingPass, markBusinessAsRegistered } from '@/firebase/services/singpassVerification'
 
 const route = useRoute()
 const router = useRouter()
 
+// SingPass verification
+const showSingPassModal = ref(false)
+const verifiedBusinessData = ref(null)
+const isSingPassVerified = ref(false)
+
+// Handle successful SingPass verification
+function handleSingPassVerified(data) {
+  console.log('✅ SingPass verified:', data)
+  verifiedBusinessData.value = data
+  isSingPassVerified.value = true
+  
+  // Pre-fill form fields with verified data
+  nric.value = data.nric
+  displayName.value = data.fullName
+  birthday.value = data.dateOfBirth
+  gender.value = data.gender
+  phone.value = data.phone
+  companyName.value = data.businessName
+  uen.value = data.uen
+  postalCode.value = data.businessAddress.postalCode
+  addressLine.value = data.businessAddress.addressLine
+  unitNo.value = data.businessAddress.unitNo || ''
+  
+  // Show success message
+  alert('✅ Your business details have been verified and pre-filled!')
+}
 /* Role */
 const role = ref('buyer')
 function setRole(v){ role.value = v }
@@ -535,7 +579,13 @@ async function onSubmit(){
     })
     
     console.log('Registration complete!')
-    
+    if (role.value === 'seller' && verifiedBusinessData.value) {
+      await markBusinessAsRegistered(verifiedBusinessData.value.verificationId, {
+        email: email.value,
+        username: username.value,
+        uid: newUser.uid
+      })
+    }
     // Calculate remaining time to reach 5 seconds
     const elapsedTime = Date.now() - startTime
     const remainingTime = Math.max(0, 5000 - elapsedTime)

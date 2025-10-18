@@ -37,7 +37,6 @@ const authReady = new Promise((resolve) => {
   });                                          
 });                                           
 
-
 const routes = [
     {
         path: '/',
