@@ -368,7 +368,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
-import { storage } from '@/firebase/firebase_config'
+import { storage, auth } from '@/firebase/firebase_config'
 // ✅ Correct - CDN syntax (matches your firebase_config.js)
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js'
 import UnsplashImagePicker from '@/components/UnsplashImagePicker.vue'
@@ -622,6 +622,8 @@ async function handleSubmit() {
       img_url: form.img_url,
       imageSource: form.imageSource,
       availability: form.availability,
+      sellerId: auth.currentUser.uid, // ← ADD THIS LINE
+      sellerName: auth.currentUser.displayName || 'Unknown Seller', // ← OPTIONAL BUT HELPFUL
       createdAt: new Date().toISOString()
     }
 
