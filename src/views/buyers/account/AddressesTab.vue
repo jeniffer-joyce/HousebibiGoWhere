@@ -1,343 +1,364 @@
 <template>
-  <section class="p-6 bg-white dark:bg-slate-800 rounded-xl shadow-sm">
-    <div class="mb-6 flex items-center justify-between">
+  <section class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
       <h2 class="text-2xl font-bold text-slate-900 dark:text-white">My Addresses</h2>
       <button
-        @click="startAdd"
-        class="rounded-lg bg-primary px-4 py-2 text-white hover:bg-primary/90">
-        + Add New Address
+        @click="openModal()"
+        class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-semibold text-white hover:bg-primary/90"
+      >
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Add New Address
       </button>
     </div>
 
-    <!-- Loading / Empty -->
-    <div v-if="loading" class="text-slate-600 dark:text-slate-300">Loading addresses…</div>
-    <div v-else-if="addresses.length === 0" class="text-slate-600 dark:text-slate-400">
-      You don’t have any saved addresses yet. Click “Add New Address” to create one.
+    <!-- Empty state -->
+    <div
+      v-if="!loading && addresses.length === 0"
+      class="flex h-72 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white text-center dark:border-slate-700 dark:bg-slate-800"
+    >
+      <svg class="mb-3 h-16 w-16 text-slate-300 dark:text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M19.5 20a8 8 0 10-15 0h15z"/>
+      </svg>
+      <p class="text-lg font-medium text-slate-600 dark:text-slate-300">You don't have addresses yet.</p>
     </div>
 
-    <!-- Address list -->
-    <div v-else class="grid gap-4">
+    <!-- Address Cards -->
+    <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div
-        v-for="addr in addresses"
-        :key="addr.id"
-        class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="flex items-center gap-2">
-              <p class="text-base font-semibold text-slate-900 dark:text-white truncate">
-                {{ addr.fullName }}
-              </p>
-              <span
-                v-if="addr.isDefault"
-                class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                Default
-              </span>
-              <span
-                class="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                {{ addr.label }}
-              </span>
-            </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">
-              {{ addr.phone }}
-            </p>
-            <p class="mt-2 text-sm text-slate-700 dark:text-slate-300 break-words">
-              {{ addr.addressLine }} <span v-if="addr.unitNo">, {{ addr.unitNo }}</span>
-              <br />
-              Singapore {{ addr.postalCode }}
-            </p>
-          </div>
-
-          <div class="shrink-0 space-x-2">
-            <button
-              @click="startEdit(addr)"
-              class="rounded-lg border px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">
-              Edit
-            </button>
-            <button
-              @click="removeAddress(addr)"
-              class="rounded-lg border px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:border-slate-600 dark:hover:bg-red-900/20">
-              Delete
-            </button>
-          </div>
+        v-for="(addr, idx) in addresses"
+        :key="idx"
+        class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+      >
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-sm font-semibold capitalize text-slate-800 dark:text-slate-200">{{ addr.type }}</span>
+          <span
+            v-if="addr.default === 1"
+            class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+          >
+            Default
+          </span>
         </div>
 
-        <div class="mt-3">
-          <label class="inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              :checked="addr.isDefault"
-              :disabled="addresses.length < 2 || addr.isDefaultSetting"
-              @change="setDefault(addr)"
-            />
-            <span
-              class="text-slate-600 dark:text-slate-400"
-              :class="{ 'opacity-60': addresses.length < 2 }"
-            >
-              Set as Default
-            </span>
-          </label>
-          <p v-if="addresses.length < 2" class="mt-1 text-xs text-slate-500">
-            Your first address will be set as the Default. Add a second address to change this.
+        <div class="space-y-1 text-sm text-slate-700 dark:text-slate-300">
+          <p class="font-medium">{{ addr.fullName }}</p>
+          <p>{{ addr.phoneNumber }}</p>
+          <p>
+            {{ addr.streetName }}
+            <span v-if="addr.unitNumber">, #{{ addr.unitNumber }}</span>,
+            Singapore {{ addr.postalCode }}
           </p>
+        </div>
+
+        <div class="mt-3 flex items-center gap-2">
+          <button
+            @click="openModal(idx)"
+            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Modify
+          </button>
+
+          <button
+            v-if="addr.default !== 1"
+            @click="setDefault(idx)"
+            class="rounded-lg border border-primary px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
+          >
+            Set Default
+          </button>
+
+          <button
+            @click="removeAddress(idx)"
+            class="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+          >
+            Delete
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Add/Edit form -->
-    <div v-if="showForm" class="mt-8 rounded-xl border border-slate-200 p-5 dark:border-slate-700">
-      <h3 class="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
-        {{ editingId ? 'Edit Address' : 'New Address' }}
-      </h3>
+    <!-- Modal -->
+    <transition name="fade">
+      <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center" @keydown.esc="closeModal">
+        <div class="absolute inset-0 bg-black/40" @click="closeModal"></div>
 
-      <form @submit.prevent="save" class="grid gap-4 sm:grid-cols-2">
-        <div class="sm:col-span-1">
-          <input
-            v-model.trim="form.fullName"
-            placeholder="Full Name"
-            class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
-          />
-          <p v-if="t.fullName && !valid.fullName" class="mt-1 text-xs text-red-600">Name is required.</p>
-        </div>
-
-        <div class="sm:col-span-1">
-          <input
-            v-model.trim="form.phone"
-            placeholder="Phone Number"
-            class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
-          />
-          <p v-if="t.phone && !valid.phone" class="mt-1 text-xs text-red-600">
-            Use SG format (+65 optional), starting with 8 or 9 (8 digits).
-          </p>
-        </div>
-
-        <div class="sm:col-span-2">
-          <input
-            v-model.trim="form.postalCode"
-            inputmode="numeric"
-            maxlength="6"
-            placeholder="Postal Code"
-            class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
-            @input="form.postalCode = (form.postalCode || '').replace(/\\D/g,'').slice(0,6)"
-          />
-          <p v-if="t.postalCode && !valid.postalCode" class="mt-1 text-xs text-red-600">Enter a 6-digit postal code.</p>
-        </div>
-
-        <div class="sm:col-span-1">
-          <input
-            v-model.trim="form.addressLine"
-            placeholder="Building, Street, and etc…"
-            class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
-          />
-          <p v-if="t.addressLine && !valid.addressLine" class="mt-1 text-xs text-red-600">Address is required.</p>
-        </div>
-
-        <div class="sm:col-span-1">
-          <input
-            v-model.trim="form.unitNo"
-            placeholder="Unit No (Optional)"
-            class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
-          />
-        </div>
-
-        <div class="sm:col-span-2 flex items-center gap-4">
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              @click="form.label = 'Home'"
-              :class="labelClass('Home')"
-              class="rounded-lg border px-3 py-1.5 text-sm">
-              Home
-            </button>
-            <button
-              type="button"
-              @click="form.label = 'Work'"
-              :class="labelClass('Work')"
-              class="rounded-lg border px-3 py-1.5 text-sm">
-              Work
+        <div class="relative z-10 w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900">
+          <div class="mb-4 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+              {{ editIndex === -1 ? 'New Address' : 'Edit Address' }}
+            </h3>
+            <button @click="closeModal" class="rounded-md p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
             </button>
           </div>
 
-          <label class="ml-auto inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              v-model="form.isDefault"
-              :disabled="addresses.length < 1 || editingId ? addresses.length < 2 : addresses.length < 1"
-            />
-            <span
-              class="text-slate-600 dark:text-slate-400"
-              :class="{ 'opacity-60': (editingId ? addresses.length < 2 : addresses.length < 1) }"
-            >
-              Set as Default
-            </span>
-          </label>
-        </div>
+          <!-- Form -->
+          <form @submit.prevent="addOrUpdateAddress" class="grid grid-cols-1 gap-4">
+            <!-- Full Name -->
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
+              <input
+                v-model.trim="form.fullName"
+                :disabled="saving"
+                class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                :class="t.fullName && !fullNameValid ? 'border-red-500' : ''"
+                @blur="t.fullName = true"
+                placeholder="e.g. Sarah Johnson"
+              />
+              <p v-if="t.fullName && !fullNameValid" class="text-xs text-red-600">Full name is required.</p>
+            </div>
 
-        <div class="sm:col-span-2 flex gap-3">
-          <button
-            type="submit"
-            class="rounded-lg bg-primary px-5 py-2 text-white hover:bg-primary/90 disabled:opacity-60"
-            :disabled="saving">
-            {{ saving ? 'Saving…' : (editingId ? 'Save Changes' : 'Submit') }}
-          </button>
-          <button
-            type="button"
-            @click="cancel"
-            class="rounded-lg border px-5 py-2 dark:border-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">
-            Cancel
-          </button>
-        </div>
+            <!-- Phone -->
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Phone Number</label>
+              <div class="flex">
+                <span class="inline-flex items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 px-3 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  +65
+                </span>
+                <input
+                  v-model="form.phoneLocal"
+                  inputmode="numeric"
+                  maxlength="8"
+                  :disabled="saving"
+                  class="w-full rounded-r-lg border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  @input="sanitizePhone()"
+                  :class="t.phone && !phoneValid ? 'border-red-500' : ''"
+                  @blur="t.phone = true"
+                  placeholder="9xxxxxxx"
+                />
+              </div>
+              <p v-if="t.phone && !phoneValid" class="text-xs text-red-600">Must start with 8 or 9 and contain exactly 8 digits.</p>
+            </div>
 
-        <p v-if="error" class="sm:col-span-2 text-sm text-red-600">{{ error }}</p>
-        <p v-if="success" class="sm:col-span-2 text-sm text-emerald-600">{{ success }}</p>
-      </form>
-    </div>
+            <!-- Postal Code & Street -->
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Postal Code</label>
+                <input
+                  v-model.trim="form.postalCode"
+                  inputmode="numeric"
+                  maxlength="6"
+                  :disabled="saving"
+                  class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  @input="form.postalCode=(form.postalCode||'').replace(/\\D/g,'').slice(0,6)"
+                  @blur="t.postal = true"
+                  :class="t.postal && !postalValid ? 'border-red-500' : ''"
+                  placeholder="e.g. 238858"
+                />
+                <p v-if="t.postal && !postalValid" class="text-xs text-red-600">Enter a valid 6-digit postal code.</p>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Street / Block</label>
+                <input
+                  v-model.trim="form.streetName"
+                  :disabled="saving"
+                  class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  @blur="t.street = true"
+                  :class="t.street && !streetValid ? 'border-red-500' : ''"
+                  placeholder="e.g. 123 Orchard Road"
+                />
+                <p v-if="t.street && !streetValid" class="text-xs text-red-600">Street / Block is required.</p>
+              </div>
+
+              <!-- Unit Number -->
+              <div class="sm:col-span-3">
+                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Unit Number</label>
+                <div class="flex">
+                  <span class="inline-flex items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 px-3 text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">#</span>
+                  <input
+                    v-model="form.unitNumber"
+                    :disabled="saving"
+                    class="w-full rounded-r-lg border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    @input="sanitizeUnit"
+                    placeholder="10-234 (optional)"
+                  />
+                </div>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Digits and one dash only (e.g. 10-234).</p>
+              </div>
+            </div>
+
+            <!-- Type + Default -->
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 items-center">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Address Type</label>
+                <select
+                  v-model="form.type"
+                  :disabled="saving"
+                  class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  :class="t.type && !typeValid ? 'border-red-500' : ''"
+                  @blur="t.type = true"
+                >
+                  <option value="" disabled>Select</option>
+                  <option value="home">Home</option>
+                  <option value="work">Work</option>
+                  <option value="others">Others</option>
+                </select>
+                <p v-if="t.type && !typeValid" class="text-xs text-red-600">Please choose a type.</p>
+              </div>
+
+              <div class="flex items-center gap-2 pt-6 sm:pt-0">
+                <input
+                  id="mkdef"
+                  type="checkbox"
+                  v-model="form.makeDefault"
+                  :disabled="defaultDisabled"
+                  class="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                <label for="mkdef" class="text-sm text-slate-700 dark:text-slate-300">Set as default address</label>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="mt-2 flex items-center gap-3">
+              <button
+                type="submit"
+                :disabled="saving || !formOk"
+                class="rounded-lg bg-primary px-5 py-2 font-semibold text-white hover:bg-primary/90 disabled:opacity-60"
+              >
+                {{ saving ? 'Saving…' : editIndex === -1 ? 'Add Address' : 'Save Changes' }}
+              </button>
+              <button
+                type="button"
+                @click="closeModal"
+                class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <p v-if="success" class="text-sm text-emerald-600">{{ success }}</p>
+              <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </transition>
   </section>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { auth, db } from '@/firebase/firebase_config'
-import {
-  collection, doc, addDoc, updateDoc, deleteDoc, getDocs, serverTimestamp, query, orderBy
-} from 'firebase/firestore'
+import { doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
 
-/* ---------- state ---------- */
-const loading = ref(true)
+const show = ref(false)
+const editIndex = ref(-1)
+const defaultDisabled = ref(false)
 const saving = ref(false)
-const addresses = ref([])
-const showForm = ref(false)
-const editingId = ref(null)
-const error = ref('')
+const loading = ref(true)
 const success = ref('')
+const error = ref('')
+const addresses = ref([])
 
 const form = ref({
   fullName: '',
-  phone: '',
+  phoneLocal: '',
   postalCode: '',
-  addressLine: '',
-  unitNo: '',
-  label: 'Home',
-  isDefault: false,
+  streetName: '',
+  unitNumber: '',
+  type: '',
+  makeDefault: false,
+})
+const t = ref({ fullName: false, phone: false, postal: false, street: false, type: false })
+
+function openModal(index = -1) {
+  success.value = ''
+  error.value = ''
+  t.value = { fullName: false, phone: false, postal: false, street: false, type: false }
+  editIndex.value = index
+
+  if (index === -1) {
+    form.value = { fullName: '', phoneLocal: '', postalCode: '', streetName: '', unitNumber: '', type: '', makeDefault: addresses.value.length === 0 }
+    defaultDisabled.value = addresses.value.length === 0
+  } else {
+    const a = addresses.value[index]
+    form.value = {
+      fullName: a.fullName || '',
+      phoneLocal: (a.phoneNumber || '').replace('+65 ', ''),
+      postalCode: a.postalCode || '',
+      streetName: a.streetName || '',
+      unitNumber: a.unitNumber || '',
+      type: a.type || 'home',
+      makeDefault: a.default === 1,
+    }
+    defaultDisabled.value = addresses.value.length <= 1
+  }
+
+  show.value = true
+}
+function closeModal() { show.value = false }
+
+function sanitizePhone() {
+  form.value.phoneLocal = (form.value.phoneLocal || '').replace(/\D/g, '').slice(0, 8)
+}
+function sanitizeUnit() {
+  let v = (form.value.unitNumber || '')
+  v = v.replace(/[^\d-]/g, '').replace(/-+/g, '-')
+  if (v.startsWith('-')) v = v.slice(1)
+  const parts = v.split('-')
+  if (parts.length > 2) v = parts[0] + '-' + parts.slice(1).join('')
+  form.value.unitNumber = v
+}
+
+const fullNameValid = computed(() => (form.value.fullName || '').trim().length > 0)
+const phoneValid = computed(() => /^[89]\d{7}$/.test(form.value.phoneLocal || ''))
+const postalValid = computed(() => /^\d{6}$/.test(form.value.postalCode || ''))
+const streetValid = computed(() => (form.value.streetName || '').trim().length > 0)
+const typeValid = computed(() => ['home', 'work', 'others'].includes(form.value.type))
+const formOk = computed(() => fullNameValid.value && phoneValid.value && postalValid.value && streetValid.value && typeValid.value)
+
+onMounted(async () => {
+  try {
+    const u = auth.currentUser
+    if (!u) return
+    const snap = await getDoc(doc(db, 'users', u.uid))
+    if (snap.exists()) addresses.value = Array.isArray(snap.data().addresses) ? snap.data().addresses : []
+  } catch (e) {
+    console.error(e)
+    error.value = 'Failed to load addresses.'
+  } finally { loading.value = false }
 })
 
-const t = ref({ fullName: false, phone: false, postalCode: false, addressLine: false })
+async function addOrUpdateAddress() {
+  t.value = { fullName: true, phone: true, postal: true, street: true, type: true }
+  if (!formOk.value) { error.value = 'Please fix the highlighted fields.'; return }
 
-/* ---------- validators ---------- */
-const valid = {
-  get fullName() { return (form.value.fullName || '').trim().length > 0 },
-  get phone() { const v = (form.value.phone || '').trim(); return /^(?:\+65\s*)?[89]\d{7}$/.test(v) },
-  get postalCode() { return /^\d{6}$/.test((form.value.postalCode || '').trim()) },
-  get addressLine() { return (form.value.addressLine || '').trim().length > 0 },
-}
-const formOk = computed(() => valid.fullName && valid.phone && valid.postalCode && valid.addressLine)
+  const u = auth.currentUser
+  if (!u) return
 
-/* ---------- helpers ---------- */
-function labelClass(lbl) {
-  return form.value.label === lbl
-    ? 'border-primary text-primary bg-primary/10'
-    : 'border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-}
-
-function resetForm() {
-  form.value = {
-    fullName: '',
-    phone: '',
-    postalCode: '',
-    addressLine: '',
-    unitNo: '',
-    label: 'Home',
-    isDefault: addresses.value.length === 0, // first address becomes default
-  }
-  t.value = { fullName: false, phone: false, postalCode: false, addressLine: false }
-  editingId.value = null
-  error.value = ''
-  success.value = ''
-}
-
-/* ---------- fetch addresses ---------- */
-async function load() {
-  loading.value = true
-  const user = auth.currentUser
-  if (!user) { loading.value = false; return }
-  const addrRef = collection(db, 'users', user.uid, 'addresses')
-  const q = query(addrRef, orderBy('createdAt', 'asc'))
-  const snap = await getDocs(q)
-  addresses.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-  loading.value = false
-}
-
-/* ---------- form actions ---------- */
-function startAdd() {
-  showForm.value = true
-  resetForm()
-}
-
-function startEdit(addr) {
-  showForm.value = true
-  editingId.value = addr.id
-  form.value = {
-    fullName: addr.fullName || '',
-    phone: addr.phone || '',
-    postalCode: String(addr.postalCode || ''),
-    addressLine: addr.addressLine || '',
-    unitNo: addr.unitNo || '',
-    label: addr.label || 'Home',
-    isDefault: !!addr.isDefault,
-  }
-}
-
-function cancel() {
-  showForm.value = false
-  resetForm()
-}
-
-async function save() {
-  t.value = { fullName: true, phone: true, postalCode: true, addressLine: true }
-  error.value = ''
-  success.value = ''
-  if (!formOk.value) {
-    error.value = 'Please fix the highlighted fields.'
-    return
-  }
-  saving.value = true
   try {
-    const user = auth.currentUser
-    if (!user) throw new Error('auth/missing-user')
-
-    const base = {
+    saving.value = true
+    const newAddr = {
       fullName: form.value.fullName.trim(),
-      phone: form.value.phone.trim(),
-      postalCode: Number(form.value.postalCode),
-      addressLine: form.value.addressLine.trim(),
-      unitNo: (form.value.unitNo || '').trim(),
-      label: form.value.label,
-      isDefault: !!form.value.isDefault,
-      updatedAt: serverTimestamp(),
+      phoneNumber: `+65 ${form.value.phoneLocal}`,
+      postalCode: form.value.postalCode.trim(),
+      streetName: form.value.streetName.trim(),
+      unitNumber: form.value.unitNumber.trim(),
+      type: form.value.type,
+      default: form.value.makeDefault ? 1 : 0,
     }
 
-    const addrCol = collection(db, 'users', user.uid, 'addresses')
+    const list = [...addresses.value]
 
-    if (editingId.value) {
-      // update existing
-      await updateDoc(doc(addrCol, editingId.value), base)
+    if (editIndex.value === -1) {
+      if (list.length === 0) newAddr.default = 1
+      else if (newAddr.default === 1) list.forEach(a => a.default = 0)
+      list.push(newAddr)
     } else {
-      // create new
-      const payload = { ...base, createdAt: serverTimestamp() }
-      await addDoc(addrCol, payload)
+      if (newAddr.default === 1) list.forEach((a, i) => a.default = i === editIndex.value ? 1 : 0)
+      list[editIndex.value] = { ...list[editIndex.value], ...newAddr }
+      if (!list.some(a => a.default === 1)) list[0].default = 1
     }
 
-    // handle default uniqueness
-    if (form.value.isDefault) {
-      await ensureSingleDefault()
-    } else if (addresses.value.length === 0) {
-      // first address must be default
-      await ensureFirstIsDefault()
-    }
-
-    await load()
-    success.value = editingId.value ? 'Address updated.' : 'Address added.'
-    showForm.value = false
-    resetForm()
+    await setDoc(doc(db, 'users', u.uid), { addresses: list }, { merge: true })
+    addresses.value = list
+    success.value = editIndex.value === -1 ? 'Address added.' : 'Address updated.'
+    closeModal()
   } catch (e) {
     console.error(e)
     error.value = 'Could not save address.'
@@ -346,73 +367,45 @@ async function save() {
   }
 }
 
-async function removeAddress(addr) {
+/* Set default address */
+async function setDefault(index) {
+  const u = auth.currentUser
+  if (!u) return
   try {
-    const user = auth.currentUser
-    if (!user) return
-    const addrRef = doc(db, 'users', user.uid, 'addresses', addr.id)
-    await deleteDoc(addrRef)
-    await load()
-    // if the default was deleted, set first as default (if any left)
-    await ensureFirstIsDefault()
+    const list = addresses.value.map((a, i) => ({ ...a, default: i === index ? 1 : 0 }))
+    await setDoc(doc(db, 'users', u.uid), { addresses: list }, { merge: true })
+    addresses.value = list
   } catch (e) {
     console.error(e)
+    error.value = 'Failed to set default address.'
   }
 }
 
-async function setDefault(addr) {
-  // avoid flicker
-  addr.isDefaultSetting = true
+/* Delete address */
+async function removeAddress(index) {
+  const u = auth.currentUser
+  if (!u) return
   try {
-    const user = auth.currentUser
-    if (!user) return
-    const addrCol = collection(db, 'users', user.uid, 'addresses')
-
-    // unset others
-    await Promise.all(addresses.value
-      .filter(a => a.id !== addr.id && a.isDefault)
-      .map(a => updateDoc(doc(addrCol, a.id), { isDefault: false, updatedAt: serverTimestamp() })))
-
-    // set this one
-    await updateDoc(doc(addrCol, addr.id), { isDefault: true, updatedAt: serverTimestamp() })
-    await load()
-  } finally {
-    addr.isDefaultSetting = false
+    const list = addresses.value.slice()
+    list.splice(index, 1)
+    // Always ensure at least one default
+    if (list.length > 0 && !list.some(a => a.default === 1)) list[0].default = 1
+    await setDoc(doc(db, 'users', u.uid), { addresses: list }, { merge: true })
+    addresses.value = list
+  } catch (e) {
+    console.error(e)
+    error.value = 'Failed to delete address.'
   }
 }
-
-/* ensure the very first address is default */
-async function ensureFirstIsDefault() {
-  if (addresses.value.length === 0) return
-  const hasDefault = addresses.value.some(a => a.isDefault)
-  if (!hasDefault) {
-    const user = auth.currentUser
-    if (!user) return
-    const first = addresses.value[0]
-    await updateDoc(doc(db, 'users', user.uid, 'addresses', first.id), { isDefault: true, updatedAt: serverTimestamp() })
-    await load()
-  }
-}
-
-/* ensure there’s only one default (called after save when isDefault=true) */
-async function ensureSingleDefault() {
-  const user = auth.currentUser
-  if (!user) return
-  const addrCol = collection(db, 'users', user.uid, 'addresses')
-  // after reload, just enforce single default
-  await load()
-  const defaults = addresses.value.filter(a => a.isDefault)
-  if (defaults.length <= 1) return
-  // keep the most recently updated default as default
-  const keep = defaults[defaults.length - 1]
-  await Promise.all(defaults
-    .filter(a => a.id !== keep.id)
-    .map(a => updateDoc(doc(addrCol, a.id), { isDefault: false, updatedAt: serverTimestamp() })))
-  await load()
-}
-
-onMounted(async () => {
-  await load()
-  await ensureFirstIsDefault()
-})
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
