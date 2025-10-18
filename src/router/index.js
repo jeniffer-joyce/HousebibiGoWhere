@@ -6,12 +6,13 @@ import Login from '../views/Login.vue'
 import SignUp from '../views/SignUp.vue'
 import Categories from '../views/Categories.vue'
 import About from '../views/About.vue'
+// Seller Views
 import ForSellers from '../views/ForSellers.vue'
 import SellerProfile from '../views/sellers/SellerProfile.vue'
-import AddNewProduct from '../views/sellers/AddNewProduct.vue'
-import EditProduct from '../views/sellers/EditProduct.vue'  
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
+import BusinessHomepage from "../views/sellers/BusinessHomepage.vue";
+// Buyer Views
 import BuyerDashboard from "../views/buyers/BuyerDashboard.vue";
 import BuyerOrders from "../views/buyers/BuyerOrders.vue";
 import BuyerAccount from "../views/buyers/BuyerAccount.vue";
@@ -68,16 +69,12 @@ const routes = [
         component: SellerProfile
     },
     {
-        path: '/add-new-product/',
-        component: AddNewProduct
-    },
-    {
-        path: '/edit-product/',
-        component: EditProduct,
-    },
-    {
         path: '/seller-orders/',
         component: SellerOrders
+    },
+    {
+        path: '/business-homepage/',
+        component: BusinessHomepage
     },
     {
         path: '/buyer-dashboard/',
