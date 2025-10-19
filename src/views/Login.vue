@@ -50,7 +50,7 @@
               autocomplete="email"
               autocapitalize="none"
               spellcheck="false"
-              placeholder="Username or email"
+              placeholder="Email"
               class="form-input appearance-none rounded-none relative block w-full px-3 py-3 border border-background-dark/20 dark:border-background-light/20 bg-background-light dark:bg-background-dark text-background-dark dark:text-background-light placeholder-opacity-50 focus:outline-none focus:ring-primary focus:border-primary text-sm rounded-t-lg"
               required
             />
