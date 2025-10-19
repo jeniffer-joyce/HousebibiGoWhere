@@ -154,7 +154,6 @@
                     </p>
                   </div>
                 </div>
-                <!-- (Removed per-item Contact Seller) -->
               </div>
             </div>
 
@@ -167,42 +166,86 @@
                 </p>
               </div>
 
-              <!-- Single actions row (Contact Seller lives here at the end) -->
+              <!-- Single actions row -->
               <div class="flex flex-wrap items-center justify-end gap-2">
                 <!-- To Pay -->
                 <template v-if="o.status === 'to_pay'">
-                  <button class="btn-blue" @click="payNow(o)">Pay Now</button>
-                  <button class="btn-blue-outline" @click="cancelOrder(o)">Cancel Order</button>
+                  <button
+                    class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                    @click="payNow(o)"
+                  >
+                    Pay Now
+                  </button>
+                  <button
+                    class="inline-flex items-center rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    @click="cancelOrder(o)"
+                  >
+                    Cancel Order
+                  </button>
                 </template>
 
                 <!-- To Ship -->
                 <template v-else-if="o.status === 'to_ship'">
-                  <button class="btn-blue-outline" @click="cancelOrder(o)">Cancel Order</button>
+                  <button
+                    class="inline-flex items-center rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    @click="cancelOrder(o)"
+                  >
+                    Cancel Order
+                  </button>
                 </template>
 
                 <!-- To Receive -->
                 <template v-else-if="o.status === 'to_receive'">
-                  <button class="btn-blue" @click="markReceived(o)">Order Received</button>
+                  <button
+                    class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                    @click="markReceived(o)"
+                  >
+                    Order Received
+                  </button>
                 </template>
 
                 <!-- Completed -->
                 <template v-else-if="o.status === 'completed'">
-                  <button class="btn-blue" @click="rateOrder(o)">Rate</button>
-                  <button class="btn-slate" @click="requestReturn(o)">Request Return/Refund</button>
+                  <button
+                    class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                    @click="rateOrder(o)"
+                  >
+                    Rate
+                  </button>
+                  <button
+                    class="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                    @click="requestReturn(o)"
+                  >
+                    Request Return/Refund
+                  </button>
                 </template>
 
                 <!-- Cancelled -->
                 <template v-else-if="o.status === 'cancelled'">
-                  <button class="btn-slate" @click="viewRefund(o)">View Refund Details</button>
+                  <button
+                    class="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                    @click="viewRefund(o)"
+                  >
+                    View Refund Details
+                  </button>
                 </template>
 
                 <!-- Return / Refund -->
                 <template v-else-if="o.status === 'return_refund'">
-                  <button class="btn-slate" @click="viewRefund(o)">View Refund Details</button>
+                  <button
+                    class="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                    @click="viewRefund(o)"
+                  >
+                    View Refund Details
+                  </button>
                 </template>
 
-                <!-- Always show one Contact Seller at the very end -->
-                <button class="btn-slate">Contact Seller</button>
+                <!-- Always show one Contact Seller -->
+                <button
+                  class="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  Contact Seller
+                </button>
               </div>
             </div>
           </div>
@@ -223,7 +266,7 @@ function handleSidebarToggle(collapsed) {
   isSidebarCollapsed.value = collapsed
 }
 
-/* Demo orders (multi-item) */
+/* Demo orders (with multi-item examples) */
 const orders = ref([
   {
     orderId: 'ORD-20241001-001',
@@ -322,12 +365,12 @@ const query  = ref('')
 
 /* Distinct status colors */
 const statusMap = {
-  to_pay:        { label: 'To Pay',        cls: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200',       dot: 'bg-blue-600',   hint: 'Awaiting payment' },
+  to_pay:        { label: 'To Pay',        cls: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200',         dot: 'bg-blue-600',   hint: 'Awaiting payment' },
   to_ship:       { label: 'To Ship',       cls: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200', dot: 'bg-indigo-600', hint: 'Seller preparing shipment' },
-  to_receive:    { label: 'To Receive',    cls: 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-200',           dot: 'bg-sky-600',    hint: 'On the way' },
-  completed:     { label: 'Delivered',     cls: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200',   dot: 'bg-green-600',  hint: 'Order completed' },
-  cancelled:     { label: 'Cancelled',     cls: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200',     dot: 'bg-slate-500',  hint: 'Order cancelled' },
-  return_refund: { label: 'Return/Refund', cls: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200',   dot: 'bg-amber-600',  hint: 'Return/refund in progress' }
+  to_receive:    { label: 'To Receive',    cls: 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-200',             dot: 'bg-sky-600',    hint: 'On the way' },
+  completed:     { label: 'Delivered',     cls: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200',     dot: 'bg-green-600',  hint: 'Order completed' },
+  cancelled:     { label: 'Cancelled',     cls: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200',       dot: 'bg-slate-500',  hint: 'Order cancelled' },
+  return_refund: { label: 'Return/Refund', cls: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200',     dot: 'bg-amber-600',  hint: 'Return/refund in progress' }
 }
 
 /* Counts per tab */
@@ -360,7 +403,7 @@ function formatDate(iso) {
   } catch { return iso }
 }
 
-/* Demo/no-op handlers that mutate local state */
+/* Demo/no-op handlers */
 function payNow(o)       { o.status = 'to_ship' }
 function cancelOrder(o)  { o.status = 'cancelled' }
 function markReceived(o) { o.status = 'completed' }
@@ -370,18 +413,6 @@ function viewRefund(o)   { alert(`Refund details for ${o.orderId}`) }
 </script>
 
 <style scoped>
-/* Hide horizontal scrollbar if present on small screens */
-.hide-scrollbar::-webkit-scrollbar { display: none; }
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* Buttons */
-.btn-blue {
-  @apply inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700;
-}
-.btn-blue-outline {
-  @apply inline-flex items-center rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20;
-}
-.btn-slate {
-  @apply inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700;
-}
+/* purely cosmetic, no Tailwind directives here */
+.border-top { border-top-width: 1px; }
 </style>
