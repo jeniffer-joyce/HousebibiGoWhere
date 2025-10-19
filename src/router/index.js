@@ -8,7 +8,6 @@ import Products from '../views/Products.vue'
 import About from '../views/About.vue'
 // Seller Views
 import ForSellers from '../views/ForSellers.vue'
-import SellerProfile from '../views/sellers/SellerProfile.vue'
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
 import BusinessHomepage from "../views/sellers/BusinessHomepage.vue";
@@ -69,10 +68,6 @@ const routes = [
   {
     path: '/for-sellers/',
     component: ForSellers
-  },
-  {
-    path: '/seller-profile/',
-    component: SellerProfile
   },
   {
     path: '/seller-orders/',

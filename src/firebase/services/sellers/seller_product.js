@@ -163,6 +163,8 @@ export async function createProduct(productData = {}) {
 
     const business = await fetchBusiness(uid);
     const sellerName = business?.name || "Unknown Seller";
+    const sellerCategory = business?.category || "uncategorized";  // ← ADD THIS
+
 
     const { images, thumbnail } = normalizeImages(productData);
 
@@ -170,6 +172,7 @@ export async function createProduct(productData = {}) {
       ...productData,
       sellerId: uid,
       sellerName,
+      category: productData.category || sellerCategory,  // ← ADD THIS (uses passed category or defaults to seller's)
       createdAt: serverTimestamp(),
       availability: productData.availability ?? true,
       images,
