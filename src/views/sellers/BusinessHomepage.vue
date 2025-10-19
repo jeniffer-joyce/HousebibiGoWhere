@@ -223,23 +223,32 @@
         </div>
       </section>
     </div>
+
+    <!-- Add Product Modal -->
+    <AddProductModal
+      :show="showAddModal"
+      @close="showAddModal = false"
+      @save="handleAddProduct"
+    />
   </main>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import Loading from '@/components/status/Loading.vue'
+import AddProductModal from '@/components/modals/AddProductModal.vue'
 
 // Auth-linked seller info (now from /businesses/{uid})
 import { waitForAuthReady, getCurrentSellerAccount } from '@/firebase/services/sellers/seller_info.js'
 
-// Products service (singular filename)
-import { getSellerProducts } from '@/firebase/services/sellers/seller_product.js'
+// Products service
+import { getSellerProducts, createProduct } from '@/firebase/services/sellers/seller_product.js'
 
 const loading = ref(true)
 const seller = ref({})
 const products = ref([])      // normalized by seller_product.js
 const searchTerm = ref('')
+const showAddModal = ref(false)
 
 // Sorting state (default: no explicit sorting)
 const showSort = ref(false)
@@ -360,12 +369,62 @@ onMounted(async () => {
 
 // ===================== Product Card helpers =====================
 
-// placeholder event handlers
+// Open Add Product Modal
+function onAddProduct() {
+  showAddModal.value = true
+}
+
+// Handle saving new product
+async function handleAddProduct(productData) {
+  try {
+    console.log('💾 Saving product:', productData)
+    
+    // Add seller's business category to product data
+    const productDataWithCategory = {
+      ...productData,
+      category: seller.value.category || 'uncategorized'  // ← USE SELLER'S CATEGORY
+    }
+    
+    // Save to Firebase
+    const newId = await createProduct(productDataWithCategory)
+    
+    console.log('✅ Product created with ID:', newId)
+    
+    // Add to local products array with normalized structure
+    products.value.push({
+      id: newId,
+      item_name: productData.item_name,
+      category: seller.value.category || 'uncategorized',  // ← USE SELLER'S CATEGORY
+      description: productData.description,
+      thumbnail: productData.img_url,
+      img_url: productData.img_url,
+      additional_images: productData.additional_images || [],
+      images: [productData.img_url, ...(productData.additional_images || [])],
+      price: Array.isArray(productData.price) ? productData.price : [productData.price],
+      quantity: Array.isArray(productData.quantity) ? productData.quantity : [productData.quantity],
+      size: Array.isArray(productData.size) ? productData.size : (productData.size ? [productData.size] : []),
+      availability: productData.availability,
+      imageSource: productData.imageSource,
+      createdAt: productData.createdAt || new Date().toISOString(),
+      sellerId: productData.sellerId,
+      sellerName: productData.sellerName
+    })
+    
+    // Close modal
+    showAddModal.value = false
+    
+    // Success feedback
+    alert('✅ Product added successfully!')
+  } catch (error) {
+    console.error('❌ Error adding product:', error)
+    alert('Failed to add product. Please try again.')
+  }
+}
+
+// Edit product handler
 function onEdit(p) {
   console.log('Edit product clicked:', p.id)
-}
-function onAddProduct() {
-  console.log('Add new product clicked')
+  // TODO: Implement edit functionality
 }
 
 // check if product has variants/sizes
@@ -420,3 +479,4 @@ function sizeChipClass(p, i) {
   return 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200'
 }
 </script>
+```
