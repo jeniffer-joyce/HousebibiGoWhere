@@ -4,7 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
 import SignUp from '../views/SignUp.vue'
-import Categories from '../views/Categories.vue'
+import Products from '../views/Products.vue'
 import About from '../views/About.vue'
 // Seller Views
 import ForSellers from '../views/ForSellers.vue'
@@ -53,8 +53,8 @@ const routes = [
         component: SignUp
     },
     {
-        path: '/categories/',
-        component: Categories
+        path: '/products/',
+        component: Products
     },
     {
         path: '/about/',

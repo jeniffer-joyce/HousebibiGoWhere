@@ -111,7 +111,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
     <!-- Desktop nav links -->
     <nav class="hidden [@media(min-width:880px)]:flex items-center gap-6">
       <RouterLink to="/" class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary">Home</RouterLink>
-      <RouterLink to="/categories/" class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary">Categories</RouterLink>
+      <RouterLink to="/products/" class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary">Products</RouterLink>
       <RouterLink to="/about/" class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary">About Us</RouterLink>
       <RouterLink to="/for-sellers" class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary">For Sellers</RouterLink>
     </nav>
@@ -286,10 +286,10 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 </RouterLink>
 
                 <RouterLink
-                    to="/categories/"
+                    to="/products/"
                     @click="closeMobileNav"
                     class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
-                    Categories
+                    Products
                 </RouterLink>
 
                 <RouterLink
@@ -331,10 +331,10 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 </RouterLink>
 
                 <RouterLink
-                    to="/categories/"
+                    to="/products/"
                     @click="closeMobileNav"
                     class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
-                    Categories
+                    Products
                 </RouterLink>
 
                 <RouterLink
