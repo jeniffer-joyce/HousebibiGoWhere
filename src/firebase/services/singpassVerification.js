@@ -1,9 +1,3 @@
-// SingPass Verification Service
-// Verifies against a separate "singpass_verification" collection
-
-import { db } from '@/firebase/firebase_config'
-import { collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
-
 /**
  * Verify seller details against SingPass verified businesses collection
  * 
@@ -11,14 +5,15 @@ import { collection, query, where, getDocs } from 'https://www.gstatic.com/fireb
  * @param {string} sellerData.nric - NRIC/FIN number
  * @param {string} sellerData.fullName - Full legal name
  * @param {string} sellerData.dateOfBirth - Date of birth (YYYY-MM-DD)
+ * @param {string} sellerData.uen - Business UEN
  * @returns {Promise<Object>} Verification result
  */
 export async function verifySingPass(sellerData) {
   try {
-    const { nric, fullName, dateOfBirth } = sellerData
+    const { nric, fullName, dateOfBirth, uen } = sellerData
 
     // Validate input
-    if (!nric || !fullName || !dateOfBirth) {
+    if (!nric || !fullName || !dateOfBirth || !uen) {
       return {
         success: false,
         error: 'Missing required fields for verification',
@@ -78,6 +73,22 @@ export async function verifySingPass(sellerData) {
       }
     }
 
+    // Verify UEN match (NEW)
+    const normalizedInputUen = uen.trim().toUpperCase()
+    const normalizedDbUen = (verifiedBusiness.uen || '').trim().toUpperCase()
+
+    if (normalizedInputUen !== normalizedDbUen) {
+      return {
+        success: false,
+        error: 'Business UEN does not match ACRA records. Please check your UEN.',
+        code: 'UEN_MISMATCH',
+        details: {
+          provided: uen,
+          expected: verifiedBusiness.uen
+        }
+      }
+    }
+
     // Check if already registered
     if (verifiedBusiness.isRegistered) {
       return {
@@ -131,101 +142,6 @@ export async function verifySingPass(sellerData) {
 }
 
 /**
- * Check if NRIC is already registered (for new signups)
- * Checks both verified businesses and existing users
- * 
- * @param {string} nric - NRIC to check
- * @returns {Promise<Object>} Check result
- */
-export async function checkNRICExists(nric) {
-  try {
-    const normalizedNric = nric.trim().toUpperCase()
-
-    // Check if in verified businesses collection
-    const verifiedRef = collection(db, 'singpass_verification')
-    const verifiedQuery = query(verifiedRef, where('nric', '==', normalizedNric))
-    const verifiedSnapshot = await getDocs(verifiedQuery)
-
-    if (!verifiedSnapshot.empty) {
-      const verifiedData = verifiedSnapshot.docs[0].data()
-      
-      // Check if already registered on platform
-      if (verifiedData.isRegistered) {
-        return {
-          exists: true,
-          inVerifiedList: true,
-          alreadyRegistered: true,
-          message: 'This NRIC is already registered on our platform',
-          registeredEmail: verifiedData.registeredEmail
-        }
-      }
-
-      return {
-        exists: true,
-        inVerifiedList: true,
-        alreadyRegistered: false,
-        message: 'NRIC found in verified businesses - ready to register'
-      }
-    }
-
-    // Check if in users collection (shouldn't happen but good to check)
-    const usersRef = collection(db, 'users')
-    const usersQuery = query(usersRef, where('nric', '==', normalizedNric))
-    const usersSnapshot = await getDocs(usersQuery)
-
-    if (!usersSnapshot.empty) {
-      const userData = usersSnapshot.docs[0].data()
-      return {
-        exists: true,
-        inVerifiedList: false,
-        alreadyRegistered: true,
-        message: 'This NRIC is already registered',
-        accountType: userData.role,
-        username: userData.username
-      }
-    }
-
-    return {
-      exists: false,
-      inVerifiedList: false,
-      alreadyRegistered: false,
-      message: 'NRIC not found in verified businesses. Please contact ACRA.'
-    }
-
-  } catch (error) {
-    console.error('NRIC check error:', error)
-    throw error
-  }
-}
-
-/**
- * Mark a verified business as registered after successful signup
- * 
- * @param {string} verificationId - Document ID from singpass_verification
- * @param {Object} registrationData - User registration details
- * @returns {Promise<void>}
- */
-export async function markBusinessAsRegistered(verificationId, registrationData) {
-  try {
-    const { updateDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js')
-    
-    const businessRef = doc(db, 'singpass_verification', verificationId)
-    await updateDoc(businessRef, {
-      isRegistered: true,
-      registeredEmail: registrationData.email,
-      registeredUsername: registrationData.username,
-      registeredUid: registrationData.uid,
-      registeredDate: new Date().toISOString()
-    })
-
-    console.log('✅ Marked business as registered')
-  } catch (error) {
-    console.error('Error marking business as registered:', error)
-    // Non-critical error - don't fail the registration
-  }
-}
-
-/**
  * Format verification error for user display
  * 
  * @param {Object} result - Verification result object
@@ -244,6 +160,9 @@ export function formatVerificationError(result) {
     
     case 'DOB_MISMATCH':
       return 'The date of birth you entered does not match SingPass records. Please check and try again.'
+    
+    case 'UEN_MISMATCH':
+      return 'The Business UEN you entered does not match ACRA records. Please verify your UEN and try again.'
     
     case 'ALREADY_REGISTERED':
       return 'This business is already registered on our platform. Please try logging in instead.'

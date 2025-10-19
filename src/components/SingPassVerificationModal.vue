@@ -34,7 +34,7 @@
               <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p class="text-sm text-blue-900 dark:text-blue-100">
                   <strong class="font-semibold">🔒 Secure Verification</strong><br/>
-                  Please enter your details exactly as they appear on your NRIC/FIN.
+                  Please enter your details exactly as they appear on your NRIC/FIN and business registration.
                 </p>
               </div>
 
@@ -79,6 +79,24 @@
                     required
                     class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   />
+                </div>
+
+                <!-- UEN (NEW) -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Business UEN <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    v-model="formData.uen"
+                    type="text"
+                    required
+                    placeholder="e.g., 202301234A"
+                    maxlength="20"
+                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white uppercase"
+                  />
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Unique Entity Number from ACRA
+                  </p>
                 </div>
 
                 <!-- Submit Button -->
@@ -186,7 +204,8 @@ const errorMessage = ref('')
 const formData = reactive({
   nric: '',
   fullName: '',
-  dateOfBirth: ''
+  dateOfBirth: '',
+  uen: '' // NEW
 })
 
 async function handleVerify() {
@@ -201,7 +220,8 @@ async function handleVerify() {
     const result = await verifySingPass({
       nric: formData.nric,
       fullName: formData.fullName,
-      dateOfBirth: formData.dateOfBirth
+      dateOfBirth: formData.dateOfBirth,
+      uen: formData.uen // NEW
     })
 
     verificationResult.value = result
@@ -229,6 +249,7 @@ function resetForm() {
   formData.nric = ''
   formData.fullName = ''
   formData.dateOfBirth = ''
+  formData.uen = '' // NEW
   verificationResult.value = null
   errorMessage.value = ''
   verifying.value = false
