@@ -251,7 +251,7 @@ function scrollCategoriesRight() {
                         :key="business.name"
                         @click="selectSuggestion(business)"
                         class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all text-left">
-                        <img :src="business.image" :alt="business.name" class="h-16 w-16 rounded-lg object-cover" />
+                        <img :src="business.profilePic" :alt="business.name" class="h-16 w-16 rounded-lg object-cover" />
                         <div class="flex-1 min-w-0">
                             <p class="font-semibold text-slate-800 dark:text-slate-200 truncate">{{ business.name }}</p>
                             <p class="text-sm text-slate-500 dark:text-slate-400 truncate">{{ business.description || 'Click to view' }}</p>
@@ -424,7 +424,7 @@ function scrollCategoriesRight() {
                             <div v-for="business in filteredBusinesses" :key="business.name"
                                 :data-business="business.name"
                                 class="flex w-64 shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900 transition-transform hover:scale-105">
-                                <img :src="business.image" :alt="business.name" class="h-40 w-full object-cover" />
+                                <img :src="business.profilePic" :alt="business.name" class="h-40 w-full object-cover" />
                                 <p class="px-4 py-3 text-base font-semibold text-slate-800 dark:text-slate-200">
                                     {{ business.name }}
                                 </p>
