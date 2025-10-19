@@ -4,7 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
 import SignUp from '../views/SignUp.vue'
-import Categories from '../views/Categories.vue'
+import Products from '../views/Products.vue'
 import About from '../views/About.vue'
 // Seller Views
 import ForSellers from '../views/ForSellers.vue'
@@ -45,90 +45,84 @@ const authReady = new Promise((resolve) => {
 });
 
 const routes = [
-  {
-    path: '/',
-    // name: 'home',
-    component: Home
-  },
-  {
-    path: '/login/',
-    component: Login
-  },
-  {
-    path: '/signup/',
-    component: SignUp
-  },
-  {
-    path: '/categories/',
-    component: Categories
-  },
-  {
-    path: '/about/',
-    component: About
-  },
-  {
-    path: '/for-sellers/',
-    component: ForSellers
-  },
-  {
-    path: '/seller-profile/',
-    component: SellerProfile
-  },
-  {
-    path: '/seller-orders/',
-    component: SellerOrders
-  },
-  {
-    path: '/current-seller/',
-    component: CurrentSeller
-  },
-  {
-    path: '/:username/',
-    component: BusinessHomepage,
-    name: 'business-home',
-    props: r => ({ username: String(r.params.username || '').toLowerCase() })
-  },
-  {
-    path: '/buyer-dashboard/',
-    component: BuyerDashboard
-  },
-  {
-    path: '/buyer-orders/',
-    component: BuyerOrders
-  },
-  {
-    path: '/buyer-account/',
-    component: BuyerAccount,
-    children: [
-      { path: 'profile', component: ProfileTab },
-      { path: 'addresses', component: AddressesTab },
-      { path: 'banks-cards', component: PaymentsTab },
-      { path: 'notifications', component: NotificationsTab },
-      { path: 'password', component: ChangePasswordTab },
-      { path: 'privacy', component: PrivacySettingsTab },
-    ]
-  },
-  {
-    path: '/buyer-account/email-change-done',
-    component: EmailChangeDone,
-  },
-  {
-    path: '/buyer-account/change-email',
-    component: () => import('../views/buyers/ChangeEmail.vue'),
-  },
-  {
-    path: '/buyer-favourites/',
-    component: BuyerFavourites
-  },
-  {
-    path: '/buyer-messages/',
-    component: BuyerMessages
-  },
-  {
-    path: '/complete-profile/',
-    component: CompleteProfile
-  },
-
+    {
+        path: '/',
+        // name: 'home',
+        component: Home
+    },
+    {
+        path: '/login/',
+        component: Login
+    },
+    {
+        path: '/signup/',
+        component: SignUp
+    },
+    {
+        path: '/products/',
+        component: Products
+    },
+    {
+        path: '/about/',
+        component: About
+    },
+    {
+        path: '/for-sellers/',
+        component: ForSellers
+    },
+    {
+        path: '/seller-profile/',
+        component: SellerProfile
+    },
+    {
+        path: '/seller-orders/',
+        component: SellerOrders
+    },
+    {
+        path: '/business-homepage/',
+        component: BusinessHomepage
+    },
+    {
+        path: '/buyer-dashboard/',
+        component: BuyerDashboard
+    },
+    {
+        path: '/buyer-orders/',
+        component: BuyerOrders
+    },
+    {
+        path: '/buyer-account/',
+        component: BuyerAccount,
+        children: [                                              
+            { path: 'profile', component: ProfileTab },                
+            { path: 'addresses', component: AddressesTab },     
+            { path: 'banks-cards', component: PaymentsTab },    
+            { path: 'notifications', component: NotificationsTab }, 
+            { path: 'password', component: ChangePasswordTab }, 
+            { path: 'privacy', component: PrivacySettingsTab }, 
+        ]        
+    },
+    {
+        path: '/buyer-account/email-change-done',
+        component: EmailChangeDone, 
+    },
+    {
+        path: '/buyer-account/change-email',
+        component: () => import('../views/buyers/ChangeEmail.vue'),
+    },
+    {
+        path: '/buyer-favourites/',
+        component: BuyerFavourites
+    },
+    {
+        path: '/buyer-messages/',
+        component: BuyerMessages
+    },
+    { 
+        path: '/complete-profile/', 
+        component: CompleteProfile 
+    },
+    
 ]
 
 const router = createRouter({
