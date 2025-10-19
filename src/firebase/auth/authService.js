@@ -1,11 +1,17 @@
 // --- Firebase app, auth, db from your config ---
-import { auth, db } from '../firebase_config' 
+import { auth, db } from '../firebase_config'
 
 // --- Firebase Auth (CDN) ---
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
+  // NEW ↓ Google auth bits
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  fetchSignInMethodsForEmail,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"
 
 // --- Firestore (CDN) ---
@@ -13,9 +19,13 @@ import {
   doc,
   getDoc,
   setDoc,
-  runTransaction,
   serverTimestamp,
+  // NEW ↓ needed by reserveUsername
+  runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
+
+// --- File Upload ---
+import { uploadBusinessLicense } from '../services/fileUpload.js'
 
 // Helpers
 const isEmail = (s) => /\S+@\S+\.\S+/.test(s)
@@ -63,9 +73,25 @@ async function reserveUsername(usernameLower, payload) {
   })
 }
 
+/** Ensure a users/{uid} profile exists (used for Google sign-in) */
+async function ensureProviderProfile(user) {
+  const ref = doc(db, 'users', user.uid)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) {
+    await setDoc(ref, {
+      uid: user.uid,
+      email: user.email ?? null,
+      displayName: user.displayName ?? '',
+      // NOTE: do NOT set role or username here
+      createdAt: serverTimestamp(),
+    })
+  }
+}
+
 /**
  * Register user with username + email/password.
  * Requires a valid reCAPTCHA token (captchaToken).
+ * For sellers, can optionally upload business license file.
  */
 export async function registerUserWithUsername({
   username,
@@ -74,7 +100,9 @@ export async function registerUserWithUsername({
   displayName,
   role = 'buyer',
   extra = {},
-  captchaToken, // <-- pass from your SignUp.vue
+  captchaToken,
+  licenseFile = null,      // actual File object
+  onUploadProgress = null, // optional progress callback
 }) {
   // 0) Verify captcha first (server-side via Worker)
   await verifyCaptchaToken(captchaToken)
@@ -86,21 +114,29 @@ export async function registerUserWithUsername({
     throw e
   }
 
-  // Quick pre-check (user-friendly; not a lock)
-  const pre = await getDoc(doc(db, 'usernames', uname))
-  if (pre.exists()) {
-    const e = new Error('username-already-in-use')
-    e.code = 'username-already-in-use'
-    throw e
-  }
-
   // 1) Create auth user
   const cred = await createUserWithEmailAndPassword(auth, email, password)
 
   // 2) Optional displayName
   if (displayName) await updateProfile(cred.user, { displayName })
 
-  // 3) Firestore profile
+  // 3) Upload business license if seller and file provided
+  let licenseFileURL = null
+  if (role === 'seller' && licenseFile) {
+    try {
+      licenseFileURL = await uploadBusinessLicense(
+        licenseFile,
+        cred.user.uid,
+        onUploadProgress
+      )
+    } catch (uploadError) {
+      console.error('License upload failed:', uploadError)
+      // Optionally: await cred.user.delete()
+      throw uploadError
+    }
+  }
+
+  // 4) Firestore profile
   const profile = {
     uid: cred.user.uid,
     email,
@@ -109,18 +145,23 @@ export async function registerUserWithUsername({
     role,
     createdAt: serverTimestamp(),
     ...extra,
+    ...(licenseFileURL ? { licenseFileURL, licenseFileName: licenseFile.name } : {}),
   }
-  await setDoc(doc(db, 'users', cred.user.uid), profile)
 
-  // 4) Reserve username (atomic)
-  await reserveUsername(uname, { uid: cred.user.uid, email })
+  // Clean up any stale field from extra
+  delete profile.licenseFileName
+  if (licenseFileURL) {
+    profile.licenseFileURL = licenseFileURL
+    profile.licenseFileName = licenseFile.name
+  }
+
+  await setDoc(doc(db, 'users', cred.user.uid), profile)
 
   return cred.user
 }
 
 /** Login with username OR email + password */
 export async function loginWithIdentifier(identifier, password, captchaToken) {
-  // Optional: require captcha for login too (e.g., after N failed attempts)
   if (captchaToken) {
     await verifyCaptchaToken(captchaToken)
   }
@@ -138,4 +179,43 @@ export async function loginWithIdentifier(identifier, password, captchaToken) {
   }
   const { user } = await signInWithEmailAndPassword(auth, email, password)
   return user
+}
+
+/* ------------------------------------------------------------------ */
+/*                        GOOGLE AUTH (WEB)                            */
+/* ------------------------------------------------------------------ */
+
+/** Popup flow (works on most desktop browsers) */
+export async function loginWithGooglePopup() {
+  const provider = new GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: 'select_account' })
+  try {
+    const { user } = await signInWithPopup(auth, provider)
+    await ensureProviderProfile(user)
+    return user
+  } catch (err) {
+    // Hint if account exists with different provider
+    if (err?.customData?.email && err.code === 'auth/account-exists-with-different-credential') {
+      const methods = await fetchSignInMethodsForEmail(auth, err.customData.email)
+      err.hint = `This email is already linked to: ${methods.join(', ')}`
+    }
+    throw err
+  }
+}
+
+/** Redirect flow (use on iOS Safari or if popups are blocked) */
+export async function loginWithGoogleRedirect() {
+  const provider = new GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: 'select_account' })
+  await signInWithRedirect(auth, provider)
+}
+
+/** Call on mounted() of your Login page if using redirect */
+export async function handleGoogleRedirectResult() {
+  const res = await getRedirectResult(auth)
+  if (res?.user) {
+    await ensureProviderProfile(res.user)
+    return res.user
+  }
+  return null
 }

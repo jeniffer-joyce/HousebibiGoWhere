@@ -1,10 +1,44 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import { user } from '@/store/user.js';
 import { useCategories } from '@/composables/home/useCategories';
 import { usePreferences } from '@/composables/signup/usePreferences';
 import { useSearch } from '@/composables/useSearch';
 import Loading from '@/components/status/Loading.vue'
+
+// 🔹 NEW: use the same Firebase ESM CDN style your project already uses elsewhere
+import { auth, db } from '@/firebase/firebase_config'
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+
+// 🔹 Local reactive displayName (Firestore preferred)
+const displayName = ref('')
+
+// 🔹 Robust loader: prefer Firestore, then Auth displayName, then email
+async function loadName() {
+    try {
+        const uid = user?.uid || auth.currentUser?.uid
+        const authName = (auth.currentUser?.displayName || '').trim()
+        const authEmail = (auth.currentUser?.email || '').trim()
+
+        if (uid) {
+            const snap = await getDoc(doc(db, 'users', uid))
+            displayName.value =
+                (snap.exists() && (snap.data().displayName || '').trim()) ||
+                authName ||
+                authEmail
+        } else {
+            displayName.value = authName || authEmail || ''
+        }
+    } catch (e) {
+        const fallback = (auth.currentUser?.displayName || auth.currentUser?.email || '').trim()
+        displayName.value = fallback
+        // console.debug('Name fallback due to error:', e) // optional
+    }
+}
+
+onMounted(loadName)
+// Also refresh name when store flips from logged-out to logged-in or uid changes
+watch(() => [user.isLoggedIn, user.uid], () => { loadName() })
 
 const {
     loading,
@@ -51,7 +85,7 @@ const sortedCategories = computed(() => {
     if (!user.isLoggedIn || user.preferences.categories.length === 0) {
         return categories.value;
     }
-    
+
     const preferred = categories.value.filter(c => user.preferences.categories.includes(c.slug));
     const others = categories.value.filter(c => !user.preferences.categories.includes(c.slug));
     return [...preferred, ...others];
@@ -62,9 +96,67 @@ function clearAllPreferences() {
     selectedPreferences.value = [];
 }
 
-// Arrows
+// Arrows for featured businesses
 const scrollContainer = ref(null);
 const scrollAmount = 300;
+const canScroll = ref(false);
+
+// Arrows for category buttons
+const categoryScrollContainer = ref(null);
+const categoryScrollAmount = 200;
+const canScrollCategories = ref(false);
+const showLeftCategoryArrow = ref(false);
+const showRightCategoryArrow = ref(false);
+
+// Check if content overflows horizontally
+function checkScrollable() {
+    if (!scrollContainer.value) return;
+    const el = scrollContainer.value;
+    canScroll.value = el.scrollWidth > el.clientWidth;
+}
+
+// Check if category buttons overflow horizontally
+function checkCategoryScrollable() {
+    if (!categoryScrollContainer.value) return;
+    const el = categoryScrollContainer.value;
+    const hasOverflow = el.scrollWidth > el.clientWidth;
+    canScrollCategories.value = hasOverflow;
+
+    // Check scroll position to show/hide arrows
+    if (hasOverflow) {
+        // Show left arrow if scrolled away from start (with small threshold)
+        showLeftCategoryArrow.value = el.scrollLeft > 5;
+        // Show right arrow if not at the end (with small threshold)
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        showRightCategoryArrow.value = el.scrollLeft < (maxScroll - 5);
+    } else {
+        showLeftCategoryArrow.value = false;
+        showRightCategoryArrow.value = false;
+    }
+}
+
+// Run on load, when filteredBusinesses changes, and when window resizes
+onMounted(() => {
+    checkScrollable();
+    checkCategoryScrollable();
+    window.addEventListener('resize', checkScrollable);
+    window.addEventListener('resize', checkCategoryScrollable);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', checkScrollable);
+    window.removeEventListener('resize', checkCategoryScrollable);
+});
+
+watch(filteredBusinesses, async () => {
+    await nextTick();
+    checkScrollable();
+});
+
+watch(sortedCategories, async () => {
+    await nextTick();
+    checkCategoryScrollable();
+});
 
 function scrollLeft() {
     scrollContainer.value.scrollBy({ left: -scrollAmount, behavior: "smooth" });
@@ -73,6 +165,22 @@ function scrollLeft() {
 function scrollRight() {
     scrollContainer.value.scrollBy({ left: scrollAmount, behavior: "smooth" });
 }
+
+function scrollCategoriesLeft() {
+    if (categoryScrollContainer.value) {
+        categoryScrollContainer.value.scrollBy({ left: -categoryScrollAmount, behavior: "smooth" });
+        // Check after scroll animation
+        setTimeout(() => checkCategoryScrollable(), 350);
+    }
+}
+
+function scrollCategoriesRight() {
+    if (categoryScrollContainer.value) {
+        categoryScrollContainer.value.scrollBy({ left: categoryScrollAmount, behavior: "smooth" });
+        // Check after scroll animation
+        setTimeout(() => checkCategoryScrollable(), 350);
+    }
+}
 </script>
 
 <template>
@@ -80,7 +188,8 @@ function scrollRight() {
         <div class="flex flex-col gap-10">
             <div class="flex flex-col items-center gap-4 text-center">
                 <h2 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-                    <span v-if="user.isLoggedIn">Welcome back, {{ user.name || 'Friend' }}! 👋</span>
+                    <!-- 👇 only this line changed to use the loaded displayName -->
+                    <span v-if="user.isLoggedIn">Welcome back, {{ displayName || 'Friend' }}! 👋</span>
                     <span v-else>Discover Home-Based Businesses</span>
                 </h2>
                 <p class="max-w-2xl text-lg text-slate-600 dark:text-slate-400">
@@ -101,21 +210,20 @@ function scrollRight() {
                                 </path>
                             </svg>
                             <svg v-else class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
                             </svg>
                         </span>
-                        <input
-                            v-model="searchQuery"
+                        <input v-model="searchQuery"
                             class="h-14 w-full rounded-xl border-slate-300 bg-white pl-12 pr-4 text-lg text-slate-800 placeholder-slate-500 shadow-sm focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-400 dark:focus:border-primary"
-                            placeholder="Search for products or businesses..." 
-                            type="text" />
+                            placeholder="Search for products or businesses..." type="text" />
                     </div>
 
                     <!-- Edit Preferences Icon Button (only for logged-in users) -->
-                    <button 
-                        v-if="showEditPreferencesButton" 
-                        @click="showPreferencePrompt = true"
+                    <button v-if="showEditPreferencesButton" @click="showPreferencePrompt = true"
                         class="h-14 w-14 shrink-0 flex items-center justify-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 transition-colors"
                         title="Edit your preferences">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -128,24 +236,25 @@ function scrollRight() {
             </div>
 
             <!-- Search Results Section -->
-            <div v-if="searchQuery.trim() && !loading" class="rounded-xl border border-primary/20 bg-white dark:bg-slate-900 p-6 shadow-lg">
+            <div v-if="searchQuery.trim() && !loading"
+                class="rounded-xl border border-primary/20 bg-white dark:bg-slate-900 p-6 shadow-lg">
                 <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Search Results</h3>
                 <div v-if="isSearching" class="flex justify-center items-center py-8">
                     <Loading size="md" />
                 </div>
-                <div v-else-if="searchSuggestions.length === 0" class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <div v-else-if="searchSuggestions.length === 0"
+                    class="text-center py-8 text-slate-500 dark:text-slate-400">
                     No businesses found matching "{{ searchQuery }}". Try different keywords!
                 </div>
                 <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <button
-                        v-for="business in searchSuggestions"
-                        :key="business.name"
+                    <button v-for="business in searchSuggestions" :key="business.name"
                         @click="selectSuggestion(business)"
                         class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all text-left">
                         <img :src="business.image" :alt="business.name" class="h-16 w-16 rounded-lg object-cover" />
                         <div class="flex-1 min-w-0">
                             <p class="font-semibold text-slate-800 dark:text-slate-200 truncate">{{ business.name }}</p>
-                            <p class="text-sm text-slate-500 dark:text-slate-400 truncate">{{ business.description || 'Click to view' }}</p>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 truncate">{{ business.description ||
+                                'Click to view' }}</p>
                         </div>
                     </button>
                 </div>
@@ -171,11 +280,8 @@ function scrollRight() {
                     </div>
                     <div class="flex w-full max-w-2xl flex-col gap-3">
                         <div class="flex flex-wrap gap-2 justify-center">
-                            <button
-                                v-for="category in categories"
-                                :key="category.slug"
-                                @click="togglePreferenceSelection(category.slug)"
-                                :class="[
+                            <button v-for="category in categories" :key="category.slug"
+                                @click="togglePreferenceSelection(category.slug)" :class="[
                                     'rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
                                     isPreferenceSelected(category.slug)
                                         ? 'bg-primary text-white hover:bg-primary/90'
@@ -184,19 +290,17 @@ function scrollRight() {
                                 {{ category.name }}
                             </button>
                         </div>
-                        
+
                         <!-- Clear All button (only show if there are selections) -->
                         <div v-if="selectedPreferences.length > 0" class="text-center">
-                            <button 
-                                @click="clearAllPreferences"
+                            <button @click="clearAllPreferences"
                                 class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 underline">
                                 Clear all selections
                             </button>
                         </div>
 
                         <div class="flex gap-2 justify-center">
-                            <button 
-                                @click="savePreference"
+                            <button @click="savePreference"
                                 class="rounded-lg bg-primary px-6 py-2.5 font-semibold text-white transition-all hover:bg-primary/90">
                                 {{ selectedPreferences.length > 0 ? 'Save Preferences' : 'Clear All Preferences' }}
                             </button>
@@ -214,82 +318,112 @@ function scrollRight() {
             </div>
 
             <template v-if="!loading">
-                <!-- Categories Section -->
+                <!-- Categories Section with Horizontal Scroll -->
                 <div>
                     <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">{{ categoryHeading }}</h3>
-                    <div class="flex flex-wrap gap-3">
-                        <!-- All Button -->
-                        <button
-                            :class="[
-                                'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-                                isAllSelected
-                                    ? 'bg-primary text-white hover:bg-primary/90' 
-                                    : 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30'
-                            ]"
-                            @click="toggleAll">
+                    <div class="relative flex items-center gap-3">
+                        <!-- Static "All" Button -->
+                        <button :class="[
+                            'rounded-lg px-4 py-2 text-sm font-medium transition-colors shrink-0',
+                            isAllSelected
+                                ? 'bg-primary text-white hover:bg-primary/90'
+                                : 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30'
+                        ]" @click="toggleAll">
                             All
                         </button>
-                        
-                        <!-- Category Buttons (sorted with preferences first) -->
-                        <button
-                            v-for="category in sortedCategories" 
-                            :key="category.slug"
-                            :class="[
-                                'rounded-lg px-4 py-2 text-sm font-medium transition-colors relative',
-                                isCategorySelected(category.slug)
-                                    ? 'bg-primary text-white hover:bg-primary/90' 
-                                    : 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30'
-                            ]"
-                            @click="toggleCategory(category.slug)">
-                            <span class="flex items-center gap-1.5">
-                                <!-- Heart icon for preferred categories -->
-                                <svg v-if="isPreferredCategory(category.slug)" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
+
+                        <!-- Scrollable Categories Container -->
+                        <div class="relative flex-1 min-w-0">
+                            <!-- Left Gradient Fade + Arrow -->
+                            <div v-if="showLeftCategoryArrow"
+                                class="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-white dark:from-slate-950 to-transparent z-10 pointer-events-none">
+                            </div>
+                            <button v-if="showLeftCategoryArrow" @click="scrollCategoriesLeft"
+                                class="absolute left-2 top-1/2 -translate-y-1/2 z-20 rounded-full p-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-md"
+                                aria-label="Scroll categories left">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path>
                                 </svg>
-                                {{ category.name }}
-                            </span>
-                        </button>
+                            </button>
+
+                            <!-- Category Buttons Scroll Container -->
+                            <div ref="categoryScrollContainer" @scroll="checkCategoryScrollable"
+                                class="hide-scrollbar flex gap-3 overflow-x-auto scroll-smooth">
+                                <button v-for="category in sortedCategories" :key="category.slug" :class="[
+                                    'rounded-lg px-4 py-2 text-sm font-medium transition-colors shrink-0 whitespace-nowrap',
+                                    isCategorySelected(category.slug)
+                                        ? 'bg-primary text-white hover:bg-primary/90'
+                                        : 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30'
+                                ]" @click="toggleCategory(category.slug)">
+                                    <span class="flex items-center gap-1.5">
+                                        <!-- Heart icon for preferred categories -->
+                                        <svg v-if="isPreferredCategory(category.slug)" class="h-3.5 w-3.5"
+                                            fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd"
+                                                d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                                                clip-rule="evenodd"></path>
+                                        </svg>
+                                        {{ category.name }}
+                                    </span>
+                                </button>
+                            </div>
+
+                            <!-- Right Gradient Fade + Arrow -->
+                            <div v-if="showRightCategoryArrow"
+                                class="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white dark:from-slate-950 to-transparent z-10 pointer-events-none">
+                            </div>
+                            <button v-if="showRightCategoryArrow" @click="scrollCategoriesRight"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 z-20 rounded-full p-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-md"
+                                aria-label="Scroll categories right">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Featured Businesses -->
                 <div>
                     <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Featured Businesses</h3>
-                    <div v-if="filteredBusinesses.length === 0" class="text-center py-12 text-slate-500 dark:text-slate-400">
+                    <div v-if="filteredBusinesses.length === 0"
+                        class="text-center py-12 text-slate-500 dark:text-slate-400">
                         No businesses found for the selected categories. Try selecting different categories!
                     </div>
                     <div v-else class="relative">
                         <!-- Left Arrow -->
-                        <button
-                            @click="scrollLeft"
+                        <button v-if="canScroll" @click="scrollLeft"
                             class="absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
                             aria-label="Scroll left">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 19l-7-7 7-7"></path>
                             </svg>
                         </button>
 
                         <!-- Scroll Container -->
-                        <div
-                            ref="scrollContainer"
+                        <div ref="scrollContainer"
                             class="hide-scrollbar -mx-4 flex gap-6 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 scroll-smooth">
-                            <div v-for="business in filteredBusinesses" :key="business.name"
+                            <RouterLink :to="`/shop-details/${business.businessId}`"
+                                v-for="business in filteredBusinesses" :key="business.name"
                                 :data-business="business.name"
                                 class="flex w-64 shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900 transition-transform hover:scale-105">
                                 <img :src="business.image" :alt="business.name" class="h-40 w-full object-cover" />
                                 <p class="px-4 py-3 text-base font-semibold text-slate-800 dark:text-slate-200">
                                     {{ business.name }}
                                 </p>
-                            </div>
+                            </RouterLink>
                         </div>
 
                         <!-- Right Arrow -->
-                        <button
-                            @click="scrollRight"
+                        <button v-if="canScroll" @click="scrollRight"
                             class="absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
                             aria-label="Scroll right">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                                </path>
                             </svg>
                         </button>
                     </div>
@@ -332,7 +466,9 @@ function scrollRight() {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .animate-spin {

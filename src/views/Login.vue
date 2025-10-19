@@ -10,17 +10,44 @@
         </p>
       </div>
 
-      <form class="mt-8 space-y-6" @submit.prevent="onSubmit">
+      <!-- Google Sign-In FIRST -->
+      <div class="space-y-4">
+        <button
+          type="button"
+          @click="onGoogleLogin"
+          :disabled="loading || loadingGoogle"
+          class="w-full inline-flex items-center justify-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold
+                 border border-background-dark/15 dark:border-background-light/15
+                 bg-white hover:bg-gray-50 dark:bg-[#0E1526] dark:hover:bg-[#111a2c]
+                 text-background-dark dark:text-background-light
+                 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          aria-label="Sign in with Google"
+        >
+          <img :src="googleLogo" alt="Google" class="h-5 w-5" />
+          <span v-if="!loadingGoogle">Sign in with Google</span>
+          <span v-else>Connecting…</span>
+        </button>
+
+        <!-- Divider -->
+        <div class="flex items-center gap-4">
+          <div class="h-px grow bg-background-dark/10 dark:bg-background-light/10"></div>
+          <span class="text-xs text-background-dark/60 dark:text-background-light/60">OR</span>
+          <div class="h-px grow bg-background-dark/10 dark:bg-background-light/10"></div>
+        </div>
+      </div>
+
+      <!-- Email / password form -->
+      <form class="mt-6 space-y-6" @submit.prevent="onSubmit">
         <div class="-space-y-px">
           <!-- Identifier -->
           <div>
-            <label class="sr-only" for="identifier">Username or email</label>
+            <label class="sr-only" for="identifier">Email</label>
             <input
               id="identifier"
               v-model.trim="identifier"
               type="text"
               inputmode="email"
-              autocomplete="username email"
+              autocomplete="email"
               autocapitalize="none"
               spellcheck="false"
               placeholder="Username or email"
@@ -66,16 +93,15 @@
           </div>
         </div>
 
-        <div class="flex items-center justify-end">
-          <div class="text-sm">
-            <a class="font-medium text-primary hover:text-primary/80" href="#">
-              Forgot your password?
-            </a>
-          </div>
+        <!-- Forgot password -->
+        <div class="flex items-center justify-end -mt-2">
+          <a class="text-sm font-medium text-primary hover:text-primary/80" href="#">
+            Forgot your password?
+          </a>
         </div>
 
-        <!-- reCAPTCHA -->
-        <div class="mt-4">
+        <!-- reCAPTCHA (only for password flow) -->
+        <div class="mt-2">
           <div class="flex justify-center">
             <div id="recaptcha-login" class="inline-block"></div>
           </div>
@@ -114,6 +140,17 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { loginWithIdentifier } from '../firebase/auth/authService'
+import {
+  loginWithGooglePopup,
+  handleGoogleRedirectResult,
+} from '../firebase/auth/authService'
+
+// 🔽 Add Firestore so we can decide where to send the user AFTER Google sign-in
+import { db } from '@/firebase/firebase_config'
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+
+// Google logo
+import googleLogo from '@/assets/google-logo.png'
 
 const router = useRouter()
 
@@ -122,7 +159,7 @@ const identifier = ref('')
 const password = ref('')
 const showPassword = ref(false)
 
-// reCAPTCHA
+// reCAPTCHA (for password flow only)
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 const captchaToken = ref('')
 const captchaError = ref(false)
@@ -167,7 +204,37 @@ function resetRecaptcha () {
   captchaToken.value = ''
 }
 
+// 👉 helper: route user depending on Firestore profile
+async function routeAfterGoogle(uid) {
+  const snap = await getDoc(doc(db, 'users', uid))
+  const data = snap.exists() ? snap.data() : null
+
+  // If no doc OR missing role/username ⇒ Complete Profile
+  if (!data || !data.role || !data.username) {
+    await router.replace({ path: '/complete-profile/', query: { first: 1 } })
+    return
+  }
+
+  // Otherwise by role
+  if (data.role === 'seller') {
+    await router.replace('/seller-profile/')
+  } else {
+    await router.replace('/')
+  }
+}
+
 onMounted(async () => {
+  // If you ever use redirect flow, handle it here and route immediately
+  try {
+    const u = await handleGoogleRedirectResult()
+    if (u) {
+      await routeAfterGoogle(u.uid)
+      return
+    }
+  } catch (e) {
+    console.error(e)
+  }
+
   if (!recaptchaSiteKey) {
     console.error('Missing VITE_RECAPTCHA_SITE_KEY')
     return
@@ -182,6 +249,7 @@ onBeforeUnmount(() => {
 })
 
 const loading = ref(false)
+const loadingGoogle = ref(false)
 const errorMsg = ref('')
 
 async function onSubmit () {
@@ -201,9 +269,25 @@ async function onSubmit () {
   }
 }
 
+async function onGoogleLogin () {
+  loadingGoogle.value = true
+  errorMsg.value = ''
+  try {
+    // 1) Sign in with Google
+    const u = await loginWithGooglePopup()
+    // 2) Route based on Firestore profile (force Complete Profile if missing)
+    await routeAfterGoogle(u.uid)
+  } catch (e) {
+    console.error(e)
+    errorMsg.value = e?.hint || e?.message || 'Google sign-in failed.'
+  } finally {
+    loadingGoogle.value = false
+  }
+}
+
 function mapErr (err) {
   const code = err?.code || err?.message || ''
-  if (code.includes('auth/user-not-found')) return 'Username/Email not found!'
+  if (code.includes('auth/user-not-found')) return 'Email not found!'
   if (code.includes('auth/wrong-password')) return 'Incorrect password!'
   if (code.includes('captcha')) return 'Please complete the reCAPTCHA.'
   return 'Login failed. Please try again.'
