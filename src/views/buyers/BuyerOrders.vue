@@ -1,221 +1,418 @@
-<script setup>
-import { ref } from 'vue';
-import BuyerSideBar from '@/components/layout/BuyerSideBar.vue';
-
-// Sidebar collapsed state
-const isSidebarCollapsed = ref(false);
-
-function handleSidebarToggle(collapsed) {
-    isSidebarCollapsed.value = collapsed;
-}
-
-// Mock data for orders
-const orders = ref([
-    {
-        id: 1,
-        orderNumber: 'ORD-001',
-        title: 'Delicious homemade meals',
-        business: 'The Cozy Kitchen',
-        date: 'July 10, 2024',
-        status: 'Delivered',
-        amount: '$45.00',
-        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'
-    },
-    {
-        id: 2,
-        orderNumber: 'ORD-002',
-        title: 'Handcrafted clothing',
-        business: 'Fashion Finds',
-        date: 'July 5, 2024',
-        status: 'In Transit',
-        amount: '$89.99',
-        image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400&h=300&fit=crop'
-    },
-    {
-        id: 3,
-        orderNumber: 'ORD-003',
-        title: 'Unique handmade crafts',
-        business: 'Crafty Corner',
-        date: 'June 28, 2024',
-        status: 'Delivered',
-        amount: '$34.50',
-        image: 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=400&h=300&fit=crop'
-    },
-    {
-        id: 4,
-        orderNumber: 'ORD-004',
-        title: 'Fresh baked goods',
-        business: 'The Cozy Kitchen',
-        date: 'June 15, 2024',
-        status: 'Delivered',
-        amount: '$28.00',
-        image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop'
-    }
-]);
-
-const activeFilter = ref('all');
-
-const filteredOrders = computed(() => {
-    if (activeFilter.value === 'all') return orders.value;
-    return orders.value.filter(order => 
-        order.status.toLowerCase() === activeFilter.value.toLowerCase()
-    );
-});
-
-function getStatusColor(status) {
-    switch(status.toLowerCase()) {
-        case 'delivered':
-            return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-        case 'in transit':
-            return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-        case 'processing':
-            return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-        case 'cancelled':
-            return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-        default:
-            return 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200';
-    }
-}
-</script>
-
 <template>
-    <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
-        <!-- Sidebar Navigation -->
-        <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
+  <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+    <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
 
-        <!-- Main Content Area -->
-        <main 
-            class="flex-1 p-8 transition-all duration-300"
-            :class="isSidebarCollapsed ? 'ml-20' : 'ml-64'">
+    <main
+      class="flex-1 transition-all duration-300"
+      :class="isSidebarCollapsed ? 'ml-20' : 'ml-64'"
+    >
+      <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+            My Orders
+          </h1>
+
+          <!-- Search -->
+          <div class="relative w-full sm:w-[380px]">
+            <input
+              v-model.trim="query"
+              type="text"
+              placeholder="Search orders, products, or shops…"
+              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 pl-11 text-slate-800 placeholder-slate-500 shadow-sm focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-400"
+            />
+            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        <!-- Full-width, equally spaced tabs -->
+        <div class="mb-6">
+          <div class="flex w-full gap-2 rounded-xl bg-white p-2 shadow-sm dark:bg-slate-800">
+            <button
+              v-for="t in tabs"
+              :key="t.key"
+              @click="active = t.key"
+              class="relative inline-flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors flex-1 basis-0"
+              :class="active === t.key
+                ? 'bg-primary text-white'
+                : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'"
+            >
+              {{ t.label }}
+              <span
+                v-if="tabCounts[t.key] > 0"
+                class="inline-flex items-center justify-center rounded-full bg-white/90 text-primary text-xs font-bold px-2 py-0.5"
+              >
+                {{ tabCounts[t.key] }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty -->
+        <div
+          v-if="visibleOrders.length === 0"
+          class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700 bg-white dark:bg-slate-800"
+        >
+          <div class="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <svg class="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5 6m2 7l-2 7m0 0h12m-12 0a2 2 0 104 0m8 0a2 2 0 104 0" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-slate-900 dark:text-white">No orders here yet</h3>
+          <p class="mt-1 text-slate-600 dark:text-slate-400">Explore our categories and place your first order.</p>
+          <RouterLink
+            to="/categories/"
+            class="mt-6 inline-flex items-center rounded-lg bg-primary px-5 py-2.5 text-white font-semibold hover:bg-primary/90"
+          >
+            Browse Categories
+          </RouterLink>
+        </div>
+
+        <!-- Orders -->
+        <div v-else class="space-y-6">
+          <div
+            v-for="o in visibleOrders"
+            :key="o.orderId"
+            class="overflow-hidden rounded-xl bg-white shadow-sm dark:bg-slate-800"
+          >
             <!-- Header -->
-            <div class="flex items-center justify-between mb-8">
-                <div>
-                    <h1 class="text-3xl font-bold text-slate-900 dark:text-white">My Orders</h1>
-                    <p class="text-slate-600 dark:text-slate-400 mt-1">Track and manage your orders</p>
-                </div>
-                <div class="flex items-center gap-4">
-                    <!-- Search -->
-                    <div class="relative">
-                        <input
-                            type="text"
-                            placeholder="Search orders"
-                            class="w-64 pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
-                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                    </div>
-                    <!-- Notifications -->
-                    <button class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                        </svg>
-                    </button>
-                    <!-- Profile -->
-                    <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="Profile" class="h-10 w-10 rounded-full border-2 border-primary" />
-                </div>
+            <div class="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700">
+              <div class="flex flex-wrap items-center gap-3">
+                <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">Order #</span>
+                <span class="rounded-md bg-slate-100 px-2 py-1 text-sm font-mono text-slate-800 dark:bg-slate-700 dark:text-slate-200">
+                  {{ o.orderId }}
+                </span>
+
+                <span class="hidden sm:inline h-5 w-px bg-slate-200 dark:bg-slate-700"></span>
+
+                <span class="text-sm text-slate-500 dark:text-slate-400">Placed on</span>
+                <span class="text-sm font-medium text-slate-800 dark:text-slate-200">{{ formatDate(o.purchaseDate) }}</span>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <span class="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Status:</span>
+                <span
+                  class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs sm:text-sm font-semibold"
+                  :class="statusMap[o.status].cls"
+                  :title="statusMap[o.status].hint"
+                >
+                  <span class="h-2 w-2 rounded-full" :class="statusMap[o.status].dot"></span>
+                  {{ statusMap[o.status].label }}
+                </span>
+              </div>
             </div>
 
-            <!-- Filter Tabs -->
-            <div class="flex gap-4 mb-6 border-b border-slate-200 dark:border-slate-700">
-                <button
-                    @click="activeFilter = 'all'"
-                    :class="[
-                        'pb-3 px-4 font-medium transition-colors',
-                        activeFilter === 'all'
-                            ? 'text-primary border-b-2 border-primary'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    ]">
-                    All Orders
-                </button>
-                <button
-                    @click="activeFilter = 'delivered'"
-                    :class="[
-                        'pb-3 px-4 font-medium transition-colors',
-                        activeFilter === 'delivered'
-                            ? 'text-primary border-b-2 border-primary'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    ]">
-                    Delivered
-                </button>
-                <button
-                    @click="activeFilter = 'in transit'"
-                    :class="[
-                        'pb-3 px-4 font-medium transition-colors',
-                        activeFilter === 'in transit'
-                            ? 'text-primary border-b-2 border-primary'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    ]">
-                    In Transit
-                </button>
+            <!-- Shop -->
+            <div class="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700/60">
+              <div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                <svg class="h-5 w-5 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 21v-8a2 2 0 012-2h2m12 10v-8a2 2 0 00-2-2h-2M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+                <span class="font-semibold">Shop:</span>
+                <span class="font-medium">{{ o.shopName }}</span>
+              </div>
+
+              <RouterLink
+                :to="`/seller-profile/?id=${o.items[0]?.businessId || ''}`"
+                class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                Visit Shop
+              </RouterLink>
             </div>
 
-            <!-- Orders List -->
-            <div class="space-y-4">
-                <div
-                    v-for="order in filteredOrders"
-                    :key="order.id"
-                    class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="flex gap-6">
-                        <!-- Order Image -->
-                        <img :src="order.image" :alt="order.title" class="w-32 h-32 rounded-lg object-cover" />
-                        
-                        <!-- Order Details -->
-                        <div class="flex-1">
-                            <div class="flex items-start justify-between mb-2">
-                                <div>
-                                    <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-1">{{ order.title }}</h3>
-                                    <p class="text-sm text-slate-600 dark:text-slate-400">{{ order.business }}</p>
-                                </div>
-                                <span :class="['px-3 py-1 rounded-full text-sm font-medium', getStatusColor(order.status)]">
-                                    {{ order.status }}
-                                </span>
-                            </div>
-                            
-                            <div class="grid grid-cols-3 gap-4 mt-4">
-                                <div>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">Order Number</p>
-                                    <p class="text-sm font-medium text-slate-900 dark:text-white">{{ order.orderNumber }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">Order Date</p>
-                                    <p class="text-sm font-medium text-slate-900 dark:text-white">{{ order.date }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">Total Amount</p>
-                                    <p class="text-sm font-medium text-slate-900 dark:text-white">{{ order.amount }}</p>
-                                </div>
-                            </div>
-
-                            <div class="flex gap-3 mt-4">
-                                <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                                    View Details
-                                </button>
-                                <button class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                                    Track Order
-                                </button>
-                                <button v-if="order.status === 'Delivered'" class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                                    Write Review
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+            <!-- Items -->
+            <div class="divide-y divide-slate-100 dark:divide-slate-700/60">
+              <div
+                v-for="(it, idx) in o.items"
+                :key="idx"
+                class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div class="flex min-w-0 items-center gap-4">
+                  <img
+                    :src="it.img_url"
+                    :alt="it.item_name"
+                    class="h-16 w-16 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                  />
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                      {{ it.item_name }}
+                    </p>
+                    <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                      Qty: {{ it.quantity }}
+                      <span v-if="it.size" class="mx-2">•</span>
+                      <span v-if="it.size">Size: {{ it.size }}</span>
+                    </p>
+                    <p class="mt-1 text-sm font-medium text-slate-800 dark:text-slate-200">
+                      ${{ it.price.toFixed(2) }}
+                    </p>
+                  </div>
                 </div>
-
-                <!-- Empty State -->
-                <div v-if="filteredOrders.length === 0" class="text-center py-16">
-                    <svg class="h-24 w-24 mx-auto text-slate-300 dark:text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
-                    </svg>
-                    <h3 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">No orders found</h3>
-                    <p class="text-slate-600 dark:text-slate-400">You haven't placed any orders yet.</p>
-                </div>
+              </div>
             </div>
-        </main>
-    </div>
+
+            <!-- Footer -->
+            <div class="flex flex-col gap-4 border-top border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700/60">
+              <div class="text-right sm:text-left">
+                <p class="text-sm text-slate-500 dark:text-slate-400">Total</p>
+                <p class="text-xl font-bold text-slate-900 dark:text-white">
+                  ${{ o.totalPrice.toFixed(2) }}
+                </p>
+              </div>
+
+              <!-- Single actions row -->
+              <div class="flex flex-wrap items-center justify-end gap-2">
+                <!-- To Pay -->
+                <template v-if="o.status === 'to_pay'">
+                  <button
+                    class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                    @click="payNow(o)"
+                  >
+                    Pay Now
+                  </button>
+                  <button
+                    class="inline-flex items-center rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    @click="cancelOrder(o)"
+                  >
+                    Cancel Order
+                  </button>
+                </template>
+
+                <!-- To Ship -->
+                <template v-else-if="o.status === 'to_ship'">
+                  <button
+                    class="inline-flex items-center rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    @click="cancelOrder(o)"
+                  >
+                    Cancel Order
+                  </button>
+                </template>
+
+                <!-- To Receive -->
+                <template v-else-if="o.status === 'to_receive'">
+                  <button
+                    class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                    @click="markReceived(o)"
+                  >
+                    Order Received
+                  </button>
+                </template>
+
+                <!-- Completed -->
+                <template v-else-if="o.status === 'completed'">
+                  <button
+                    class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                    @click="rateOrder(o)"
+                  >
+                    Rate
+                  </button>
+                  <button
+                    class="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                    @click="requestReturn(o)"
+                  >
+                    Request Return/Refund
+                  </button>
+                </template>
+
+                <!-- Cancelled -->
+                <template v-else-if="o.status === 'cancelled'">
+                  <button
+                    class="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                    @click="viewRefund(o)"
+                  >
+                    View Refund Details
+                  </button>
+                </template>
+
+                <!-- Return / Refund -->
+                <template v-else-if="o.status === 'return_refund'">
+                  <button
+                    class="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                    @click="viewRefund(o)"
+                  >
+                    View Refund Details
+                  </button>
+                </template>
+
+                <!-- Always show one Contact Seller -->
+                <button
+                  class="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  Contact Seller
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- /Orders -->
+      </div>
+    </main>
+  </div>
 </template>
 
-<style scoped>
-button {
-    transition: all 0.2s ease;
+<script setup>
+import { ref, computed } from 'vue'
+import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
+
+/* Sidebar collapsed state */
+const isSidebarCollapsed = ref(false)
+function handleSidebarToggle(collapsed) {
+  isSidebarCollapsed.value = collapsed
 }
+
+/* Demo orders (with multi-item examples) */
+const orders = ref([
+  {
+    orderId: 'ORD-20241001-001',
+    uid: 'user_abc',
+    purchaseDate: '2024-10-01T15:42:00+08:00',
+    shopName: 'The Cozy Kitchen',
+    status: 'to_pay',
+    items: [
+      { img_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop', item_name: 'Delicious Homemade Meals (Family Set)', price: 18.0, quantity: 1, size: 'Family', businessId: 'biz_kitchen_01' },
+      { img_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop', item_name: 'Fresh Baked Croissants', price: 4.5, quantity: 2, size: null, businessId: 'biz_kitchen_01' }
+    ],
+    totalPrice: 27.0
+  },
+  {
+    orderId: 'ORD-20240929-007',
+    uid: 'user_abc',
+    purchaseDate: '2024-09-29T13:05:00+08:00',
+    shopName: 'Urban Threads',
+    status: 'to_ship',
+    items: [
+      { img_url: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=400&h=300&fit=crop', item_name: 'Denim Jacket', price: 59.9, quantity: 1, size: 'L', businessId: 'biz_urban_22' },
+      { img_url: 'https://images.unsplash.com/photo-1520975930846-151f37f0b1b0?w=400&h=300&fit=crop', item_name: 'Basic Tee (2-Pack)', price: 22.0, quantity: 1, size: 'M', businessId: 'biz_urban_22' }
+    ],
+    totalPrice: 81.9
+  },
+  {
+    orderId: 'ORD-20240928-002',
+    uid: 'user_abc',
+    purchaseDate: '2024-09-28T12:05:00+08:00',
+    shopName: 'Fashion Finds',
+    status: 'to_ship',
+    items: [
+      { img_url: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400&h=300&fit=crop', item_name: 'Handcrafted Linen Shirt', price: 39.9, quantity: 1, size: 'M', businessId: 'biz_fashion_88' }
+    ],
+    totalPrice: 39.9
+  },
+  {
+    orderId: 'ORD-20240925-003',
+    uid: 'user_abc',
+    purchaseDate: '2024-09-25T10:22:00+08:00',
+    shopName: 'Crafty Corner',
+    status: 'to_receive',
+    items: [
+      { img_url: 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=400&h=300&fit=crop', item_name: 'Macrame Wall Hanging', price: 22.0, quantity: 1, size: '45x45', businessId: 'biz_craft_12' },
+      { img_url: 'https://images.unsplash.com/photo-1473186505569-9c61870c11f9?w=400&h=300&fit=crop', item_name: 'Handmade Ceramic Mug', price: 14.0, quantity: 2, size: null, businessId: 'biz_craft_12' }
+    ],
+    totalPrice: 50.0
+  },
+  {
+    orderId: 'ORD-20240920-004',
+    uid: 'user_abc',
+    purchaseDate: '2024-09-20T18:10:00+08:00',
+    shopName: 'The Cozy Kitchen',
+    status: 'completed',
+    items: [
+      { img_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop', item_name: 'Chocolate Cake', price: 28.0, quantity: 1, size: null, businessId: 'biz_kitchen_01' }
+    ],
+    totalPrice: 28.0
+  },
+  {
+    orderId: 'ORD-20240918-005',
+    uid: 'user_abc',
+    purchaseDate: '2024-09-18T09:30:00+08:00',
+    shopName: 'Zen Home Spa',
+    status: 'cancelled',
+    items: [
+      { img_url: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=400&h=300&fit=crop', item_name: 'Aromatherapy Candle Set', price: 19.9, quantity: 1, size: null, businessId: 'biz_zen_07' }
+    ],
+    totalPrice: 19.9
+  },
+  {
+    orderId: 'ORD-20240916-006',
+    uid: 'user_abc',
+    purchaseDate: '2024-09-16T14:45:00+08:00',
+    shopName: 'Crafty Corner',
+    status: 'return_refund',
+    items: [
+      { img_url: 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=400&h=300&fit=crop', item_name: 'Knitted Throw Blanket', price: 36.0, quantity: 1, size: '130x170', businessId: 'biz_craft_12' }
+    ],
+    totalPrice: 36.0
+  }
+])
+
+/* Tabs */
+const tabs = [
+  { key: 'all',           label: 'All' },
+  { key: 'to_pay',        label: 'To Pay' },
+  { key: 'to_ship',       label: 'To Ship' },
+  { key: 'to_receive',    label: 'To Receive' },
+  { key: 'completed',     label: 'Completed' },
+  { key: 'cancelled',     label: 'Cancelled' },
+  { key: 'return_refund', label: 'Return/Refund' }
+]
+const active = ref('all')
+const query  = ref('')
+
+/* Distinct status colors */
+const statusMap = {
+  to_pay:        { label: 'To Pay',        cls: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200',         dot: 'bg-blue-600',   hint: 'Awaiting payment' },
+  to_ship:       { label: 'To Ship',       cls: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200', dot: 'bg-indigo-600', hint: 'Seller preparing shipment' },
+  to_receive:    { label: 'To Receive',    cls: 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-200',             dot: 'bg-sky-600',    hint: 'On the way' },
+  completed:     { label: 'Delivered',     cls: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200',     dot: 'bg-green-600',  hint: 'Order completed' },
+  cancelled:     { label: 'Cancelled',     cls: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200',       dot: 'bg-slate-500',  hint: 'Order cancelled' },
+  return_refund: { label: 'Return/Refund', cls: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200',     dot: 'bg-amber-600',  hint: 'Return/refund in progress' }
+}
+
+/* Counts per tab */
+const tabCounts = computed(() => {
+  const c = { all: orders.value.length, to_pay: 0, to_ship: 0, to_receive: 0, completed: 0, cancelled: 0, return_refund: 0 }
+  for (const o of orders.value) if (c[o.status] !== undefined) c[o.status]++
+  return c
+})
+
+/* Visible orders (search/filter/sort) */
+const visibleOrders = computed(() => {
+  const q = query.value.toLowerCase()
+  const filtered = orders.value.filter(o => {
+    const inTab = active.value === 'all' ? true : o.status === active.value
+    if (!inTab) return false
+    if (!q) return true
+    const hay = [o.orderId, o.shopName, ...o.items.map(i => i.item_name)].join(' ').toLowerCase()
+    return hay.includes(q)
+  })
+  return filtered.sort((a, b) => +new Date(b.purchaseDate) - +new Date(a.purchaseDate))
+})
+
+/* Utils */
+function formatDate(iso) {
+  try {
+    return new Date(iso).toLocaleString('en-SG', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    })
+  } catch { return iso }
+}
+
+/* Demo/no-op handlers */
+function payNow(o)       { o.status = 'to_ship' }
+function cancelOrder(o)  { o.status = 'cancelled' }
+function markReceived(o) { o.status = 'completed' }
+function rateOrder(o)    { alert(`Rate order ${o.orderId}`) }
+function requestReturn(o){ o.status = 'return_refund' }
+function viewRefund(o)   { alert(`Refund details for ${o.orderId}`) }
+</script>
+
+<style scoped>
+/* purely cosmetic, no Tailwind directives here */
+.border-top { border-top-width: 1px; }
 </style>
