@@ -315,7 +315,7 @@ import { auth } from '../firebase/firebase_config'
 import { user } from '@/store/user.js'
 import { useRoute } from 'vue-router'
 import SingPassVerificationModal from '@/components/SingPassVerificationModal.vue'
-import { verifySingPass, markBusinessAsRegistered } from '@/firebase/services/singpassVerification'
+import { verifySingPass } from '@/firebase/services/singpassVerification'
 
 const route = useRoute()
 const router = useRouter()

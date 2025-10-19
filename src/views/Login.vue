@@ -50,7 +50,7 @@
               autocomplete="email"
               autocapitalize="none"
               spellcheck="false"
-              placeholder="Username or email"
+              placeholder="Email"
               class="form-input appearance-none rounded-none relative block w-full px-3 py-3 border border-background-dark/20 dark:border-background-light/20 bg-background-light dark:bg-background-dark text-background-dark dark:text-background-light placeholder-opacity-50 focus:outline-none focus:ring-primary focus:border-primary text-sm rounded-t-lg"
               required
             />
@@ -145,8 +145,8 @@ import {
   handleGoogleRedirectResult,
 } from '../firebase/auth/authService'
 
-// 🔽 Add Firestore so we can decide where to send the user AFTER Google sign-in
-import { db } from '@/firebase/firebase_config'
+// 🔽 Firestore + Auth (added `auth`)
+import { db, auth } from '@/firebase/firebase_config'
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
 
 // Google logo
@@ -204,23 +204,25 @@ function resetRecaptcha () {
   captchaToken.value = ''
 }
 
-// 👉 helper: route user depending on Firestore profile
-async function routeAfterGoogle(uid) {
+// 👉 tiny helper to send sellers to /:username/
+async function goToSellerHome(uid) {
   const snap = await getDoc(doc(db, 'users', uid))
   const data = snap.exists() ? snap.data() : null
-
-  // If no doc OR missing role/username ⇒ Complete Profile
-  if (!data || !data.role || !data.username) {
-    await router.replace({ path: '/complete-profile/', query: { first: 1 } })
-    return
+  const username = String(data?.username || '').trim().toLowerCase()
+  if (data?.role === 'seller' && username) {
+    await router.replace({ name: 'business-home', params: { username } })
+    return true
   }
+  return false
+}
 
-  // Otherwise by role
-  if (data.role === 'seller') {
-    await router.replace('/seller-profile/')
-  } else {
-    await router.replace('/')
-  }
+// 👉 route user depending on Firestore profile (Google + email flows reuse this)
+async function routeAfterLogin(uid) {
+  // Try seller home first
+  const went = await goToSellerHome(uid)
+  if (went) return
+  // Otherwise default home
+  await router.replace('/')
 }
 
 onMounted(async () => {
@@ -228,7 +230,7 @@ onMounted(async () => {
   try {
     const u = await handleGoogleRedirectResult()
     if (u) {
-      await routeAfterGoogle(u.uid)
+      await routeAfterLogin(u.uid)
       return
     }
   } catch (e) {
@@ -259,7 +261,10 @@ async function onSubmit () {
   try {
     await loginWithIdentifier(identifier.value.trim(), password.value, captchaToken.value)
     resetRecaptcha()
-    router.push('/')
+    // 🔽 after email/password login, route by role/username
+    const uid = auth.currentUser?.uid
+    if (uid) await routeAfterLogin(uid)
+    else await router.replace('/')
   } catch (err) {
     console.error(err)
     errorMsg.value = mapErr(err)
@@ -275,8 +280,8 @@ async function onGoogleLogin () {
   try {
     // 1) Sign in with Google
     const u = await loginWithGooglePopup()
-    // 2) Route based on Firestore profile (force Complete Profile if missing)
-    await routeAfterGoogle(u.uid)
+    // 2) Route based on Firestore profile (username/role)
+    await routeAfterLogin(u.uid)
   } catch (e) {
     console.error(e)
     errorMsg.value = e?.hint || e?.message || 'Google sign-in failed.'

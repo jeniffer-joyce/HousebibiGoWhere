@@ -3,16 +3,19 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { user } from '@/store/user.js'
 import { auth, db } from '@/firebase/firebase_config'
 import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
-/* 🔽 NEW: Firestore helpers to read displayName */
+/* 🔽 Firestore helpers to read displayName + username */
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-/* 🔽 NEW: reactive name shown in the navbar */
-const displayName = ref('')
+/* ---------------------------------------
+ * Name & Username used in navbar/links
+ * --------------------------------------- */
+const displayName = ref('')     // shown text
+const username = ref('')        // 🔵 NEW: used for /:username/ routing
 
-/* 🔽 NEW: robust loader that prefers Firestore, falls back to Auth */
+/* Robust loader: prefers Firestore, falls back to Auth */
 async function loadName () {
   try {
     const uid = user?.uid || auth.currentUser?.uid
@@ -21,17 +24,36 @@ async function loadName () {
 
     if (uid) {
       const snap = await getDoc(doc(db, 'users', uid))
+      const data = snap.exists() ? (snap.data() || {}) : {}
       displayName.value =
-        (snap.exists() && (snap.data().displayName || '').trim()) ||
+        (data.displayName || '').trim() ||
         authName ||
         authEmail
+
+      // 🔵 NEW: capture username from /users so we can route to /:username/
+      username.value =
+        String(data.username || user?.username || '').trim().toLowerCase()
     } else {
       displayName.value = authName || authEmail || ''
+      // fallback (no uid) — username stays empty
+      username.value = String(user?.username || '').trim().toLowerCase()
     }
   } catch {
     displayName.value = (auth.currentUser?.displayName || auth.currentUser?.email || '').trim()
+    username.value = String(user?.username || '').trim().toLowerCase()
   }
 }
+
+/* 🔵 NEW: computed route target for BusinessHomepage (/ :username /) */
+const profileTo = computed(() => {
+  if (username.value) {
+    // uses the named route defined in router/index.js:
+    // { path: '/:username/', name: 'business-home', ... }
+    return { name: 'business-home', params: { username: username.value } }
+  }
+  // graceful fallback if username not set yet
+  return '/complete-profile/'
+})
 
 /* ------------------------------
  * Theme (light/dark)
@@ -44,11 +66,11 @@ onMounted(() => {
   isDark.value = savedTheme ? savedTheme === 'dark' : prefersDark
   document.documentElement.classList.toggle('dark', isDark.value)
 
-  /* 🔽 ensure name loads on first mount */
+  /* ensure name + username load on first mount */
   loadName()
 })
 
-/* 🔽 refresh name when login state or uid changes */
+/* refresh data when login state or uid changes */
 watch(() => [user.isLoggedIn, user.uid], () => { loadName() })
 
 const toggleDarkMode = () => {
@@ -183,7 +205,6 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 v-if="showProfileDropdown"
                 class="absolute right-0 mt-2 w-56 rounded-lg bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
                 <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-                  <!-- 🔽 CHANGED: use Firestore displayName -->
                   <p class="text-sm font-medium text-slate-900 dark:text-white">{{ displayName }}</p>
                   <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ user.email }}</p>
                   <span class="inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
@@ -192,8 +213,9 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 </div>
 
                 <div class="py-1">
+                  <!-- 🔁 CHANGED: was to="/seller-profile" -->
                   <RouterLink
-                    to="/seller-profile"
+                    :to="profileTo"
                     @click="showProfileDropdown = false"
                     class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -281,14 +303,14 @@ const closeMobileNav  = () => { showMobileNav.value = false }
             </div>
 
             <div v-else-if="user.isLoggedIn && !user.loading" class="mt-2">
+              <!-- 🔁 CHANGED: was to="/seller-profile" -->
               <RouterLink
-                to="/seller-profile"
+                :to="profileTo"
                 @click="closeMobileNav"
                 class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <span class="inline-block h-8 w-8 rounded-full bg-cover bg-center"
                   :style="{ backgroundImage: `url('${user.avatar || '/avatar.png'}')` }"></span>
                 <div class="min-w-0">
-                  <!-- 🔽 CHANGED: use Firestore displayName -->
                   <p class="truncate font-medium">{{ displayName }}</p>
                   <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ user.email }}</p>
                 </div>

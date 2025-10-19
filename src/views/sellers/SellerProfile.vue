@@ -35,7 +35,7 @@
         </h1>
 
         <p class="mt-2 text-gray-600 dark:text-gray-400">
-          {{ seller.bio || 'No bio yet.' }}
+          Snacking made simple. Delivering joy, one bite at a time. 
         </p>
 
         <p class="mt-2 text-gray-600 dark:text-gray-400">
