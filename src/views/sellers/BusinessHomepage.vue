@@ -234,7 +234,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onActivated } from 'vue'
+import { user } from '@/store/user.js'
 import Loading from '@/components/status/Loading.vue'
 import AddProductModal from '@/components/modals/AddProductModal.vue'
 
@@ -246,7 +247,7 @@ import { getSellerProducts, createProduct } from '@/firebase/services/sellers/se
 
 const loading = ref(true)
 const seller = ref({})
-const products = ref([])      // normalized by seller_product.js
+const products = ref([])
 const searchTerm = ref('')
 const showAddModal = ref(false)
 
@@ -273,7 +274,7 @@ const displayRating = computed(() => {
   return Number.isFinite(n) ? n.toFixed(1) : '0.0'
 })
 
-// NEW: Followers / Following counters (safe defaults)
+// Followers / Following counters (safe defaults)
 const followersCount = computed(() => Number(seller.value?.followers ?? 0))
 const followingCount = computed(() => Number(seller.value?.following ?? 0))
 
@@ -321,7 +322,7 @@ const sortedProducts = computed(() => {
   const arr = [...filteredProducts.value]
   switch (sortMode.value) {
     case 'none':
-      return arr // no sorting, just return as-is
+      return arr
     case 'name_asc':
       return arr.sort((a, b) => String(a.item_name || '').localeCompare(String(b.item_name || '')))
     case 'name_desc':
@@ -349,16 +350,30 @@ const pagedProducts = computed(() => {
   return sortedProducts.value.slice(start, start + pageSize)
 })
 
+// ✅ Function to reload seller data
+async function reloadSellerData() {
+  try {
+    console.log('🔄 Reloading seller data...')
+    const acct = await getCurrentSellerAccount()
+    if (acct) {
+      seller.value = acct
+      console.log('✅ Seller data reloaded:', acct)
+    }
+  } catch (error) {
+    console.error('❌ Error reloading seller data:', error)
+  }
+}
+
 // Load data
 onMounted(async () => {
   try {
     await waitForAuthReady()
 
-    // Load business account (current authenticated seller) from /businesses/{uid}
+    // Load business account
     const acct = await getCurrentSellerAccount()
     if (acct) seller.value = acct
 
-    // Load products for the current authenticated seller (normalized)
+    // Load products
     products.value = await getSellerProducts()
   } catch (e) {
     console.error('❌ Error initializing BusinessHomepage:', e)
@@ -366,6 +381,20 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+// ✅ Reload when page becomes active (after navigation)
+onActivated(() => {
+  console.log('📄 BusinessHomepage activated, reloading data...')
+  reloadSellerData()
+})
+
+// ✅ Watch for user avatar changes
+watch(() => user.avatar, (newAvatar, oldAvatar) => {
+  if (newAvatar !== oldAvatar) {
+    console.log('👤 User avatar changed:', newAvatar)
+    reloadSellerData()
+  }
+}, { deep: true })
 
 // ===================== Product Card helpers =====================
 
@@ -382,7 +411,7 @@ async function handleAddProduct(productData) {
     // Add seller's business category to product data
     const productDataWithCategory = {
       ...productData,
-      category: seller.value.category || 'uncategorized'  // ← USE SELLER'S CATEGORY
+      category: seller.value.category || 'uncategorized'
     }
     
     // Save to Firebase
@@ -394,7 +423,7 @@ async function handleAddProduct(productData) {
     products.value.push({
       id: newId,
       item_name: productData.item_name,
-      category: seller.value.category || 'uncategorized',  // ← USE SELLER'S CATEGORY
+      category: seller.value.category || 'uncategorized',
       description: productData.description,
       thumbnail: productData.img_url,
       img_url: productData.img_url,
@@ -479,4 +508,3 @@ function sizeChipClass(p, i) {
   return 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200'
 }
 </script>
-```

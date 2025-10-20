@@ -1,7 +1,6 @@
 <template>
   <div class="bg-background dark:bg-background-dark font-display text-slate-800 dark:text-slate-200">
     <div class="flex min-h-screen w-full flex-col">
-      <!-- Conditionally render navbars -->
       <template v-if="!user.loading">
         <SellersNavbar v-if="user.role === 'seller'" />
         <Navbar v-else />
@@ -9,14 +8,30 @@
         <router-view />
         <Footer />
       </template>
-      
     </div>
+
+    <OnboardingModal
+      :show="showOnboarding"
+      @close="showOnboarding = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { user } from "@/store/user.js";
-import Navbar from '@/components/layout/Navbar.vue';           // buyer navbar
-import SellersNavbar from '@/components/layout/SellerNavBar.vue'; // seller navbar
-import Footer from '@/components/layout/Footer.vue';
+import { ref, watch } from 'vue'
+import { user } from "@/store/user.js"
+import Navbar from '@/components/layout/Navbar.vue'
+import SellersNavbar from '@/components/layout/SellerNavBar.vue'
+import Footer from '@/components/layout/Footer.vue'
+import OnboardingModal from '@/components/modals/OnboardingModal.vue'
+
+const showOnboarding = ref(false)
+
+// Watch for new seller signups that need onboarding
+watch(() => user.needsOnboarding, (needs) => {
+  console.log('👀 needsOnboarding changed to:', needs)
+  if (needs) {
+    showOnboarding.value = true
+  }
+})
 </script>

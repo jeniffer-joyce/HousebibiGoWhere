@@ -304,6 +304,11 @@
       @close="showSingPassModal = false"
       @verified="handleSingPassVerified"
     />
+  <OnboardingModal
+  v-if="showOnboardingModal"
+  :verifiedData="verifiedData"
+  @close="showOnboardingModal = false"
+  />
   </div>
 </template>
 
@@ -311,11 +316,11 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { registerUserWithUsername } from '../firebase/auth/authService'
+import { markBusinessAsRegistered, verifySingPass } from '@/firebase/services/singpassVerification.js'
 import { auth } from '../firebase/firebase_config'
 import { user } from '@/store/user.js'
 import { useRoute } from 'vue-router'
 import SingPassVerificationModal from '@/components/SingPassVerificationModal.vue'
-import { verifySingPass } from '@/firebase/services/singpassVerification'
 
 const route = useRoute()
 const router = useRouter()
@@ -324,6 +329,8 @@ const router = useRouter()
 const showSingPassModal = ref(false)
 const verifiedBusinessData = ref(null)
 const isSingPassVerified = ref(false)
+const showOnboardingModal = ref(false)
+const verifiedData = ref(null)
 
 // Handle successful SingPass verification
 function handleSingPassVerified(data) {
@@ -531,13 +538,12 @@ async function onSubmit(){
 
   console.log('Starting signup process...')
   loading.value = true
-  user.isSigningUp = true // Prevent auth state change from interfering
+  user.isSigningUp = true
   errorMsg.value = ''
   uploadProgress.value = 0
-  const startTime = Date.now() // Track when signup started
+  const startTime = Date.now()
   
   try{
-    // Update message based on role
     if (role.value === 'seller' && licenseFile.value) {
       loadingMessage.value = 'Uploading your business license...'
     } else {
@@ -545,31 +551,36 @@ async function onSubmit(){
     }
     
     console.log('Calling registerUserWithUsername...')
+    
+    // ✅ BUILD extraData FIRST
+    const extraData = {
+      gender: gender.value,
+      birthday: birthday.value,
+      phone: phone.value.trim(),
+      ...(role.value === 'seller'
+        ? { 
+            nric: nric.value.trim().toUpperCase(),
+            companyName: companyName.value.trim(), 
+            uen: uen.value.trim(),
+            postalCode: postalCode.value.trim(), 
+            addressLine: addressLine.value.trim(),
+            unitNo: unitNo.value.trim() || null,
+          }
+        : {}),
+    }
+    
+    console.log('📋 Extra data being passed:', extraData)
+    
+    // ✅ ONLY ONE newUser DECLARATION
     const newUser = await registerUserWithUsername({
       username: username.value.trim(),
       email: email.value.trim(),
       password: password.value,
       displayName: displayName.value.trim(),
       role: role.value,
-      extra: {
-        gender: gender.value,
-        birthday: birthday.value,
-        phone: phone.value.trim(),
-        ...(role.value==='seller'
-          ? { 
-              nric: nric.value.trim().toUpperCase(),
-              companyName: companyName.value.trim(), 
-              uen: uen.value.trim(),
-              postalCode: postalCode.value.trim(), 
-              addressLine: addressLine.value.trim(),
-              unitNo: unitNo.value.trim() || null,
-            }
-          : {}),
-      },
+      extra: extraData,
       captchaToken: captchaToken.value,
-      // Pass the actual file for sellers
       licenseFile: role.value === 'seller' ? licenseFile.value : null,
-      // Progress callback
       onUploadProgress: (progress) => {
         uploadProgress.value = progress
         if (progress === 100) {
@@ -578,57 +589,72 @@ async function onSubmit(){
       }
     })
     
-    console.log('Registration complete!')
-    if (role.value === 'seller' && verifiedBusinessData.value) {
-      await markBusinessAsRegistered(verifiedBusinessData.value.verificationId, {
-        email: email.value,
-        username: username.value,
-        uid: newUser.uid
-      })
+    console.log('✅ Registration complete! UID:', newUser.uid)
+
+    // Mark SingPass verification as registered
+    if (role.value === 'seller' && isSingPassVerified.value && nric.value) {
+      try {
+        console.log('🔗 Marking SingPass verification as registered...')
+        
+        await markBusinessAsRegistered(nric.value, {
+          email: email.value,
+          username: username.value,
+          uid: newUser.uid
+        })
+        
+        console.log('✅ SingPass verification marked as registered')
+      } catch (verificationError) {
+        console.error('⚠️ Failed to update verification record:', verificationError)
+      }
     }
-    // Calculate remaining time to reach 5 seconds
+
     const elapsedTime = Date.now() - startTime
     const remainingTime = Math.max(0, 5000 - elapsedTime)
-    
-    console.log(`Elapsed time: ${elapsedTime}ms, Remaining time: ${remainingTime}ms`)
-    
-    // Update message to success
+
     loadingMessage.value = 'Account created successfully!'
-    
-    // Wait for remaining time to complete full 5 seconds
+
     if (remainingTime > 0) {
-      console.log(`Waiting ${remainingTime}ms...`)
       await new Promise(resolve => setTimeout(resolve, remainingTime))
-      console.log('Wait complete!')
     }
-    
-    console.log('About to show alert, loading value:', loading.value)
-    
-    // Keep loading overlay visible and show alert
-    alert('Account created successfully!')
-    
-    console.log('Alert dismissed, about to redirect')
-    
-    // Clear signup flag before redirect
+
+    // Clear flags
+    loading.value = false
     user.isSigningUp = false
-    
-    // Redirect based on role (loading will disappear with page change)
+
+    // Show success alert
+    alert('✅ Account created successfully!')
+
+    // Trigger onboarding for sellers
     if (role.value === 'seller') {
-      window.location.href = '/seller-profile'
+      console.log('🎯 Triggering onboarding modal...')
+      
+      // Small delay to ensure auth state is fully settled
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Set the flag that App.vue watches
+      user.needsOnboarding = true
+      console.log('✅ needsOnboarding set to:', user.needsOnboarding)
+      
+      // Give the watcher time to react
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Navigate home where modal will show
+      router.push('/')
     } else {
-      window.location.href = '/'
+      router.push('/')
     }
     
   }catch(err){
-    console.error('Signup error:', err)
+    console.error('❌ Signup error:', err)
     errorMsg.value = mapError(err)
     uploadProgress.value = 0
     loading.value = false
-    user.isSigningUp = false // Clear flag on error
+    user.isSigningUp = false
     loadingMessage.value = 'Creating your account...'
     resetRecaptcha()
   }
 }
+
 
 function mapError(err){
   const code = err?.code || err?.message || ''

@@ -1,33 +1,22 @@
-// --- Firebase app, auth, db from your config ---
-import { auth, db } from '../firebase_config'
-
-// --- Firebase Auth (CDN) ---
+import { auth, db } from '@/firebase/firebase_config.js'
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
-  // NEW ↓ Google auth bits
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   fetchSignInMethodsForEmail,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"
-
-// --- Firestore (CDN) ---
+} from 'firebase/auth'
 import {
   doc,
   getDoc,
   setDoc,
   serverTimestamp,
-  // NEW ↓ needed by reserveUsername
-  runTransaction,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
-
-// --- File Upload ---
+} from 'firebase/firestore'
 import { uploadBusinessLicense } from '../services/fileUpload.js'
 
-// Helpers
 const isEmail = (s) => /\S+@\S+\.\S+/.test(s)
 const toKey = (s) => (s || '').trim().toLowerCase()
 
@@ -63,16 +52,6 @@ export async function verifyCaptchaToken(token) {
   return true
 }
 
-/** Reserve username atomically (lowercase key) */
-async function reserveUsername(usernameLower, payload) {
-  const ref = doc(db, 'usernames', usernameLower)
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref)
-    if (snap.exists()) throw new Error('username-already-in-use')
-    tx.set(ref, payload) // { uid, email }
-  })
-}
-
 /** Ensure a users/{uid} profile exists (used for Google sign-in) */
 async function ensureProviderProfile(user) {
   const ref = doc(db, 'users', user.uid)
@@ -82,7 +61,6 @@ async function ensureProviderProfile(user) {
       uid: user.uid,
       email: user.email ?? null,
       displayName: user.displayName ?? '',
-      // NOTE: do NOT set role or username here
       createdAt: serverTimestamp(),
     })
   }
@@ -101,8 +79,8 @@ export async function registerUserWithUsername({
   role = 'buyer',
   extra = {},
   captchaToken,
-  licenseFile = null,      // actual File object
-  onUploadProgress = null, // optional progress callback
+  licenseFile = null,
+  onUploadProgress = null,
 }) {
   // 0) Verify captcha first (server-side via Worker)
   await verifyCaptchaToken(captchaToken)
@@ -131,7 +109,6 @@ export async function registerUserWithUsername({
       )
     } catch (uploadError) {
       console.error('License upload failed:', uploadError)
-      // Optionally: await cred.user.delete()
       throw uploadError
     }
   }
@@ -144,16 +121,11 @@ export async function registerUserWithUsername({
     displayName: displayName || '',
     role,
     createdAt: serverTimestamp(),
-    ...extra,
+    ...extra,  // ✅ This should include NRIC from singpassData
     ...(licenseFileURL ? { licenseFileURL, licenseFileName: licenseFile.name } : {}),
   }
 
-  // Clean up any stale field from extra
-  delete profile.licenseFileName
-  if (licenseFileURL) {
-    profile.licenseFileURL = licenseFileURL
-    profile.licenseFileName = licenseFile.name
-  }
+  console.log('💾 Creating user profile with data:', profile) // ✅ Add this log
 
   await setDoc(doc(db, 'users', cred.user.uid), profile)
 
@@ -167,16 +139,18 @@ export async function loginWithIdentifier(identifier, password, captchaToken) {
   }
 
   let email = identifier.trim()
+  
+  // If not an email, try to find user by username in /users collection
   if (!isEmail(identifier)) {
     const uname = toKey(identifier)
-    const snap = await getDoc(doc(db, 'usernames', uname))
-    if (!snap.exists()) {
-      const e = new Error('auth/user-not-found')
-      e.code = 'auth/user-not-found'
-      throw e
-    }
-    email = snap.data().email
+    
+    // Search for user with this username (requires Firestore query or composite index)
+    // For now, just treat it as email-only login
+    const e = new Error('auth/user-not-found')
+    e.code = 'auth/user-not-found'
+    throw e
   }
+  
   const { user } = await signInWithEmailAndPassword(auth, email, password)
   return user
 }
@@ -194,7 +168,6 @@ export async function loginWithGooglePopup() {
     await ensureProviderProfile(user)
     return user
   } catch (err) {
-    // Hint if account exists with different provider
     if (err?.customData?.email && err.code === 'auth/account-exists-with-different-credential') {
       const methods = await fetchSignInMethodsForEmail(auth, err.customData.email)
       err.hint = `This email is already linked to: ${methods.join(', ')}`
