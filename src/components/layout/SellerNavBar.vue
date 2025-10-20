@@ -4,7 +4,7 @@ import { user } from '@/store/user.js'
 import { auth, db } from '@/firebase/firebase_config'
 import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
 /* 🔽 Firestore helpers to read displayName + username */
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+import { doc, getDoc } from 'firebase/firestore'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()

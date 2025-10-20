@@ -32,7 +32,7 @@ import PrivacySettingsTab from '../views/buyers/account/PrivacySettingsTab.vue'
 import EmailChangeDone from '../firebase/auth/EmailChangeDone.vue'
 
 import { db } from '@/firebase/firebase_config'
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+import { doc, getDoc } from 'firebase/firestore'
 import { auth } from '@/firebase/firebase_config'
 import { onAuthStateChanged } from 'firebase/auth'
 // ✅ define authReady here so the guard can await it

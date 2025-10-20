@@ -1,9 +1,7 @@
 // src/guards/googleCompleteProfileGuard.js
-import { auth, db, onAuthStateChanged } from '@/firebase/firebase_config'
-import {
-  doc,
-  getDoc
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+import { auth, db } from '@/firebase/firebase_config.js'
+import { onAuthStateChanged } from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore'
 
 async function targetAfterLogin(uid) {
   const snap = await getDoc(doc(db, 'users', uid))
