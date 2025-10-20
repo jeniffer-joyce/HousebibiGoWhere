@@ -406,7 +406,7 @@ function scrollCategoriesRight() {
                         <!-- Scroll Container -->
                         <div ref="scrollContainer"
                             class="hide-scrollbar -mx-4 flex gap-6 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 scroll-smooth">
-                            <RouterLink :to="`/shop-details/${business.businessId}`"
+                            <RouterLink :to="`/shop-details/${business.uid}`"
                                 v-for="business in filteredBusinesses" :key="business.name"
                                 :data-business="business.name"
                                 class="flex w-64 shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900 transition-transform hover:scale-105">
