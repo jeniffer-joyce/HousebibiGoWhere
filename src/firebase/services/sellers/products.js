@@ -29,7 +29,10 @@ export async function getSellerProducts(sellerID) {
         description: data.description,
         img: data.img_url,
         img_url: data.img_url,
-        images: data.images || null
+        images: data.images || null,
+        sellerName: data.sellerName,
+        sellerID: data.sellerId,
+        createdAt: data.createdAt
       });
     });
     
