@@ -81,7 +81,7 @@
                   />
                 </div>
 
-                <!-- UEN (NEW) -->
+                <!-- UEN -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Business UEN <span class="text-red-500">*</span>
@@ -189,7 +189,7 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { verifySingPass, formatVerificationError } from '@/firebase/services/singpassVerification'
+import { verifySingPass, formatVerificationError } from '@/firebase/services/singpassVerification.js'
 
 const props = defineProps({
   show: Boolean
@@ -205,7 +205,7 @@ const formData = reactive({
   nric: '',
   fullName: '',
   dateOfBirth: '',
-  uen: '' // NEW
+  uen: ''
 })
 
 async function handleVerify() {
@@ -221,7 +221,7 @@ async function handleVerify() {
       nric: formData.nric,
       fullName: formData.fullName,
       dateOfBirth: formData.dateOfBirth,
-      uen: formData.uen // NEW
+      uen: formData.uen
     })
 
     verificationResult.value = result
@@ -249,7 +249,7 @@ function resetForm() {
   formData.nric = ''
   formData.fullName = ''
   formData.dateOfBirth = ''
-  formData.uen = '' // NEW
+  formData.uen = ''
   verificationResult.value = null
   errorMessage.value = ''
   verifying.value = false

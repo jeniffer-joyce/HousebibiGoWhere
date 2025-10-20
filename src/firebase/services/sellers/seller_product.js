@@ -23,10 +23,10 @@ import {
   addDoc,
   serverTimestamp,
   Timestamp,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "firebase/firestore";
 
 import { auth } from "../../firebase_config.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { onAuthStateChanged } from 'firebase/auth';
 
 // ------------------- Auth helper -------------------
 let _authReadyOnce;

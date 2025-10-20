@@ -1,6 +1,7 @@
 import { reactive } from "vue"
-import { auth, onAuthStateChanged, db } from "../firebase/firebase_config"
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
+import { auth, db } from "@/firebase/firebase_config.js"
+import { onAuthStateChanged } from "firebase/auth"
+import { doc, getDoc } from "firebase/firestore"
 
 export const user = reactive({
   isLoggedIn: false,
@@ -12,6 +13,7 @@ export const user = reactive({
   loading: true,
   cart: [],
   wishlist: [],
+  needsOnboarding: false,  
   preferences: {
     theme: "dark",
     language: "en",
@@ -26,7 +28,7 @@ onAuthStateChanged(auth, async (firebaseUser) => {
   // If user is in signup process, skip the auth state change handling
   // This prevents the "user not found" message during signup
   if (user.isSigningUp) {
-    console.log('Skipping auth state change during signup')
+    console.log('⏭️ Skipping auth state change during signup')
     return
   }
 
@@ -53,14 +55,14 @@ onAuthStateChanged(auth, async (firebaseUser) => {
         if (attempts < 5) {
           // Progressive backoff: 500ms, 1000ms, 1500ms, 2000ms
           const delay = attempts * 500
-          console.log(`User document not found, retry ${attempts}/5 in ${delay}ms...`)
+          console.log(`🔄 User document not found, retry ${attempts}/5 in ${delay}ms...`)
           await new Promise(resolve => setTimeout(resolve, delay))
         }
       }
       
       if (docSnap && docSnap.exists()) {
         const data = docSnap.data()
-        console.log("Fetched user data:", data)
+        console.log("✅ Fetched user data:", data)
 
         user.role = data.role || "buyer"
         
@@ -73,13 +75,13 @@ onAuthStateChanged(auth, async (firebaseUser) => {
           user.avatar = data.logo
         }
       } else {
-        console.warn("User document not found in Firestore after 5 retries, defaulting to buyer role")
+        console.warn("⚠️ User document not found in Firestore after 5 retries, defaulting to buyer role")
         user.role = "buyer"
         user.preferences.categories = []
         user.preferences.hasSetPreferences = false
       }
     } catch (error) {
-      console.error("Error fetching user data:", error)
+      console.error("❌ Error fetching user data:", error)
       user.role = "buyer"
       user.preferences.categories = []
       user.preferences.hasSetPreferences = false

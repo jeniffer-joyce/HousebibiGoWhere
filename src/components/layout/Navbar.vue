@@ -3,9 +3,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { user } from '@/store/user.js'
 import { auth } from '@/firebase/firebase_config'
-import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
+import { signOut } from 'firebase/auth'
 /* 🔽 NEW: read name from Firestore */
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/firebase/firebase_config'
 
 import SearchOverlay from '@/components/layout/SearchOverlay.vue'

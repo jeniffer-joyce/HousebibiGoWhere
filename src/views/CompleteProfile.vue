@@ -314,7 +314,7 @@ import { useRouter } from 'vue-router'
 import { auth, db } from '@/firebase/firebase_config'
 import {
   doc, getDoc, setDoc, serverTimestamp, deleteField
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+} from 'firebase/firestore'
 import { uploadBusinessLicense } from '@/firebase/services/fileUpload.js'
 
 const router = useRouter()

@@ -6,40 +6,6 @@ import { usePreferences } from '@/composables/signup/usePreferences';
 import { useSearch } from '@/composables/useSearch';
 import Loading from '@/components/status/Loading.vue'
 
-// 🔹 NEW: use the same Firebase ESM CDN style your project already uses elsewhere
-import { auth, db } from '@/firebase/firebase_config'
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
-
-// 🔹 Local reactive displayName (Firestore preferred)
-const displayName = ref('')
-
-// 🔹 Robust loader: prefer Firestore, then Auth displayName, then email
-async function loadName () {
-  try {
-    const uid = user?.uid || auth.currentUser?.uid
-    const authName = (auth.currentUser?.displayName || '').trim()
-    const authEmail = (auth.currentUser?.email || '').trim()
-
-    if (uid) {
-      const snap = await getDoc(doc(db, 'users', uid))
-      displayName.value =
-        (snap.exists() && (snap.data().displayName || '').trim()) ||
-        authName ||
-        authEmail
-    } else {
-      displayName.value = authName || authEmail || ''
-    }
-  } catch (e) {
-    const fallback = (auth.currentUser?.displayName || auth.currentUser?.email || '').trim()
-    displayName.value = fallback
-    // console.debug('Name fallback due to error:', e) // optional
-  }
-}
-
-onMounted(loadName)
-// Also refresh name when store flips from logged-out to logged-in or uid changes
-watch(() => [user.isLoggedIn, user.uid], () => { loadName() })
-
 const {
     loading,
     categories,
@@ -105,8 +71,6 @@ const canScroll = ref(false);
 const categoryScrollContainer = ref(null);
 const categoryScrollAmount = 200;
 const canScrollCategories = ref(false);
-const showLeftCategoryArrow = ref(false);
-const showRightCategoryArrow = ref(false);
 
 // Check if content overflows horizontally
 function checkScrollable() {
@@ -119,20 +83,7 @@ function checkScrollable() {
 function checkCategoryScrollable() {
   if (!categoryScrollContainer.value) return;
   const el = categoryScrollContainer.value;
-  const hasOverflow = el.scrollWidth > el.clientWidth;
-  canScrollCategories.value = hasOverflow;
-  
-  // Check scroll position to show/hide arrows
-  if (hasOverflow) {
-    // Show left arrow if scrolled away from start (with small threshold)
-    showLeftCategoryArrow.value = el.scrollLeft > 5;
-    // Show right arrow if not at the end (with small threshold)
-    const maxScroll = el.scrollWidth - el.clientWidth;
-    showRightCategoryArrow.value = el.scrollLeft < (maxScroll - 5);
-  } else {
-    showLeftCategoryArrow.value = false;
-    showRightCategoryArrow.value = false;
-  }
+  canScrollCategories.value = el.scrollWidth > el.clientWidth;
 }
 
 // Run on load, when filteredBusinesses changes, and when window resizes
@@ -167,19 +118,11 @@ function scrollRight() {
 }
 
 function scrollCategoriesLeft() {
-    if (categoryScrollContainer.value) {
-        categoryScrollContainer.value.scrollBy({ left: -categoryScrollAmount, behavior: "smooth" });
-        // Check after scroll animation
-        setTimeout(() => checkCategoryScrollable(), 350);
-    }
+    categoryScrollContainer.value.scrollBy({ left: -categoryScrollAmount, behavior: "smooth" });
 }
 
 function scrollCategoriesRight() {
-    if (categoryScrollContainer.value) {
-        categoryScrollContainer.value.scrollBy({ left: categoryScrollAmount, behavior: "smooth" });
-        // Check after scroll animation
-        setTimeout(() => checkCategoryScrollable(), 350);
-    }
+    categoryScrollContainer.value.scrollBy({ left: categoryScrollAmount, behavior: "smooth" });
 }
 </script>
 
@@ -188,8 +131,7 @@ function scrollCategoriesRight() {
         <div class="flex flex-col gap-10">
             <div class="flex flex-col items-center gap-4 text-center">
                 <h2 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-                    <!-- 👇 only this line changed to use the loaded displayName -->
-                    <span v-if="user.isLoggedIn">Welcome back, {{ displayName || 'Friend' }}! 👋</span>
+                    <span v-if="user.isLoggedIn">Welcome back, {{ user.name || 'Friend' }}! 👋</span>
                     <span v-else>Discover Home-Based Businesses</span>
                 </h2>
                 <p class="max-w-2xl text-lg text-slate-600 dark:text-slate-400">
@@ -251,7 +193,7 @@ function scrollCategoriesRight() {
                         :key="business.name"
                         @click="selectSuggestion(business)"
                         class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all text-left">
-                        <img :src="business.profilePic" :alt="business.name" class="h-16 w-16 rounded-lg object-cover" />
+                        <img :src="business.image" :alt="business.name" class="h-16 w-16 rounded-lg object-cover" />
                         <div class="flex-1 min-w-0">
                             <p class="font-semibold text-slate-800 dark:text-slate-200 truncate">{{ business.name }}</p>
                             <p class="text-sm text-slate-500 dark:text-slate-400 truncate">{{ business.description || 'Click to view' }}</p>
@@ -341,26 +283,22 @@ function scrollCategoriesRight() {
 
                         <!-- Scrollable Categories Container -->
                         <div class="relative flex-1 min-w-0">
-                            <!-- Left Gradient Fade + Arrow -->
-                            <div
-                                v-if="showLeftCategoryArrow"
-                                class="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-white dark:from-slate-950 to-transparent z-10 pointer-events-none">
-                            </div>
+                            <!-- Left Arrow for Categories -->
                             <button
-                                v-if="showLeftCategoryArrow"
+                                v-if="canScrollCategories"
                                 @click="scrollCategoriesLeft"
-                                class="absolute left-2 top-1/2 -translate-y-1/2 z-20 rounded-full p-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-md"
+                                class="absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/95 p-2 shadow-lg hover:bg-white dark:bg-slate-800/95 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
                                 aria-label="Scroll categories left">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path>
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                                 </svg>
                             </button>
 
                             <!-- Category Buttons Scroll Container -->
                             <div
                                 ref="categoryScrollContainer"
-                                @scroll="checkCategoryScrollable"
-                                class="hide-scrollbar flex gap-3 overflow-x-auto scroll-smooth">
+                                class="hide-scrollbar flex gap-3 overflow-x-auto scroll-smooth"
+                                :class="{ 'pl-10': canScrollCategories, 'pr-10': canScrollCategories }">
                                 <button
                                     v-for="category in sortedCategories" 
                                     :key="category.slug"
@@ -381,18 +319,14 @@ function scrollCategoriesRight() {
                                 </button>
                             </div>
 
-                            <!-- Right Gradient Fade + Arrow -->
-                            <div
-                                v-if="showRightCategoryArrow"
-                                class="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white dark:from-slate-950 to-transparent z-10 pointer-events-none">
-                            </div>
+                            <!-- Right Arrow for Categories -->
                             <button
-                                v-if="showRightCategoryArrow"
+                                v-if="canScrollCategories"
                                 @click="scrollCategoriesRight"
-                                class="absolute right-2 top-1/2 -translate-y-1/2 z-20 rounded-full p-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-md"
+                                class="absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/95 p-2 shadow-lg hover:bg-white dark:bg-slate-800/95 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
                                 aria-label="Scroll categories right">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                                 </svg>
                             </button>
                         </div>
@@ -424,7 +358,7 @@ function scrollCategoriesRight() {
                             <div v-for="business in filteredBusinesses" :key="business.name"
                                 :data-business="business.name"
                                 class="flex w-64 shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900 transition-transform hover:scale-105">
-                                <img :src="business.profilePic" :alt="business.name" class="h-40 w-full object-cover" />
+                                <img :src="business.image" :alt="business.name" class="h-40 w-full object-cover" />
                                 <p class="px-4 py-3 text-base font-semibold text-slate-800 dark:text-slate-200">
                                     {{ business.name }}
                                 </p>

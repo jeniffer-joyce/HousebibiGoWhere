@@ -1,12 +1,8 @@
 // firebase/services/fileUpload.js
 // Handle file uploads to Firebase Storage
 
-import { storage } from '../firebase_config'
-import {
-  ref as storageRef,
-  uploadBytesResumable,
-  getDownloadURL,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js"
+import { storage } from '@/firebase/firebase_config.js'
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 
 /**
  * Upload a business license document to Firebase Storage
@@ -44,7 +40,7 @@ export async function uploadBusinessLicense(file, userId, onProgress = null) {
   
   // Storage path: business-licenses/{userId}/{filename}
   const filePath = `business-licenses/${userId}/${fileName}`
-  const fileRef = storageRef(storage, filePath)
+  const fileRef = ref(storage, filePath)
 
   // Upload with progress tracking
   const uploadTask = uploadBytesResumable(fileRef, file)
