@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useProducts } from '@/composables/useProducts.js'
 
 // Fetch products from Firestore
@@ -89,8 +89,10 @@ const availableSellers = computed(() => {
   return Array.from(sellersSet)
 })
 
-// Update filters.seller when products load
-filters.value.seller = availableSellers.value
+// Update filters.seller when products load or change
+watch([products, normalizedProducts], () => {
+  filters.value.seller = availableSellers.value
+}, { immediate: true })
 
 // Final displayed products: filtered + sorted
 const displayedProducts = computed(() => {

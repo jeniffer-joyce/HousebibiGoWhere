@@ -1,6 +1,6 @@
 // src/firebase/services/sellers/products.js
 import { db } from '../../firebase_config.js';
-import { collection, query, getDocs, doc, getDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { collection, query, getDocs, doc, getDoc, addDoc } from "firebase/firestore";
 
 export async function getSellerProducts(sellerID) {
   console.log('🔍 Loading products from Firestore...');
