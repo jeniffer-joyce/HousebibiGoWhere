@@ -9,7 +9,6 @@ import About from '../views/About.vue'
 
 // Seller Views
 import ForSellers from '../views/ForSellers.vue'
-import SellerProfile from '../views/sellers/SellerProfile.vue'
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
 import BusinessHomepage from "../views/sellers/BusinessHomepage.vue";
@@ -38,7 +37,7 @@ import EmailChangeDone from '../firebase/auth/EmailChangeDone.vue'
 
 
 import { db } from '@/firebase/firebase_config'
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+import { doc, getDoc } from 'firebase/firestore'
 import { auth } from '@/firebase/firebase_config'
 import { onAuthStateChanged } from 'firebase/auth'
 // ✅ define authReady here so the guard can await it
@@ -74,10 +73,6 @@ const routes = [
   {
     path: '/for-sellers/',
     component: ForSellers
-  },
-  {
-    path: '/seller-profile/',
-    component: SellerProfile
   },
   {
     path: '/seller-orders/',

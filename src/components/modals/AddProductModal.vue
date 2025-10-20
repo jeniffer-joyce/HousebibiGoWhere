@@ -1,4 +1,3 @@
-<!-- AddProductModal.vue -->
 <template>
   <Teleport to="body">
     <Transition name="modal">
@@ -34,27 +33,6 @@
                 />
               </div>
 
-              <!-- Category -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Category <span class="text-red-500">*</span>
-                </label>
-                <select
-                  v-model="form.category"
-                  required
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40">
-                  <option value="">Select category</option>
-                  <option value="food-and-beverages">Food & Beverages</option>
-                  <option value="handmade-crafts">Handmade Crafts</option>
-                  <option value="home-decor">Home Decor</option>
-                  <option value="personalized-gifts">Personalized Gifts</option>
-                  <option value="clothing-and-accessories">Clothing & Accessories</option>
-                  <option value="plants-and-gardening">Plants & Gardening</option>
-                  <option value="stationery-and-paper-goods">Stationery</option>
-                  <option value="catering">Catering</option>
-                  <option value="tutoring">Tutoring</option>
-                </select>
-              </div>
 
               <!-- Description -->
               <div>
@@ -168,158 +146,75 @@
                 </div>
               </div>
 
-              <!-- Product Image Section -->
+              <!-- Product Images Section -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Product Image <span class="text-red-500">*</span>
-                </label>
-
-                <!-- Image Source Tabs -->
-                <div class="flex gap-2 mb-4">
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Product Images <span class="text-red-500">*</span>
+                    <span class="text-xs text-gray-500 ml-1">({{ productImages.length }}/5)</span>
+                  </label>
                   <button
+                    v-if="productImages.length < 5"
                     type="button"
-                    @click="imageSource = 'unsplash'"
-                    :class="[
-                      'flex-1 py-2.5 px-4 rounded-lg font-medium transition-all text-sm',
-                      imageSource === 'unsplash'
-                        ? 'bg-primary text-white shadow-md'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    ]">
-                    <span class="flex items-center justify-center gap-2">
-                      <span class="text-lg">🎨</span>
-                      AI Images
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    @click="imageSource = 'upload'"
-                    :class="[
-                      'flex-1 py-2.5 px-4 rounded-lg font-medium transition-all text-sm',
-                      imageSource === 'upload'
-                        ? 'bg-primary text-white shadow-md'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    ]">
-                    <span class="flex items-center justify-center gap-2">
-                      <span class="text-lg">📤</span>
-                      Upload
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    @click="imageSource = 'url'"
-                    :class="[
-                      'flex-1 py-2.5 px-4 rounded-lg font-medium transition-all text-sm',
-                      imageSource === 'url'
-                        ? 'bg-primary text-white shadow-md'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    ]">
-                    <span class="flex items-center justify-center gap-2">
-                      <span class="text-lg">🔗</span>
-                      Image URL
-                    </span>
+                    @click="showImagePicker = true"
+                    class="text-sm text-primary font-medium hover:underline">
+                    + Add Image
                   </button>
                 </div>
 
-                <!-- Unsplash Image Picker -->
-                <div v-if="imageSource === 'unsplash'">
-                  <UnsplashImagePicker
-                    v-model="selectedUnsplashImage"
-                    @select="handleUnsplashSelect"
-                    :placeholder="`Search for ${form.category || 'product'} images...`"
-                  />
-                </div>
-
-                <!-- File Upload -->
-                <div v-else-if="imageSource === 'upload'">
-                  <div class="space-y-3">
-                    <!-- Upload Area -->
-                    <div class="relative">
-                      <input
-                        ref="fileInput"
-                        type="file"
-                        accept="image/*"
-                        @change="handleFileUpload"
-                        class="hidden"
-                      />
-                      
-                      <!-- Upload Button/Preview -->
-                      <div v-if="!uploadedImagePreview" 
-                        @click="$refs.fileInput.click()"
-                        class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                        <div class="flex flex-col items-center gap-3">
-                          <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                            <span class="text-3xl">📸</span>
-                          </div>
-                          <div>
-                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                              Click to upload image
-                            </p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              PNG, JPG, GIF up to 10MB
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Image Preview -->
-                      <div v-else class="relative">
-                        <img 
-                          :src="uploadedImagePreview" 
-                          alt="Preview"
-                          class="w-full h-48 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          @click="clearUploadedImage"
-                          class="absolute top-2 right-2 p-2 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors shadow-lg">
-                          <span class="material-symbols-outlined text-base">delete</span>
-                        </button>
-                        <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                          <p class="truncate">{{ uploadedFileName }}</p>
-                          <p class="text-xs">{{ uploadedFileSize }}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Upload Progress -->
-                    <div v-if="uploading" class="space-y-2">
-                      <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600 dark:text-gray-400">Uploading...</span>
-                        <span class="text-gray-900 dark:text-white font-medium">{{ uploadProgress }}%</span>
-                      </div>
-                      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                        <div 
-                          class="bg-primary h-full transition-all duration-300"
-                          :style="{ width: uploadProgress + '%' }">
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Upload Error -->
-                    <p v-if="uploadError" class="text-sm text-red-500">
-                      {{ uploadError }}
-                    </p>
-                  </div>
-                </div>
-
-                <!-- Manual URL Input -->
-                <div v-else-if="imageSource === 'url'">
-                  <input
-                    v-model="form.img_url"
-                    type="url"
-                    :required="!form.img_url"
-                    placeholder="https://example.com/image.jpg"
-                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40"
-                  />
-                  <div v-if="form.img_url" class="mt-3 flex justify-center">
-                    <img 
-                      :src="form.img_url" 
-                      class="h-32 w-32 object-cover rounded-lg" 
-                      @error="imgError = true"
-                      @load="imgError = false" 
+                <!-- Selected Images Grid -->
+                <div v-if="productImages.length > 0" class="grid grid-cols-3 gap-3 mb-4">
+                  <div
+                    v-for="(url, idx) in productImages"
+                    :key="idx"
+                    class="relative group aspect-square">
+                    <img
+                      :src="url"
+                      :alt="`Product image ${idx + 1}`"
+                      class="w-full h-full object-cover rounded-lg"
                     />
+                    <!-- Primary Badge -->
+                    <div
+                      v-if="idx === 0"
+                      class="absolute top-2 left-2 px-2 py-1 bg-primary text-white text-xs font-medium rounded">
+                      Primary
+                    </div>
+                    <!-- Delete Button -->
+                    <button
+                      type="button"
+                      @click="removeImage(idx)"
+                      class="absolute top-2 right-2 p-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
+                      <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                    <!-- Set as Primary (if not already) -->
+                    <button
+                      v-if="idx !== 0"
+                      type="button"
+                      @click="setAsPrimary(idx)"
+                      class="absolute bottom-2 left-2 right-2 px-2 py-1 bg-white/90 dark:bg-gray-800/90 text-xs font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      Set as Primary
+                    </button>
                   </div>
-                  <p v-if="imgError" class="mt-2 text-sm text-red-500">Failed to load image. Please check the URL.</p>
+                </div>
+
+                <!-- Empty State -->
+                <div
+                  v-else
+                  @click="showImagePicker = true"
+                  class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  <div class="flex flex-col items-center gap-3">
+                    <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                      <span class="text-3xl">🖼️</span>
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Click to add product images
+                      </p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Add up to 5 images
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -363,15 +258,21 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Image Picker Modal -->
+    <ImagePickerModal
+      :show="showImagePicker"
+      :category="form.category"
+      @close="showImagePicker = false"
+      @select="addImage"
+    />
   </Teleport>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
-import { storage, auth } from '@/firebase/firebase_config'
-// ✅ Correct - CDN syntax (matches your firebase_config.js)
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js'
-import UnsplashImagePicker from '@/components/UnsplashImagePicker.vue'
+import { ref, reactive, computed } from 'vue'
+import { auth } from '@/firebase/firebase_config'
+import ImagePickerModal from '@/components/ImagePickerModal.vue'
 
 const props = defineProps({
   show: Boolean
@@ -380,187 +281,55 @@ const props = defineProps({
 const emit = defineEmits(['close', 'save'])
 
 const saving = ref(false)
-const imgError = ref(false)
 const hasMultipleSizes = ref(false)
-const imageSource = ref('unsplash') // 'unsplash', 'upload', or 'url'
-const selectedUnsplashImage = ref(null)
-
-// File upload states
-const fileInput = ref(null)
-const uploadedImagePreview = ref(null)
-const uploadedFileName = ref('')
-const uploadedFileSize = ref('')
-const uploading = ref(false)
-const uploadProgress = ref(0)
-const uploadError = ref(null)
+const showImagePicker = ref(false)
+const productImages = ref([]) // Local array for UI management
 
 const form = reactive({
   item_name: '',
-  category: '',
   description: '',
   price: null,
   quantity: null,
   sizes: [{ name: 'S', price: 0, quantity: 0 }],
-  img_url: '',
-  imageAttribution: null,
+  img_url: '', // ← KEPT AS SINGLE STRING (primary image)
+  additional_images: [], // ← ARRAY for extra images
   imageSource: 'unsplash',
   availability: true
 })
 
-// Validate form has image
+// Validate form has at least one image
 const isFormValid = computed(() => {
-  return form.img_url && form.img_url.trim().length > 0
+  return productImages.value.length > 0
 })
 
-// Update search placeholder based on category
-watch(() => form.category, (newCategory) => {
-  if (imageSource.value === 'unsplash' && selectedUnsplashImage.value === null) {
-    // Category changed, could trigger new search suggestions
+function addImage(url) {
+  if (productImages.value.length < 5) {
+    productImages.value.push(url)
+    updateFormImages()
   }
-})
+  showImagePicker.value = false
+}
 
-// Handle Unsplash image selection
-function handleUnsplashSelect(photo) {
-  if (photo) {
-    selectedUnsplashImage.value = photo
-    
-    // Use the Unsplash URL directly (hotlink - required by Unsplash)
-    form.img_url = photo.urls.regular
-    
-    // Store attribution info (required by Unsplash)
-    form.imageAttribution = {
-      photographerName: photo.attribution.photographerName,
-      photographerLink: photo.attribution.photographerLink,
-      photoLink: photo.links.html,
-      unsplashLink: 'https://unsplash.com'
-    }
-    
-    form.imageSource = 'unsplash'
-    imgError.value = false
+function removeImage(index) {
+  productImages.value.splice(index, 1)
+  updateFormImages()
+}
+
+function setAsPrimary(index) {
+  const [image] = productImages.value.splice(index, 1)
+  productImages.value.unshift(image)
+  updateFormImages()
+}
+
+// Update form data: first image = img_url, rest = additional_images
+function updateFormImages() {
+  if (productImages.value.length > 0) {
+    form.img_url = productImages.value[0] // Primary image
+    form.additional_images = productImages.value.slice(1) // Rest of images
   } else {
-    // User cleared the Unsplash selection
-    selectedUnsplashImage.value = null
     form.img_url = ''
-    form.imageAttribution = null
+    form.additional_images = []
   }
-}
-
-// Watch image source changes
-watch(imageSource, (newSource) => {
-  if (newSource === 'url') {
-    // Switching to manual URL
-    selectedUnsplashImage.value = null
-    form.imageAttribution = null
-    clearUploadedImage()
-    form.imageSource = 'url'
-  } else if (newSource === 'unsplash') {
-    // Switching to Unsplash
-    if (!selectedUnsplashImage.value) {
-      form.img_url = ''
-      form.imageAttribution = null
-    }
-    clearUploadedImage()
-    form.imageSource = 'unsplash'
-  } else if (newSource === 'upload') {
-    // Switching to file upload
-    selectedUnsplashImage.value = null
-    form.imageAttribution = null
-    form.imageSource = 'upload'
-  }
-})
-
-// Handle file upload
-async function handleFileUpload(event) {
-  const file = event.target.files?.[0]
-  if (!file) return
-
-  // Validate file type
-  if (!file.type.startsWith('image/')) {
-    uploadError.value = 'Please select an image file'
-    return
-  }
-
-  // Validate file size (10MB max)
-  const maxSize = 10 * 1024 * 1024 // 10MB
-  if (file.size > maxSize) {
-    uploadError.value = 'File size must be less than 10MB'
-    return
-  }
-
-  uploadError.value = null
-  uploading.value = true
-  uploadProgress.value = 0
-
-  try {
-    // Create preview
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      uploadedImagePreview.value = e.target.result
-    }
-    reader.readAsDataURL(file)
-
-    // Store file info
-    uploadedFileName.value = file.name
-    uploadedFileSize.value = formatFileSize(file.size)
-
-    // Upload to Firebase Storage
-    const timestamp = Date.now()
-    const fileName = `products/${timestamp}_${file.name}`
-    const imageRef = storageRef(storage, fileName)
-    const uploadTask = uploadBytesResumable(imageRef, file)
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        // Progress
-        uploadProgress.value = Math.round(
-          (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-        )
-      },
-      (error) => {
-        // Error
-        console.error('Upload error:', error)
-        uploadError.value = 'Upload failed. Please try again.'
-        uploading.value = false
-      },
-      async () => {
-        // Success
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
-        form.img_url = downloadURL
-        form.imageSource = 'upload'
-        uploading.value = false
-        console.log('✅ Image uploaded successfully')
-      }
-    )
-  } catch (error) {
-    console.error('Error handling file:', error)
-    uploadError.value = 'Failed to process image'
-    uploading.value = false
-  }
-}
-
-// Clear uploaded image
-function clearUploadedImage() {
-  uploadedImagePreview.value = null
-  uploadedFileName.value = ''
-  uploadedFileSize.value = ''
-  uploadProgress.value = 0
-  uploadError.value = null
-  if (fileInput.value) {
-    fileInput.value.value = ''
-  }
-  if (imageSource.value === 'upload') {
-    form.img_url = ''
-  }
-}
-
-// Format file size
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
 }
 
 function toggleMultipleSizes() {
@@ -585,30 +354,24 @@ function close() {
 
 function resetForm() {
   form.item_name = ''
-  form.category = ''
   form.description = ''
   form.price = null
   form.quantity = null
   form.sizes = [{ name: 'S', price: 0, quantity: 0 }]
   form.img_url = ''
-  form.imageAttribution = null
+  form.additional_images = []
   form.imageSource = 'unsplash'
   form.availability = true
   
   hasMultipleSizes.value = false
-  imageSource.value = 'unsplash'
-  selectedUnsplashImage.value = null
-  imgError.value = false
+  productImages.value = []
   saving.value = false
-  
-  // Clear upload states
-  clearUploadedImage()
 }
 
 async function handleSubmit() {
-  // Validate image
-  if (!form.img_url) {
-    alert('Please select or provide a product image')
+  // Validate images
+  if (productImages.value.length === 0) {
+    alert('Please add at least one product image')
     return
   }
 
@@ -617,19 +380,14 @@ async function handleSubmit() {
   try {
     const productData = {
       item_name: form.item_name,
-      category: form.category,
       description: form.description,
-      img_url: form.img_url,
+      img_url: form.img_url, // ← Primary image (backward compatible)
+      additional_images: form.additional_images, // ← Extra images (new field)
       imageSource: form.imageSource,
       availability: form.availability,
-      sellerId: auth.currentUser.uid, // ← ADD THIS LINE
-      sellerName: auth.currentUser.displayName || 'Unknown Seller', // ← OPTIONAL BUT HELPFUL
+      sellerId: auth.currentUser.uid,
+      sellerName: auth.currentUser.displayName || 'Unknown Seller',
       createdAt: new Date().toISOString()
-    }
-
-    // Add attribution only for Unsplash images
-    if (form.imageSource === 'unsplash' && form.imageAttribution) {
-      productData.imageAttribution = form.imageAttribution
     }
 
     // Handle pricing based on size mode
@@ -663,12 +421,8 @@ async function handleSubmit() {
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .animate-spin {

@@ -244,7 +244,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { auth, db } from '@/firebase/firebase_config'
-import { doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 
 const show = ref(false)
 const editIndex = ref(-1)

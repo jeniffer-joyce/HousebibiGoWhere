@@ -112,7 +112,7 @@ watch(() => props.modelValue, (newVal) => {
         <Teleport to="body">
             <div 
                 v-if="showPicker"
-                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                class="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4"
                 @click.self="showPicker = false">
                 <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
                     <!-- Header -->

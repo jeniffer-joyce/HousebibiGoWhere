@@ -147,7 +147,7 @@ import {
 
 // 🔽 Firestore + Auth (added `auth`)
 import { db, auth } from '@/firebase/firebase_config'
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+import { doc, getDoc } from 'firebase/firestore'
 
 // Google logo
 import googleLogo from '@/assets/google-logo.png'

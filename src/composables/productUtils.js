@@ -1,5 +1,5 @@
 import { db } from '../firebase/firebase_config.js';
-import { collection, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 
 // Function to fetch orders and calculate total units sold for each product
 export const getSellerProductsSortedBySales = async (businessUid) => {

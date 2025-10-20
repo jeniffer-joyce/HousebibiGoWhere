@@ -15,13 +15,13 @@
 // ============================================================================
 
 import { auth, db } from "../../firebase_config.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { onAuthStateChanged } from 'firebase/auth';
 import {
   doc,
   getDoc,
   setDoc,
   updateDoc,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "firebase/firestore";
 
 // ---------- Internal state ----------
 let _currentUid = null;
