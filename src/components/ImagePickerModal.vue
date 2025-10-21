@@ -127,7 +127,7 @@
 <script setup>
 import { ref } from 'vue'
 import { storage } from '@/firebase/firebase_config'
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js'
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import UnsplashImagePicker from '@/components/UnsplashImagePicker.vue'
 
 const props = defineProps({
