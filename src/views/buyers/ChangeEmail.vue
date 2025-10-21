@@ -114,7 +114,7 @@ import {
   verifyBeforeUpdateEmail,
   reauthenticateWithCredential,
   EmailAuthProvider,
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
+} from 'firebase/auth'
 
 const router = useRouter()
 

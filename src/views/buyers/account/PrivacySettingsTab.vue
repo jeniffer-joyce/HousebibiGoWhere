@@ -106,7 +106,7 @@ import {
   deleteUser,
   EmailAuthProvider,
   reauthenticateWithCredential,
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
+} from 'firebase/auth'
 import {
   doc,
   deleteDoc,
