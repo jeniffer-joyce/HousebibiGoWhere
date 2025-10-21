@@ -1,6 +1,6 @@
 // src/firebase/services/preferences.js
 import { db } from '../firebase_config.js';
-import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 /**
  * Get user preferences from Firestore
