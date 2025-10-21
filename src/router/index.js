@@ -91,6 +91,12 @@ const routes = [
     props: r => ({ username: String(r.params.username || '').toLowerCase() }),
   },
   {
+    path: '/:username/edit-profile/:section',
+    component: EditAccount,
+    name: 'edit-profile-section',
+    props: r => ({ username: String(r.params.username || '').toLowerCase() }),
+  },
+  {
     path: '/buyer-dashboard/',
     component: BuyerDashboard
   },
