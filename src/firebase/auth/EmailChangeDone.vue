@@ -32,7 +32,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth } from '@/firebase/firebase_config'
-import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
+import { signOut } from 'firebase/auth'
 
 const router = useRouter()
 
