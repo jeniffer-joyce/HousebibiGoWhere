@@ -624,7 +624,7 @@ async function onSubmit(){
     // Show success alert
     alert('✅ Account created successfully!')
 
-    // Trigger onboarding for sellers
+    // ✅ HANDLE BUYER VS SELLER DIFFERENTLY
     if (role.value === 'seller') {
       console.log('🎯 Triggering onboarding modal...')
       
@@ -641,7 +641,17 @@ async function onSubmit(){
       // Navigate home where modal will show
       router.push('/')
     } else {
-      router.push('/')
+      // ✅ BUYER SIGNUP - HARD RELOAD
+      console.log('👤 Buyer signup complete - performing hard reload...')
+      
+      // Small delay to ensure everything is saved
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Navigate to home first
+      await router.push('/')
+      
+      // Then perform hard reload to refresh auth state and preferences
+      window.location.reload()
     }
     
   }catch(err){
