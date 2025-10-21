@@ -12,6 +12,7 @@ import SellerProfile from '../views/sellers/SellerProfile.vue'
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
 import BusinessHomepage from "../views/sellers/BusinessHomepage.vue";
+import EditAccount from "../views/sellers/EditAccount.vue";
 
 // Seller TEST View (Developers only)
 import CurrentSeller from "../views/sellers/CurrentSeller.vue";
@@ -73,6 +74,13 @@ const routes = [
   {
     path: '/seller-profile/',
     component: SellerProfile
+  },
+  {
+    //path: '/edit-account/:username/',
+    path: '/edit-account/',
+    component: EditAccount,
+    //name: 'edit-account',
+    //props: r => ({ username: String(r.params.username || '').toLowerCase() })
   },
   {
     path: '/seller-orders/',

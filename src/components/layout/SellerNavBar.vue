@@ -124,7 +124,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
 
       <!-- LEFT: Logo + brand + (Desktop) nav -->
       <div class="flex items-center gap-6">
-        <RouterLink to="/" class="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-primary rounded-lg">
+        <RouterLink :to="profileTo" class="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-primary rounded-lg">
           <img :src="logoSrc" alt="Housebibi logo" class="h-9 w-9 shrink-0 select-none" />
           <span class="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-none">
             HousebibiGoWhere
