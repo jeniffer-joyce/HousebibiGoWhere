@@ -11,6 +11,7 @@ import ForSellers from '../views/ForSellers.vue'
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
 import BusinessHomepage from "../views/sellers/BusinessHomepage.vue";
+import EditAccount from "../views/sellers/EditAccount.vue";
 
 // Seller TEST View (Developers only)
 import CurrentSeller from "../views/sellers/CurrentSeller.vue";
@@ -82,6 +83,12 @@ const routes = [
     component: BusinessHomepage,
     name: 'business-home',
     props: r => ({ username: String(r.params.username || '').toLowerCase() })
+  },
+  {
+    path: '/:username/edit-profile',
+    name: 'edit-profile',
+    component: EditAccount,
+    props: r => ({ username: String(r.params.username || '').toLowerCase() }),
   },
   {
     path: '/buyer-dashboard/',
@@ -163,6 +170,22 @@ router.beforeEach(async (to, from, next) => {
     } catch (e) {
       console.warn('Cold-start redirect lookup failed:', e)
       // fall through to next()
+    }
+  }
+
+  // If navigating to /:username/edit-profile, ensure it's the owner
+  if (to.name === 'edit-profile' && auth.currentUser) {
+    try {
+      const snap = await getDoc(doc(db, 'users', auth.currentUser.uid))
+      const data = snap.exists() ? snap.data() : null
+      const myUsername = String(data?.username || '').toLowerCase()
+      const targetUsername = String(to.params.username || '').toLowerCase()
+      if (myUsername && targetUsername && myUsername !== targetUsername) {
+        // kick them back to their own page
+        return next({ name: 'edit-profile', params: { username: myUsername } })
+      }
+    } catch (e) {
+      console.warn('Username ownership check failed:', e)
     }
   }
 

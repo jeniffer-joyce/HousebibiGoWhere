@@ -48,13 +48,13 @@
           <span>{{ followersCount }} Followers</span>
         </div>
 
-        <button
-          class="mt-6 flex items-center justify-center gap-2 h-10 px-6 bg-primary/10 dark:bg-primary/20 text-primary font-bold text-sm rounded-lg hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors"
-          type="button"
-        >
+        <RouterLink
+        :to="{ name: 'edit-profile', params: { username: seller.username } }"
+        class="mt-6 flex items-center justify-center gap-2 h-10 px-6 bg-primary/10 dark:bg-primary/20 text-primary font-bold text-sm rounded-lg hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors">
           <span class="material-symbols-outlined text-lg">settings</span>
           <span>Edit Profile Page</span>
-        </button>
+        </RouterLink>
+
       </div>
 
       <!-- ===================== Control Bar: Search + Sort ===================== -->
@@ -238,6 +238,8 @@ import { ref, computed, onMounted, watch, onActivated } from 'vue'
 import { user } from '@/store/user.js'
 import Loading from '@/components/status/Loading.vue'
 import AddProductModal from '@/components/modals/AddProductModal.vue'
+import { auth } from '@/firebase/firebase_config'
+
 
 // Auth-linked seller info (now from /businesses/{uid})
 import { waitForAuthReady, getCurrentSellerAccount } from '@/firebase/services/sellers/seller_info.js'
