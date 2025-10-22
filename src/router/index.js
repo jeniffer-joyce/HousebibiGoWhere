@@ -13,6 +13,12 @@ import { user } from '../store/user.js'
 import BusinessHomepage from "../views/sellers/BusinessHomepage.vue";
 import EditAccount from "../views/sellers/EditAccount.vue";
 
+import MyProfile from "../views/sellers/account/MyProfile.vue";
+import MyBusiness from "../views/sellers/account/MyBusiness.vue";
+import Notifications from "../views/sellers/account/Notifications.vue";
+import ChangePassword from "../views/sellers/account/ChangePassword.vue";
+import DeleteAccount from "../views/sellers/account/DeleteAccount.vue";
+
 // Seller TEST View (Developers only)
 import CurrentSeller from "../views/sellers/CurrentSeller.vue";
 
@@ -85,16 +91,18 @@ const routes = [
     props: r => ({ username: String(r.params.username || '').toLowerCase() })
   },
   {
-    path: '/:username/edit-profile',
+    path: '/:username/edit-profile/',
+    component: EditAccount,
     name: 'edit-profile',
-    component: EditAccount,
     props: r => ({ username: String(r.params.username || '').toLowerCase() }),
-  },
-  {
-    path: '/:username/edit-profile/:section',
-    component: EditAccount,
-    name: 'edit-profile-section',
-    props: r => ({ username: String(r.params.username || '').toLowerCase() }),
+    children: [
+      { path: '', redirect: { name: 'edit-profile.my-profile' } },
+      { path: 'my-profile', name: 'edit-profile.my-profile', component: MyProfile },
+      { path: 'my-business', name: 'edit-profile.my-business', component: MyBusiness },
+      { path: 'notifications', name: 'edit-profile.notifications', component: Notifications },
+      { path: 'change-password', name: 'edit-profile.change-password', component: ChangePassword },
+      { path: 'delete-account', name: 'edit-profile.delete-account', component: DeleteAccount },
+    ]
   },
   {
     path: '/buyer-dashboard/',
