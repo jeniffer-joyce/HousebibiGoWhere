@@ -1,4 +1,3 @@
-<!-- AddProductModal.vue -->
 <template>
   <Teleport to="body">
     <Transition name="modal">
@@ -34,22 +33,6 @@
                 />
               </div>
 
-              <!-- Category -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Category <span class="text-red-500">*</span>
-                </label>
-                <select
-                  v-model="form.category"
-                  required
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40">
-                  <option value="">Select category</option>
-                  <option value="handmade-crafts">Handmade Crafts</option>
-                  <option value="homemade-crafts">Homemade Crafts</option>
-                  <option value="personalized-gifts">Personalized Gifts</option>
-                  <option value="home-decor">Home Decor</option>
-                </select>
-              </div>
 
               <!-- Description -->
               <div>
@@ -163,20 +146,75 @@
                 </div>
               </div>
 
-              <!-- Image URL -->
+              <!-- Product Images Section -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Image URL <span class="text-red-500">*</span>
-                </label>
-                <input
-                  v-model="form.img_url"
-                  type="url"
-                  required
-                  placeholder="https://example.com/image.jpg"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40"
-                />
-                <div v-if="form.img_url" class="mt-3 flex justify-center">
-                  <img :src="form.img_url" class="h-32 w-32 object-cover rounded-lg" @error="imgError = true" />
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Product Images <span class="text-red-500">*</span>
+                    <span class="text-xs text-gray-500 ml-1">({{ productImages.length }}/5)</span>
+                  </label>
+                  <button
+                    v-if="productImages.length < 5"
+                    type="button"
+                    @click="showImagePicker = true"
+                    class="text-sm text-primary font-medium hover:underline">
+                    + Add Image
+                  </button>
+                </div>
+
+                <!-- Selected Images Grid -->
+                <div v-if="productImages.length > 0" class="grid grid-cols-3 gap-3 mb-4">
+                  <div
+                    v-for="(url, idx) in productImages"
+                    :key="idx"
+                    class="relative group aspect-square">
+                    <img
+                      :src="url"
+                      :alt="`Product image ${idx + 1}`"
+                      class="w-full h-full object-cover rounded-lg"
+                    />
+                    <!-- Primary Badge -->
+                    <div
+                      v-if="idx === 0"
+                      class="absolute top-2 left-2 px-2 py-1 bg-primary text-white text-xs font-medium rounded">
+                      Primary
+                    </div>
+                    <!-- Delete Button -->
+                    <button
+                      type="button"
+                      @click="removeImage(idx)"
+                      class="absolute top-2 right-2 p-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
+                      <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                    <!-- Set as Primary (if not already) -->
+                    <button
+                      v-if="idx !== 0"
+                      type="button"
+                      @click="setAsPrimary(idx)"
+                      class="absolute bottom-2 left-2 right-2 px-2 py-1 bg-white/90 dark:bg-gray-800/90 text-xs font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      Set as Primary
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Empty State -->
+                <div
+                  v-else
+                  @click="showImagePicker = true"
+                  class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  <div class="flex flex-col items-center gap-3">
+                    <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                      <span class="text-3xl">🖼️</span>
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Click to add product images
+                      </p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Add up to 5 images
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -210,8 +248,8 @@
             </button>
             <button
               @click="handleSubmit"
-              :disabled="saving"
-              class="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50">
+              :disabled="saving || !isFormValid"
+              class="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
               <span v-if="saving" class="material-symbols-outlined animate-spin text-base">progress_activity</span>
               <span>{{ saving ? 'Adding...' : 'Add Product' }}</span>
             </button>
@@ -220,11 +258,21 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Image Picker Modal -->
+    <ImagePickerModal
+      :show="showImagePicker"
+      :category="form.category"
+      @close="showImagePicker = false"
+      @select="addImage"
+    />
   </Teleport>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
+import { auth } from '@/firebase/firebase_config'
+import ImagePickerModal from '@/components/ImagePickerModal.vue'
 
 const props = defineProps({
   show: Boolean
@@ -233,19 +281,56 @@ const props = defineProps({
 const emit = defineEmits(['close', 'save'])
 
 const saving = ref(false)
-const imgError = ref(false)
 const hasMultipleSizes = ref(false)
+const showImagePicker = ref(false)
+const productImages = ref([]) // Local array for UI management
 
 const form = reactive({
   item_name: '',
-  category: '',
   description: '',
   price: null,
   quantity: null,
   sizes: [{ name: 'S', price: 0, quantity: 0 }],
-  img_url: '',
+  img_url: '', // ← KEPT AS SINGLE STRING (primary image)
+  additional_images: [], // ← ARRAY for extra images
+  imageSource: 'unsplash',
   availability: true
 })
+
+// Validate form has at least one image
+const isFormValid = computed(() => {
+  return productImages.value.length > 0
+})
+
+function addImage(url) {
+  if (productImages.value.length < 5) {
+    productImages.value.push(url)
+    updateFormImages()
+  }
+  showImagePicker.value = false
+}
+
+function removeImage(index) {
+  productImages.value.splice(index, 1)
+  updateFormImages()
+}
+
+function setAsPrimary(index) {
+  const [image] = productImages.value.splice(index, 1)
+  productImages.value.unshift(image)
+  updateFormImages()
+}
+
+// Update form data: first image = img_url, rest = additional_images
+function updateFormImages() {
+  if (productImages.value.length > 0) {
+    form.img_url = productImages.value[0] // Primary image
+    form.additional_images = productImages.value.slice(1) // Rest of images
+  } else {
+    form.img_url = ''
+    form.additional_images = []
+  }
+}
 
 function toggleMultipleSizes() {
   hasMultipleSizes.value = !hasMultipleSizes.value
@@ -263,21 +348,49 @@ function removeSize(idx) {
 }
 
 function close() {
+  resetForm()
   emit('close')
 }
 
+function resetForm() {
+  form.item_name = ''
+  form.description = ''
+  form.price = null
+  form.quantity = null
+  form.sizes = [{ name: 'S', price: 0, quantity: 0 }]
+  form.img_url = ''
+  form.additional_images = []
+  form.imageSource = 'unsplash'
+  form.availability = true
+  
+  hasMultipleSizes.value = false
+  productImages.value = []
+  saving.value = false
+}
+
 async function handleSubmit() {
+  // Validate images
+  if (productImages.value.length === 0) {
+    alert('Please add at least one product image')
+    return
+  }
+
   saving.value = true
   
   try {
     const productData = {
       item_name: form.item_name,
-      category: form.category,
       description: form.description,
-      img_url: form.img_url,
-      availability: form.availability
+      img_url: form.img_url, // ← Primary image (backward compatible)
+      additional_images: form.additional_images, // ← Extra images (new field)
+      imageSource: form.imageSource,
+      availability: form.availability,
+      sellerId: auth.currentUser.uid,
+      sellerName: auth.currentUser.displayName || 'Unknown Seller',
+      createdAt: new Date().toISOString()
     }
 
+    // Handle pricing based on size mode
     if (hasMultipleSizes.value) {
       productData.size = form.sizes.map(s => s.name)
       productData.price = form.sizes.map(s => s.price)
@@ -289,6 +402,10 @@ async function handleSubmit() {
     }
 
     emit('save', productData)
+    resetForm()
+  } catch (error) {
+    console.error('Error preparing product data:', error)
+    alert('Failed to add product. Please try again.')
   } finally {
     saving.value = false
   }
@@ -301,5 +418,14 @@ async function handleSubmit() {
 }
 .modal-enter-from, .modal-leave-to {
   opacity: 0;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>

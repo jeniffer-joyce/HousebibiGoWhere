@@ -1,5 +1,5 @@
 import { db } from '../../firebase_config.js';
-import { collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 
 export async function getCategories() {
   const q = query(collection(db, "button_categories"), orderBy("order"));

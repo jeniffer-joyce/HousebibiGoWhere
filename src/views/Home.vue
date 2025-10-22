@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import { user } from '@/store/user.js';
 import { useCategories } from '@/composables/home/useCategories';
 import { usePreferences } from '@/composables/signup/usePreferences';
@@ -63,9 +63,52 @@ function clearAllPreferences() {
     selectedPreferences.value = [];
 }
 
-// Arrows
+// Arrows for featured businesses
 const scrollContainer = ref(null);
 const scrollAmount = 300;
+const canScroll = ref(false);
+
+// Arrows for category buttons
+const categoryScrollContainer = ref(null);
+const categoryScrollAmount = 200;
+const canScrollCategories = ref(false);
+
+// Check if content overflows horizontally
+function checkScrollable() {
+  if (!scrollContainer.value) return;
+  const el = scrollContainer.value;
+  canScroll.value = el.scrollWidth > el.clientWidth;
+}
+
+// Check if category buttons overflow horizontally
+function checkCategoryScrollable() {
+  if (!categoryScrollContainer.value) return;
+  const el = categoryScrollContainer.value;
+  canScrollCategories.value = el.scrollWidth > el.clientWidth;
+}
+
+// Run on load, when filteredBusinesses changes, and when window resizes
+onMounted(() => {
+  checkScrollable();
+  checkCategoryScrollable();
+  window.addEventListener('resize', checkScrollable);
+  window.addEventListener('resize', checkCategoryScrollable);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', checkScrollable);
+  window.removeEventListener('resize', checkCategoryScrollable);
+});
+
+watch(filteredBusinesses, async () => {
+  await nextTick();
+  checkScrollable();
+});
+
+watch(sortedCategories, async () => {
+  await nextTick();
+  checkCategoryScrollable();
+});
 
 function scrollLeft() {
     scrollContainer.value.scrollBy({ left: -scrollAmount, behavior: "smooth" });
@@ -73,6 +116,14 @@ function scrollLeft() {
 
 function scrollRight() {
     scrollContainer.value.scrollBy({ left: scrollAmount, behavior: "smooth" });
+}
+
+function scrollCategoriesLeft() {
+    categoryScrollContainer.value.scrollBy({ left: -categoryScrollAmount, behavior: "smooth" });
+}
+
+function scrollCategoriesRight() {
+    categoryScrollContainer.value.scrollBy({ left: categoryScrollAmount, behavior: "smooth" });
 }
 </script>
 
@@ -210,38 +261,71 @@ function scrollRight() {
             </div>
 
             <template v-if="!loading">
-                <!-- Categories Section -->
+                <!-- Categories Section with Horizontal Scroll -->
                 <div>
                     <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">{{ categoryHeading }}</h3>
-                    <div class="flex flex-wrap gap-3">
-                        <!-- All Button -->
-                        <button :class="[
-                            'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-                            isAllSelected
-                                ? 'bg-primary text-white hover:bg-primary/90'
-                                : 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30'
-                        ]" @click="toggleAll">
+                    <div class="relative flex items-center gap-3">
+                        <!-- Static "All" Button -->
+                        <button
+                            :class="[
+                                'rounded-lg px-4 py-2 text-sm font-medium transition-colors shrink-0',
+                                isAllSelected
+                                    ? 'bg-primary text-white hover:bg-primary/90' 
+                                    : 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30'
+                            ]"
+                            @click="toggleAll">
                             All
                         </button>
 
-                        <!-- Category Buttons (sorted with preferences first) -->
-                        <button v-for="category in sortedCategories" :key="category.slug" :class="[
-                            'rounded-lg px-4 py-2 text-sm font-medium transition-colors relative',
-                            isCategorySelected(category.slug)
-                                ? 'bg-primary text-white hover:bg-primary/90'
-                                : 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30'
-                        ]" @click="toggleCategory(category.slug)">
-                            <span class="flex items-center gap-1.5">
-                                <!-- Heart icon for preferred categories -->
-                                <svg v-if="isPreferredCategory(category.slug)" class="h-3.5 w-3.5" fill="currentColor"
-                                    viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                        d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
-                                        clip-rule="evenodd"></path>
+                        <!-- Scrollable Categories Container -->
+                        <div class="relative flex-1 min-w-0">
+                            <!-- Left Arrow for Categories -->
+                            <button
+                                v-if="canScrollCategories"
+                                @click="scrollCategoriesLeft"
+                                class="absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/95 p-2 shadow-lg hover:bg-white dark:bg-slate-800/95 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
+                                aria-label="Scroll categories left">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                                 </svg>
-                                {{ category.name }}
-                            </span>
-                        </button>
+                            </button>
+
+                            <!-- Category Buttons Scroll Container -->
+                            <div
+                                ref="categoryScrollContainer"
+                                class="hide-scrollbar flex gap-3 overflow-x-auto scroll-smooth"
+                                :class="{ 'pl-10': canScrollCategories, 'pr-10': canScrollCategories }">
+                                <button
+                                    v-for="category in sortedCategories" 
+                                    :key="category.slug"
+                                    :class="[
+                                        'rounded-lg px-4 py-2 text-sm font-medium transition-colors shrink-0 whitespace-nowrap',
+                                        isCategorySelected(category.slug)
+                                            ? 'bg-primary text-white hover:bg-primary/90' 
+                                            : 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30'
+                                    ]"
+                                    @click="toggleCategory(category.slug)">
+                                    <span class="flex items-center gap-1.5">
+                                        <!-- Heart icon for preferred categories -->
+                                        <svg v-if="isPreferredCategory(category.slug)" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        {{ category.name }}
+                                    </span>
+                                </button>
+                            </div>
+
+                            <!-- Right Arrow for Categories -->
+                            <button
+                                v-if="canScrollCategories"
+                                @click="scrollCategoriesRight"
+                                class="absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/95 p-2 shadow-lg hover:bg-white dark:bg-slate-800/95 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
+                                aria-label="Scroll categories right">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -254,13 +338,14 @@ function scrollRight() {
                     </div>
                     <div v-else class="relative">
                         <!-- Left Arrow -->
-                        <button @click="scrollLeft"
-                            class="absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
-                            aria-label="Scroll left">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 19l-7-7 7-7"></path>
-                            </svg>
+                        <button
+                        v-if="canScroll"
+                        @click="scrollLeft"
+                        class="absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
+                        aria-label="Scroll left">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
                         </button>
 
                         <!-- Scroll Container -->
@@ -290,13 +375,14 @@ function scrollRight() {
                         </div> -->
 
                         <!-- Right Arrow -->
-                        <button @click="scrollRight"
-                            class="absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
-                            aria-label="Scroll right">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                                </path>
-                            </svg>
+                        <button
+                        v-if="canScroll"
+                        @click="scrollRight"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors backdrop-blur-sm"
+                        aria-label="Scroll right">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
                         </button>
                     </div>
                 </div>
