@@ -2,7 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { user } from '@/store/user.js'
 import { auth, db } from '@/firebase/firebase_config'
-import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
+import { signOut } from 'firebase/auth'
 /* 🔽 Firestore helpers to read displayName + username */
 import { doc, getDoc } from 'firebase/firestore'
 import { useRouter } from 'vue-router'
