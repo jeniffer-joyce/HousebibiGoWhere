@@ -173,6 +173,8 @@ import {
 } from 'firebase/firestore'
 import CancelledDetailsModal from '@/components/orders/CancelledDetailsModal.vue'
 import OrderDetailsModal from '@/components/orders/OrderDetailsModal.vue'
+import { useToast } from '@/composables/useToast'
+const { success, error:toastError, info } = useToast()
 
 /* UI state */
 const isSidebarCollapsed = ref(false)
@@ -278,7 +280,7 @@ function formatDate(ts) {
 }
 
 /* Actions */
-function payNow(o){ alert(`Pay for order ${o.orderId}`) }
+function payNow(o){ info(`Pay for order ${o.orderId}`) }
 function openCancelConfirm(o){ orderToCancel.value = o; showCancelConfirm.value = true }
 async function confirmCancel(){
   if (!orderToCancel.value) return
@@ -296,7 +298,7 @@ function markReceived(o){
     statusLog: arrayUnion({ status:'completed', by:'buyer', time: Timestamp.now() })
   })
 }
-function rateOrder(o){ alert(`Rate order ${o.orderId}`) }
+function rateOrder(o){ info(`Rate order ${o.orderId}`) }
 function requestReturn(o){
   updateDoc(doc(db, 'orders', o.id), {
     status:'return_refund',

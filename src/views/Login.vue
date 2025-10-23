@@ -5,12 +5,34 @@
         <h2 class="text-center text-3xl font-extrabold text-background-dark dark:text-background-light">
           Welcome back
         </h2>
-        <p class="mt-2 text-center text-sm text-background-dark/60 dark:text-background-light/60">
+        <p class="mt-2 text-center text-sm text-background-dark/60 dark:text-background-light/60 mb-6">
           Log in to continue your journey with us.
         </p>
       </div>
 
-      <!-- Google Sign-In FIRST -->
+      <!-- 🆕 Role Toggle (Visual Only) -->
+      <div class="grid grid-cols-2 gap-2 mb-6">
+        <button
+          type="button"
+          class="h-10 rounded-lg font-medium transition border"
+          :class="role === 'buyer'
+            ? 'bg-[#10A9C7] text-white border-transparent'
+            : 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600'"
+          @click="role = 'buyer'">
+          I'm a Buyer
+        </button>
+        <button
+          type="button"
+          class="h-10 rounded-lg font-medium transition border"
+          :class="role === 'seller'
+            ? 'bg-[#10A9C7] text-white border-transparent'
+            : 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600'"
+          @click="role = 'seller'">
+          I'm a Seller
+        </button>
+      </div>
+
+      <!-- Google Sign-In -->
       <div class="space-y-4">
         <button
           type="button"
@@ -39,7 +61,7 @@
       <!-- Email / password form -->
       <form class="mt-6 space-y-6" @submit.prevent="onSubmit">
         <div class="-space-y-px">
-          <!-- Identifier -->
+          <!-- Email -->
           <div>
             <label class="sr-only" for="identifier">Email</label>
             <input
@@ -76,14 +98,12 @@
                 :aria-label="showPassword ? 'Hide password' : 'Show password'"
                 tabindex="-1"
               >
-                <!-- eye (hidden) -->
                 <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                 </svg>
-                <!-- eye (crossed) -->
                 <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 013.563-4.773M6.223 6.223A9.965 9.965 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.953 9.953 0 01-4.152 5.016M6.223 6.223L3 3m3.223 3.223L21 21"/>
@@ -100,7 +120,7 @@
           </a>
         </div>
 
-        <!-- reCAPTCHA (only for password flow) -->
+        <!-- reCAPTCHA -->
         <div class="mt-2">
           <div class="flex justify-center">
             <div id="recaptcha-login" class="inline-block"></div>
@@ -144,22 +164,21 @@ import {
   loginWithGooglePopup,
   handleGoogleRedirectResult,
 } from '../firebase/auth/authService'
-
-// 🔽 Firestore + Auth (added `auth`)
 import { db, auth } from '@/firebase/firebase_config'
-import { doc, getDoc } from 'firebase/firestore'
-
-// Google logo
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 import googleLogo from '@/assets/google-logo.png'
 
 const router = useRouter()
+
+// 🆕 Role state (visual only - doesn't affect auth)
+const role = ref('buyer')
 
 // form
 const identifier = ref('')
 const password = ref('')
 const showPassword = ref(false)
 
-// reCAPTCHA (for password flow only)
+// reCAPTCHA
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 const captchaToken = ref('')
 const captchaError = ref(false)
@@ -204,7 +223,7 @@ function resetRecaptcha () {
   captchaToken.value = ''
 }
 
-// 👉 tiny helper to send sellers to /:username/
+// Route user based on Firestore role (ignores visual toggle)
 async function goToSellerHome(uid) {
   const snap = await getDoc(doc(db, 'users', uid))
   const data = snap.exists() ? snap.data() : null
@@ -216,20 +235,29 @@ async function goToSellerHome(uid) {
   return false
 }
 
-// 👉 route user depending on Firestore profile (Google + email flows reuse this)
 async function routeAfterLogin(uid) {
-  // Try seller home first
+  // Route based on ACTUAL Firestore role, not visual toggle
   const went = await goToSellerHome(uid)
   if (went) return
-  // Otherwise default home
   await router.replace('/')
 }
 
 onMounted(async () => {
-  // If you ever use redirect flow, handle it here and route immediately
   try {
-    const u = await handleGoogleRedirectResult()
-    if (u) {
+    const result = await handleGoogleRedirectResult()
+    if (result) {
+      const { user: u, isNewUser } = result
+      
+      // Same logic as above for new users
+      if (isNewUser) {
+        if (role.value === 'seller') {
+          await router.push('/signup?role=seller&showSingPass=true')
+          return
+        }
+        await router.push('/complete-profile')
+        return
+      }
+      
       await routeAfterLogin(u.uid)
       return
     }
@@ -261,7 +289,6 @@ async function onSubmit () {
   try {
     await loginWithIdentifier(identifier.value.trim(), password.value, captchaToken.value)
     resetRecaptcha()
-    // 🔽 after email/password login, route by role/username
     const uid = auth.currentUser?.uid
     if (uid) await routeAfterLogin(uid)
     else await router.replace('/')
@@ -278,10 +305,47 @@ async function onGoogleLogin () {
   loadingGoogle.value = true
   errorMsg.value = ''
   try {
-    // 1) Sign in with Google
-    const u = await loginWithGooglePopup()
-    // 2) Route based on Firestore profile (username/role)
+    // ✅ Now returns { user, isNewUser }
+    const result = await loginWithGooglePopup()
+    const { user: u, isNewUser } = result
+    
+    // ✅ NEW USER HANDLING
+    // ✅ NEW USER HANDLING
+if (isNewUser) {
+  // ✅ Save selected role to Firestore IMMEDIATELY
+  await setDoc(doc(db, 'users', u.uid), {
+    role: role.value,
+    profileComplete: false
+  }, { merge: true })
+  
+  console.log(`✅ Role saved: ${role.value}`)
+  
+  // Seller toggle selected → Go to CompleteProfile
+  if (role.value === 'seller') {
+    await router.push('/complete-profile')
+    return
+  }
+  
+  // Buyer toggle selected → Go to CompleteProfile
+  if (role.value === 'buyer') {
+    await router.push('/complete-profile')
+    return
+  }
+}
+    
+    // ✅ EXISTING USER - Check if profile is complete
+    const userDoc = await getDoc(doc(db, 'users', u.uid))
+    const userData = userDoc.data()
+    
+    // If profile still incomplete (edge case)
+    if (userData.profileComplete === false || !userData.username || !userData.phone) {
+      await router.push('/complete-profile')
+      return
+    }
+    
+    // ✅ Profile complete - route normally
     await routeAfterLogin(u.uid)
+    
   } catch (e) {
     console.error(e)
     errorMsg.value = e?.hint || e?.message || 'Google sign-in failed.'

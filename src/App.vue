@@ -6,6 +6,14 @@
         <Navbar v-else />
 
         <router-view />
+        <ToastNotification
+      :show="toastState.show"
+      :type="toastState.type"
+      :title="toastState.title"
+      :message="toastState.message"
+      :duration="toastState.duration"
+      @close="close"
+    />
         <Footer />
       </template>
     </div>
@@ -24,6 +32,10 @@ import Navbar from '@/components/layout/Navbar.vue'
 import SellersNavbar from '@/components/layout/SellerNavBar.vue'
 import Footer from '@/components/layout/Footer.vue'
 import OnboardingModal from '@/components/modals/OnboardingModal.vue'
+import { useToast } from '@/composables/useToast'
+import ToastNotification from '@/components/ToastNotification.vue'
+
+const { toastState, close } = useToast()
 
 const showOnboarding = ref(false)
 
