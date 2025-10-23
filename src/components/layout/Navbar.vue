@@ -155,6 +155,20 @@ const closeMobileNav  = () => { showMobileNav.value = false }
 
     <!-- Desktop only: Cart, Wishlist, Profile -->
     <div v-else-if="user.isLoggedIn && !user.loading" class="flex items-center gap-4">
+
+        <!-- Wishlist Icon -->
+          <RouterLink to="/buyer-favourites/">
+            <button
+              class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+              <svg v-if="!isDark" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                  <path fill="#010101" d="m12.1 18.55l-.1.1l-.11-.1C7.14 14.24 4 11.39 4 8.5C4 6.5 5.5 5 7.5 5c1.54 0 3.04 1 3.57 2.36h1.86C13.46 6 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5c0 2.89-3.14 5.74-7.9 10.05M16.5 3c-1.74 0-3.41.81-4.5 2.08C10.91 3.81 9.24 3 7.5 3C4.42 3 2 5.41 2 8.5c0 3.77 3.4 6.86 8.55 11.53L12 21.35l1.45-1.32C18.6 15.36 22 12.27 22 8.5C22 5.41 19.58 3 16.5 3"/>
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                <path fill="#fff" d="m12.1 18.55l-.1.1l-.11-.1C7.14 14.24 4 11.39 4 8.5C4 6.5 5.5 5 7.5 5c1.54 0 3.04 1 3.57 2.36h1.86C13.46 6 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5c0 2.89-3.14 5.74-7.9 10.05M16.5 3c-1.74 0-3.41.81-4.5 2.08C10.91 3.81 9.24 3 7.5 3C4.42 3 2 5.41 2 8.5c0 3.77 3.4 6.86 8.55 11.53L12 21.35l1.45-1.32C18.6 15.36 22 12.27 22 8.5C22 5.41 19.58 3 16.5 3"/>
+              </svg>
+            </button>
+          </RouterLink>
+
         <!-- Cart Icon -->
         <button @click="() => console.log('Go to cart')"
             class="relative p-2 rounded-lg text-white hover:bg-primary/90">
@@ -168,22 +182,6 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 {{ user.cart.length }}
                 </span>
         </button>
-
-        <!-- Wishlist Icon -->
-            <button @click="() => console.log('Go to wishlist')"
-                class="relative p-2 rounded-lg text-white hover:bg-primary/90">
-                <svg v-if="!isDark" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                    <path fill="#010101" d="m12.1 18.55l-.1.1l-.11-.1C7.14 14.24 4 11.39 4 8.5C4 6.5 5.5 5 7.5 5c1.54 0 3.04 1 3.57 2.36h1.86C13.46 6 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5c0 2.89-3.14 5.74-7.9 10.05M16.5 3c-1.74 0-3.41.81-4.5 2.08C10.91 3.81 9.24 3 7.5 3C4.42 3 2 5.41 2 8.5c0 3.77 3.4 6.86 8.55 11.53L12 21.35l1.45-1.32C18.6 15.36 22 12.27 22 8.5C22 5.41 19.58 3 16.5 3"/>
-                </svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                    <path fill="#fff" d="m12.1 18.55l-.1.1l-.11-.1C7.14 14.24 4 11.39 4 8.5C4 6.5 5.5 5 7.5 5c1.54 0 3.04 1 3.57 2.36h1.86C13.46 6 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5c0 2.89-3.14 5.74-7.9 10.05M16.5 3c-1.74 0-3.41.81-4.5 2.08C10.91 3.81 9.24 3 7.5 3C4.42 3 2 5.41 2 8.5c0 3.77 3.4 6.86 8.55 11.53L12 21.35l1.45-1.32C18.6 15.36 22 12.27 22 8.5C22 5.41 19.58 3 16.5 3"/>
-                </svg>
-                        
-            <!-- Wishlist Count Badge -->
-                <span class="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-xs w-4 h-4">
-                {{ user.wishlist.length }}
-                </span>
-            </button>
 
         <!-- Profile Dropdown -->
         <div class="hidden [@media(min-width:880px)]:flex relative profile-dropdown-container">
@@ -206,7 +204,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                     class="absolute right-0 mt-12 w-56 rounded-lg bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
                                     
                     <!-- User Info -->
-                    <RouterLink v-if="user.role !== 'seller'" to="/buyer-profile/">
+                    <RouterLink v-if="user.role !== 'seller'" to="/buyer-account/">
                       <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
                           <!-- 🔽 CHANGED: use displayName -->
                           <p class="text-sm font-medium text-slate-900 dark:text-white">{{ displayName }}</p>
@@ -360,7 +358,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 </RouterLink>
 
               <RouterLink
-                to="/buyer-profile/"
+                to="/buyer-account/"
                 @click="closeMobileNav"
                 class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <span class="inline-block h-8 w-8 rounded-full bg-cover bg-center"
