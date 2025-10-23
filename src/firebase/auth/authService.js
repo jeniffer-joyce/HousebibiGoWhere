@@ -56,14 +56,21 @@ export async function verifyCaptchaToken(token) {
 async function ensureProviderProfile(user) {
   const ref = doc(db, 'users', user.uid)
   const snap = await getDoc(ref)
+  
   if (!snap.exists()) {
+    // Create minimal profile for new Google users
     await setDoc(ref, {
       uid: user.uid,
       email: user.email ?? null,
       displayName: user.displayName ?? '',
       createdAt: serverTimestamp(),
+      // ✅ Flag to indicate profile is incomplete
+      profileComplete: false
     })
+    return { user, isNewUser: true }
   }
+  
+  return { user, isNewUser: false }
 }
 
 /**
@@ -95,10 +102,18 @@ export async function registerUserWithUsername({
   // 1) Create auth user
   const cred = await createUserWithEmailAndPassword(auth, email, password)
 
-  // 2) Optional displayName
-  if (displayName) await updateProfile(cred.user, { displayName })
+  // ✅ 2) Generate default avatar URL
+  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || username)}&background=0D8ABC&color=fff&size=200`
 
-  // 3) Upload business license if seller and file provided
+  // 3) Update profile with displayName AND photoURL
+  if (displayName) {
+    await updateProfile(cred.user, { 
+      displayName,
+      photoURL: defaultAvatar  // ✅ Add this
+    })
+  }
+
+  // 4) Upload business license if seller and file provided
   let licenseFileURL = null
   if (role === 'seller' && licenseFile) {
     try {
@@ -113,19 +128,20 @@ export async function registerUserWithUsername({
     }
   }
 
-  // 4) Firestore profile
+  // 5) Firestore profile with photoURL
   const profile = {
     uid: cred.user.uid,
     email,
     username: uname,
     displayName: displayName || '',
+    photoURL: defaultAvatar,  // ✅ Add this
     role,
     createdAt: serverTimestamp(),
-    ...extra,  // ✅ This should include NRIC from singpassData
+    ...extra,  // This includes NRIC from singpassData
     ...(licenseFileURL ? { licenseFileURL, licenseFileName: licenseFile.name } : {}),
   }
 
-  console.log('💾 Creating user profile with data:', profile) // ✅ Add this log
+  console.log('💾 Creating user profile with data:', profile)
 
   await setDoc(doc(db, 'users', cred.user.uid), profile)
 
@@ -165,8 +181,9 @@ export async function loginWithGooglePopup() {
   provider.setCustomParameters({ prompt: 'select_account' })
   try {
     const { user } = await signInWithPopup(auth, provider)
-    await ensureProviderProfile(user)
-    return user
+    const result = await ensureProviderProfile(user)
+    // ✅ Return both user and isNewUser flag
+    return result
   } catch (err) {
     if (err?.customData?.email && err.code === 'auth/account-exists-with-different-credential') {
       const methods = await fetchSignInMethodsForEmail(auth, err.customData.email)
@@ -187,8 +204,8 @@ export async function loginWithGoogleRedirect() {
 export async function handleGoogleRedirectResult() {
   const res = await getRedirectResult(auth)
   if (res?.user) {
-    await ensureProviderProfile(res.user)
-    return res.user
+    const result = await ensureProviderProfile(res.user)
+    return result  // ✅ Returns { user, isNewUser }
   }
   return null
 }
