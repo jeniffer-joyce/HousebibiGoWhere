@@ -63,6 +63,20 @@ const profileTo = computed(() => {
   return '/complete-profile/'
 })
 
+//  🔵 NEW: seller messages tab 
+  import { useMessages } from '@/composables/useMessages';
+
+  // Get unread message count
+  const currentUserId = computed(() => auth.currentUser?.uid);
+  const { totalUnreadCount, loadConversations } = useMessages(currentUserId);
+
+  // Load conversations when user is logged in
+  watch(() => [user.isLoggedIn, user.uid], ([loggedIn, uid]) => {
+    if (loggedIn && uid) {
+      loadConversations();
+    }
+  }, { immediate: true });
+
 /* ------------------------------
  * Theme (light/dark)
  * ------------------------------ */
@@ -147,9 +161,13 @@ const closeMobileNav  = () => { showMobileNav.value = false }
             Orders
           </RouterLink>
           <RouterLink
-            to="/about/"
-            class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary transition-colors">
+            to="/seller-messages/"
+            class="relative text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary transition-colors">
             Messages
+            <span v-if="totalUnreadCount > 0" 
+              class="absolute -top-1 -right-3 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+              {{ totalUnreadCount > 9 ? '9+' : totalUnreadCount }}
+            </span>
           </RouterLink>
           <RouterLink
             to="/dashboard/"
@@ -286,10 +304,16 @@ const closeMobileNav  = () => { showMobileNav.value = false }
               Orders
             </RouterLink>
             <RouterLink
-              to="/about/"
+              to="/seller-messages/"
               @click="closeMobileNav"
-              class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
-              Messages
+              class="relative rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+              <span class="flex items-center justify-between">
+                Messages
+                <span v-if="totalUnreadCount > 0" 
+                  class="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                  {{ totalUnreadCount > 9 ? '9+' : totalUnreadCount }}
+                </span>
+              </span>
             </RouterLink>
             <RouterLink
               to="/dashboard/"

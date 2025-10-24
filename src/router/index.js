@@ -10,6 +10,7 @@ import About from '../views/About.vue'
 import ForSellers from '../views/ForSellers.vue'
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
+import SellerMessages from "../views/sellers/SellerMessages.vue";
 import BusinessHomepage from "../views/sellers/BusinessHomepage.vue";
 import EditAccount from "../views/sellers/EditAccount.vue";
 
@@ -27,7 +28,7 @@ import BuyerDashboard from "../views/buyers/BuyerDashboard.vue";
 import BuyerOrders from "../views/buyers/BuyerOrders.vue";
 import BuyerAccount from "../views/buyers/BuyerAccount.vue";
 import BuyerFavourites from "../views/buyers/Favourites.vue";
-import BuyerMessages from "../views/buyers/messages.vue";
+import BuyerMessages from "../views/buyers/BuyerMessages.vue";
 import CompleteProfile from '../views/CompleteProfile.vue';
 
 import ProfileTab from '../views/buyers/account/ProfileTab.vue'
@@ -79,6 +80,10 @@ const routes = [
   {
     path: '/seller-orders/',
     component: SellerOrders
+  },
+  {
+    path: '/seller-messages/',
+    component: SellerMessages
   },
   {
     path: '/current-seller/',
