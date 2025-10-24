@@ -127,8 +127,10 @@
 <script setup>
 import { ref } from 'vue'
 import { storage } from '@/firebase/firebase_config'
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js'
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import UnsplashImagePicker from '@/components/UnsplashImagePicker.vue'
+import { useToast } from '@/composables/useToast'
+const { success, error:toastError } = useToast()
 
 const props = defineProps({
   show: Boolean,
@@ -154,13 +156,13 @@ async function handleFileUpload(event) {
   if (!file) return
 
   if (!file.type.startsWith('image/')) {
-    alert('Please select an image file')
+    toastError('Please select an image file')
     return
   }
 
   const maxSize = 10 * 1024 * 1024
   if (file.size > maxSize) {
-    alert('File size must be less than 10MB')
+    toastError('File size must be less than 10MB')
     return
   }
 
@@ -182,7 +184,7 @@ async function handleFileUpload(event) {
       },
       (error) => {
         console.error('Upload error:', error)
-        alert('Upload failed. Please try again.')
+        toastError('Upload failed. Please try again.')
         uploading.value = false
       },
       async () => {
@@ -194,7 +196,7 @@ async function handleFileUpload(event) {
     )
   } catch (error) {
     console.error('Error handling file:', error)
-    alert('Failed to process image')
+    toastError('Failed to process image')
     uploading.value = false
   }
 }

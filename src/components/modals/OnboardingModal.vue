@@ -150,13 +150,6 @@
           <!-- Footer -->
           <div class="flex items-center justify-between gap-3 px-8 py-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
             <button
-              type="button"
-              @click="skipForNow"
-              :disabled="saving"
-              class="px-6 py-3 rounded-lg font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 disabled:opacity-50">
-              Skip for now
-            </button>
-            <button
               @click="handleSubmit"
               :disabled="saving || !isFormValid"
               class="flex items-center gap-2 px-8 py-3 rounded-lg font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
@@ -178,6 +171,8 @@ import { doc, updateDoc, getDoc } from 'firebase/firestore'
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { user } from '@/store/user.js'
 import { markBusinessAsRegistered } from '@/firebase/services/singpassVerification.js'
+import { useToast } from '@/composables/useToast'
+const { success, error:toastError } = useToast()
 
 const props = defineProps({
   show: Boolean
@@ -208,13 +203,13 @@ async function handleLogoUpload(event) {
   if (!file) return
 
   if (!file.type.startsWith('image/')) {
-    alert('Please select an image file')
+    toastError('Please select an image file')
     return
   }
 
   const maxSize = 5 * 1024 * 1024 // 5MB
   if (file.size > maxSize) {
-    alert('File size must be less than 5MB')
+    toastError('File size must be less than 5MB')
     return
   }
 
@@ -244,7 +239,7 @@ async function handleLogoUpload(event) {
       },
       (error) => {
         console.error('Upload error:', error)
-        alert('Upload failed. Please try again.')
+        toastError('Upload failed. Please try again.')
         uploading.value = false
         clearLogo()
       },
@@ -257,7 +252,7 @@ async function handleLogoUpload(event) {
     )
   } catch (error) {
     console.error('Error handling file:', error)
-    alert('Failed to process image')
+    toastError('Failed to process image')
     uploading.value = false
     clearLogo()
   }
@@ -274,7 +269,7 @@ function clearLogo() {
 
 async function handleSubmit() {
   if (!isFormValid.value) {
-    alert('Please fill in all required fields')
+    toastError('Please fill in all required fields')
     return
   }
 
@@ -345,7 +340,7 @@ async function handleSubmit() {
   } catch (error) {
     console.error('❌ Error updating business profile:', error)
     console.error('❌ Error stack:', error.stack)
-    alert('Failed to update profile. Please try again.')
+    toastError('Failed to update profile. Please try again.')
     saving.value = false
   }
 }
