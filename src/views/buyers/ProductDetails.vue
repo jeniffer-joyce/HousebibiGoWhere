@@ -2,6 +2,7 @@
 import { onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProduct } from '@/composables/useProduct'
+import MessageButton from '@/components/messageButton.vue'
 
 const route = useRoute()
 
@@ -69,6 +70,7 @@ onMounted(() => {
                 <!-- Customer Reviews Section -->
                 <div class="mt-8">
                     <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Customer Reviews</h2>
+                    
                     <div class="mt-4 flex items-center gap-8 rounded-lg bg-white p-6 shadow-sm dark:bg-background-dark">
                         <div class="flex flex-col items-center">
                             <p class="text-5xl font-bold text-primary">4.8</p>
@@ -197,19 +199,37 @@ onMounted(() => {
                     </p>
                 </div>
 
+                <!-- Message Seller Button (Always visible if product has seller_id) -->
+                <div v-if="product.seller_id" class="mt-6">
+                    <MessageButton 
+                        :seller-id="product.seller_id"
+                        :seller-name="seller ? (seller.business_name || seller.name) : 'Seller'"
+                        variant="secondary"
+                        size="md"
+                        class="w-full"
+                    />
+                </div>
+
                 <!-- Seller Info -->
                 <div v-if="seller" class="mt-6">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-white">Seller</h3>
                     <div class="mt-2 flex items-center gap-4 rounded-lg bg-white p-4 shadow-sm dark:bg-background-dark">
                         <div class="h-16 w-16 rounded-full bg-cover bg-center"
-                            :style="`background-image: url('${seller.profile_image || seller.logo || 'https://via.placeholder.com/150'}');`">
+                            :style="`background-image: url('${seller.profile_image || seller.logo || seller.profilePic || 'https://via.placeholder.com/150'}');`">
                         </div>
-                        <div>
+                        <div class="flex-1">
                             <p class="font-semibold text-gray-800 dark:text-white">
                                 {{ seller.business_name || seller.name || 'Unknown Seller' }}
                             </p>
                             <a class="text-sm text-primary hover:underline" href="#">View Shop</a>
                         </div>
+                        <!-- Message Button beside seller info -->
+                        <MessageButton 
+                            :seller-id="product.seller_id || seller.uid || seller.id"
+                            :seller-name="seller.business_name || seller.name || 'Seller'"
+                            variant="secondary"
+                            size="sm"
+                        />
                     </div>
                 </div>
 
