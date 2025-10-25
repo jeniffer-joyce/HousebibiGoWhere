@@ -7,7 +7,7 @@
                max-h-[85vh] overflow-y-auto"
         @click.stop
       >
-        <!-- Header (no extra close button) -->
+        <!-- Header -->
         <div
           class="sticky top-0 z-10 bg-white/90 dark:bg-slate-800/90 backdrop-blur
                  border-b border-slate-200 dark:border-slate-700 p-4 rounded-t-2xl"
@@ -196,9 +196,7 @@ const showErrors  = ref(false)
 
 /* Autofill email on open */
 watch(() => props.visible, (v) => {
-  if (v) {
-    email.value = auth.currentUser?.email || ''
-  }
+  if (v) email.value = auth.currentUser?.email || ''
 })
 
 /* Derived */
@@ -227,43 +225,44 @@ async function submit() {
   if (!canSubmit.value || !props.order?.id) return
   submitting.value = true
   try {
-    // upload evidence
+    // 1) Upload evidence
     const evidenceUrls = []
     for (const f of files.value) {
-      const path = `return_requests/${props.order.id}/${Date.now()}_${f.name}`
+      const path = `request_refund/${auth.currentUser.uid}/${props.order.id}/${Date.now()}_${f.name}`
       const sr = sRef(storage, path)
       await uploadBytes(sr, f)
       evidenceUrls.push(await getDownloadURL(sr))
     }
 
-    // create sub-doc
+    // 2) Create sub-doc with reasonDescription
     const col = collection(doc(db, 'orders', props.order.id), 'return_requests')
     const requestDoc = await addDoc(col, {
       orderId: props.order.orderId,
       reasonKey: reasonKey.value,
-      reasonTitle: reasonsMap[reasonKey.value]?.title || '',
+      reasonDescription: reasonsMap[reasonKey.value]?.title || '',
       solution: solution.value,
-      description: description.value,
+      description: description.value,     // buyer’s free-form description (required)
       email: email.value || null,
-      evidenceUrls,
+      evidenceUrls,                       // full Storage URLs (array)
       itemSnapshot: firstItem.value || null,
       requestedBy: 'buyer',
       requestedAt: Timestamp.now(),
       status: 'pending',
     })
 
-    // update order summary + status
+    // 3) Update order with summary (uses reasonDescription + photoUrls)
     await updateDoc(doc(db, 'orders', props.order.id), {
       status: 'return_refund',
       statusLog: arrayUnion({ status: 'return_refund', by: 'buyer', time: Timestamp.now() }),
       returnRequestSummary: {
         id: requestDoc.id,
         reasonKey: reasonKey.value,
-        reasonTitle: reasonsMap[reasonKey.value]?.title || '',
+        reasonDescription: reasonsMap[reasonKey.value]?.title || '',
         solution: solution.value,
         amount: itemTotal.value,
         requestedAt: Timestamp.now(),
-        state: 'pending'
+        state: 'pending',
+        photoUrls: evidenceUrls,          // <= keep the evidence URLs in the summary too
       }
     })
 
