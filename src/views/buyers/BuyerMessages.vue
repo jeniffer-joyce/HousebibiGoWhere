@@ -1,10 +1,10 @@
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { auth } from '@/firebase/firebase_config'
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
 import { useMessages } from '@/composables/useMessages'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/firebase/firebase_config'
 
 // Sidebar state
@@ -37,6 +37,9 @@ const formatMessageTimeDetailed = messaging.formatMessageTimeDetailed
 // Search query
 const searchQuery = ref('')
 
+// Store business details
+const businessDetails = ref({})
+
 // Filtered conversations
 const filteredConversations = computed(() => {
     if (!searchQuery.value.trim()) {
@@ -44,16 +47,49 @@ const filteredConversations = computed(() => {
     }
     
     const query = searchQuery.value.toLowerCase()
-    return conversations.value.filter(conv => 
-        conv.otherUser?.name.toLowerCase().includes(query) ||
-        conv.lastMessage?.toLowerCase().includes(query)
-    )
+    return conversations.value.filter(conv => {
+        const businessName = businessDetails.value[conv.otherUserId]?.name || conv.otherUser?.name || ''
+        return businessName.toLowerCase().includes(query) ||
+               conv.lastMessage?.toLowerCase().includes(query)
+    })
 })
 
 // New message input
 const newMessage = ref('')
 const messagesContainer = ref(null)
-const activeBusinessName = ref(null)
+const route = useRoute()
+const router = useRouter()
+const showOptionsMenu = ref(false)
+
+// Delete conversation
+async function deleteConversation(conversationId) {
+    if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+        return
+    }
+    
+    try {
+        const conversationRef = doc(db, 'conversations', conversationId)
+        await deleteDoc(conversationRef)
+        
+        // Close the conversation if it's currently active
+        if (activeConversationId.value === conversationId) {
+            activeConversationId.value = null
+        }
+        
+        showOptionsMenu.value = false
+        alert('Conversation deleted successfully')
+    } catch (error) {
+        console.error('Error deleting conversation:', error)
+        alert('Failed to delete conversation. Please try again.')
+    }
+}
+
+// Navigate to shop details
+function goToShopDetails() {
+    if (activeConversation.value) {
+        router.push(`/shop-details/${activeConversation.value.otherUserId}`)
+    }
+}
 
 // Select conversation
 function selectConversation(conversationId) {
@@ -63,17 +99,35 @@ function selectConversation(conversationId) {
     })
 }
 
-// Load business name when conversation becomes active
-watch(activeConversationId, async (newId) => {
-    if (newId) {
-        const conv = conversations.value.find(c => c.id === newId)
-        if (conv && conv.otherUser?.type === 'business') {
-            activeBusinessName.value = await getBusinessName(conv.otherUserId)
-        } else {
-            activeBusinessName.value = null
+// Load business details for all conversations
+watch(conversations, async (newConversations) => {
+    for (const conv of newConversations) {
+        if (conv.otherUserId && !businessDetails.value[conv.otherUserId]) {
+            const details = await getBusinessDetails(conv.otherUserId)
+            if (details) {
+                businessDetails.value[conv.otherUserId] = details
+            }
         }
     }
-})
+}, { deep: true, immediate: true })
+
+// Get business details including name and profile pic
+async function getBusinessDetails(userId) {
+    try {
+        const businessDoc = await getDoc(doc(db, 'businesses', userId))
+        if (businessDoc.exists()) {
+            const data = businessDoc.data()
+            return {
+                name: data.name || data.businessName || 'Business',
+                profilePic: data.profilePic || data.profileImage || null,
+                type: 'business'
+            }
+        }
+    } catch (error) {
+        console.error('Error getting business details:', error)
+    }
+    return null
+}
 
 // Send message
 async function sendMessage() {
@@ -99,27 +153,20 @@ function scrollToBottom() {
     })
 }
 
-// Get avatar URL
-function getAvatarUrl(user) {
-    if (user?.avatar) {
-        return user.avatar
+// Get avatar URL - prioritize business profile pic
+function getAvatarUrl(userId) {
+    const business = businessDetails.value[userId]
+    if (business?.profilePic) {
+        return business.profilePic
     }
-    const name = user?.name || 'User'
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=50`
+    const name = business?.name || 'Business'
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10b981&color=fff&size=50`
 }
 
-// Get business name for conversation
-async function getBusinessName(otherUserId) {
-    try {
-        const businessDoc = await getDoc(doc(db, 'businesses', otherUserId))
-        if (businessDoc.exists()) {
-            const data = businessDoc.data()
-            return data.name || data.businessName || 'Business'
-        }
-    } catch (error) {
-        console.error('Error getting business name:', error)
-    }
-    return null
+// Get display name - show business name
+function getDisplayName(userId) {
+    const business = businessDetails.value[userId]
+    return business?.name || 'Business'
 }
 
 // Format date separator (e.g., "Today", "Yesterday", "October 24, 2025")
@@ -175,114 +222,143 @@ const groupedMessages = computed(() => {
     return groups
 })
 
-// Auto-scroll when messages change
-watch(messages, () => {
-    nextTick(() => {
-        scrollToBottom()
-    })
-}, { deep: true })
-
-// Load conversations on mount
+// Load conversations and handle query parameter
 onMounted(() => {
-    if (currentUserIdRef.value) {
-        loadConversations()
+    loadConversations()
+    
+    // Check if there's a conversation query parameter
+    const conversationId = route.query.conversation
+    if (conversationId) {
+        // Wait for conversations to load, then select the conversation
+        watch(conversations, (newConversations) => {
+            if (newConversations.length > 0) {
+                const targetConv = newConversations.find(c => c.id === conversationId)
+                if (targetConv) {
+                    selectConversation(conversationId)
+                } else {
+                    // If conversation not in list yet, still try to load it
+                    loadMessages(conversationId)
+                }
+            }
+        }, { immediate: true })
     }
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', handleClickOutside)
 })
 
-// Watch for auth state changes
-watch(currentUserIdRef, (newId) => {
-    if (newId) {
-        loadConversations()
+// Cleanup on unmount
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside)
+})
+
+// Handle click outside to close dropdown
+function handleClickOutside(event) {
+    const dropdown = event.target.closest('.relative')
+    if (!dropdown || !dropdown.contains(event.target)) {
+        showOptionsMenu.value = false
     }
-}, { immediate: true })
+}
 </script>
 
 <template>
-    <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div class="flex h-screen bg-slate-50 dark:bg-slate-900">
         <!-- Sidebar -->
         <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
 
-        <!-- Main Content - MATCHES OTHER PAGES: uses ml-20/ml-64 -->
-        <main 
-            class="flex-1 transition-all duration-300"
-            :class="isSidebarCollapsed ? 'ml-20' : 'ml-64'">
-            <div class="flex h-screen">
+        <!-- Main Content -->
+        <main :class="[
+            'flex-1 flex transition-all duration-300 overflow-hidden',
+            isSidebarCollapsed ? 'ml-20' : 'ml-64'
+        ]">
                 <!-- Conversations List -->
-                <div class="w-80 flex flex-col border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                <div class="w-96 border-r border-slate-200 dark:border-slate-700 flex flex-col bg-white dark:bg-slate-800">
                     <!-- Header -->
                     <div class="p-4 border-b border-slate-200 dark:border-slate-700">
-                        <h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-4">Messages</h1>
+                        <div class="flex items-center justify-between mb-4">
+                            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Messages</h1>
+                        </div>
                         
                         <!-- Search -->
                         <div class="relative">
-                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <input 
+                                v-model="searchQuery"
+                                type="text" 
+                                placeholder="Search messages"
+                                class="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+                            <svg class="absolute left-3 top-2.5 h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                             </svg>
-                            <input
-                                v-model="searchQuery"
-                                type="text"
-                                placeholder="Search messages"
-                                class="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary" />
-                        </div>
-                    </div>
-
-                    <!-- Loading State -->
-                    <div v-if="loading && conversations.length === 0" class="flex-1 flex items-center justify-center">
-                        <div class="text-center">
-                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                            <p class="text-slate-600 dark:text-slate-400">Loading conversations...</p>
-                        </div>
-                    </div>
-
-                    <!-- Empty State -->
-                    <div v-else-if="!loading && filteredConversations.length === 0" class="flex-1 flex items-center justify-center p-4">
-                        <div class="text-center">
-                            <svg class="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                            </svg>
-                            <p class="text-slate-600 dark:text-slate-400">No conversations yet</p>
                         </div>
                     </div>
 
                     <!-- Conversations List -->
-                    <div v-else class="flex-1 overflow-y-auto">
-                        <div
-                            v-for="conversation in filteredConversations"
-                            :key="conversation.id"
-                            @click="selectConversation(conversation.id)"
-                            :class="[
-                                'flex items-start gap-3 p-4 cursor-pointer transition-colors border-b border-slate-100 dark:border-slate-700',
-                                activeConversationId === conversation.id 
-                                    ? 'bg-blue-50 dark:bg-slate-700/50 border-l-4 border-l-primary' 
-                                    : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'
-                            ]">
-                            <!-- Avatar -->
-                            <img 
-                                :src="getAvatarUrl(conversation.otherUser)" 
-                                :alt="conversation.otherUser?.name" 
-                                class="w-12 h-12 rounded-full flex-shrink-0" />
-                            
-                            <!-- Conversation Details -->
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center justify-between mb-1">
-                                    <h3 class="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                                        {{ conversation.otherUser?.name || 'Unknown User' }}
-                                    </h3>
-                                    <span class="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 ml-2">
-                                        {{ formatMessageTime(conversation.lastMessageTime) }}
-                                    </span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <p :class="[
-                                        'text-sm truncate',
-                                        conversation.unreadCount > 0 ? 'text-slate-900 dark:text-white font-medium' : 'text-slate-500 dark:text-slate-400'
-                                    ]">
-                                        {{ conversation.lastMessage || 'No messages yet' }}
-                                    </p>
-                                    <span v-if="conversation.unreadCount > 0" 
-                                        class="flex-shrink-0 ml-2 bg-primary text-white text-xs font-bold rounded-full h-5 min-w-[20px] px-1.5 flex items-center justify-center">
-                                        {{ conversation.unreadCount }}
-                                    </span>
+                    <div class="flex-1 overflow-y-auto">
+                        <div v-if="loading && conversations.length === 0" class="flex items-center justify-center h-full">
+                            <div class="text-center">
+                                <svg class="animate-spin h-10 w-10 mx-auto text-primary mb-3" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                <p class="text-slate-600 dark:text-slate-400">Loading conversations...</p>
+                            </div>
+                        </div>
+
+                        <div v-else-if="filteredConversations.length === 0" class="flex items-center justify-center h-full">
+                            <div class="text-center px-4">
+                                <svg class="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                </svg>
+                                <p class="text-slate-600 dark:text-slate-400">
+                                    {{ searchQuery ? 'No conversations found' : 'No conversations yet' }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div v-else>
+                            <div 
+                                v-for="conversation in filteredConversations" 
+                                :key="conversation.id"
+                                @click="selectConversation(conversation.id)"
+                                :class="[
+                                    'p-4 border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors',
+                                    activeConversationId === conversation.id ? 'bg-slate-100 dark:bg-slate-700 border-l-4 border-l-primary' : ''
+                                ]">
+                                <div class="flex items-start gap-3">
+                                    <div class="relative">
+                                        <img 
+                                            :src="getAvatarUrl(conversation.otherUserId)" 
+                                            :alt="getDisplayName(conversation.otherUserId)" 
+                                            class="w-12 h-12 rounded-full object-cover" />
+                                        <span v-if="conversation.unreadCount > 0" 
+                                            class="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center">
+                                            {{ conversation.unreadCount }}
+                                        </span>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-start justify-between mb-1">
+                                            <div class="flex-1 min-w-0">
+                                                <h3 class="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                                    {{ getDisplayName(conversation.otherUserId) }}
+                                                </h3>
+                                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                                    Business
+                                                </p>
+                                            </div>
+                                            <span class="text-xs text-slate-500 dark:text-slate-400 ml-2 flex-shrink-0">
+                                                {{ formatMessageTime(conversation.lastMessageTime) }}
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm text-slate-600 dark:text-slate-400 truncate flex-1">
+                                                {{ conversation.lastMessage || 'No messages yet' }}
+                                            </p>
+                                            <span v-if="conversation.unreadCount > 0" 
+                                                class="flex-shrink-0 ml-2 bg-primary text-white text-xs font-bold rounded-full h-5 min-w-[20px] px-1.5 flex items-center justify-center">
+                                                {{ conversation.unreadCount }}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -296,29 +372,54 @@ watch(currentUserIdRef, (newId) => {
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <img 
-                                    :src="getAvatarUrl(activeConversation.otherUser)" 
-                                    :alt="activeConversation.otherUser?.name" 
-                                    class="w-10 h-10 rounded-full" />
+                                    :src="getAvatarUrl(activeConversation.otherUserId)" 
+                                    :alt="getDisplayName(activeConversation.otherUserId)" 
+                                    class="w-10 h-10 rounded-full object-cover" />
                                 <div>
                                     <h2 class="text-base font-semibold text-slate-900 dark:text-white">
-                                        {{ activeConversation.otherUser?.name || 'Unknown User' }}
+                                        {{ getDisplayName(activeConversation.otherUserId) }}
                                     </h2>
-                                    <p v-if="activeBusinessName" class="text-xs text-slate-500 dark:text-slate-400">
-                                        {{ activeBusinessName }}
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                                        Business
                                     </p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
-                                <button class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg">
+                                <!-- Info button - Navigate to shop -->
+                                <button 
+                                    @click="goToShopDetails"
+                                    class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg"
+                                    title="View Shop Details">
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                 </button>
-                                <button class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg">
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
-                                    </svg>
-                                </button>
+                                
+                                <!-- Options menu button -->
+                                <div class="relative">
+                                    <button 
+                                        @click="showOptionsMenu = !showOptionsMenu"
+                                        class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg"
+                                        title="Options">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                                        </svg>
+                                    </button>
+                                    
+                                    <!-- Dropdown menu -->
+                                    <div 
+                                        v-if="showOptionsMenu"
+                                        class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-50">
+                                        <button
+                                            @click="deleteConversation(activeConversationId)"
+                                            class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                            Delete Conversation
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -423,7 +524,6 @@ watch(currentUserIdRef, (newId) => {
                         <p class="text-slate-600 dark:text-slate-400">Choose a conversation to start messaging</p>
                     </div>
                 </div>
-            </div>
         </main>
 
         <!-- Error Toast -->

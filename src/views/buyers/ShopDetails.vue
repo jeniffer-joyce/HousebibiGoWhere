@@ -46,8 +46,22 @@
                     <span class="text-gray-400 dark:text-gray-600">·</span>
                     <span>{{ followersCount }} Followers</span>
                 </div>
-                <button
-                    class="mt-4 flex items-center justify-center rounded-lg h-10 px-6 bg-primary text-white text-sm font-bold shadow-sm hover:bg-opacity-90 transition-colors">Follow</button>
+                
+                <!-- Action Buttons -->
+                <div class="mt-4 flex items-center gap-3">
+                    <button
+                        class="flex items-center justify-center rounded-lg h-10 px-6 bg-primary text-white text-sm font-bold shadow-sm hover:bg-opacity-90 transition-colors">
+                        Follow
+                    </button>
+                    
+                    <!-- Message Button -->
+                    <MessageButton 
+                        :seller-id="business.uid"
+                        :seller-name="business.name"
+                        variant="secondary"
+                        size="md"
+                    />
+                </div>
             </div>
             <!-- Mobile Sidebar Toggle (hamburger) -->
             <div class="sm:hidden flex justify-between items-center gap-8 mt-8 px-4 py-2">
@@ -158,25 +172,26 @@
                             </button>
                         </div>
                     </section>
-                    <section id="reviews" class="mt-12">
+                    <section class="mt-12" id="reviews">
                         <h2 class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">Customer
                             Reviews
                         </h2>
-                        <div class="space-y-8">
+                        <div class="space-y-4">
                             <div
-                                class="flex flex-col gap-3 p-4 rounded-lg bg-white dark:bg-background-dark/50 shadow-sm">
-                                <div class="flex items-center gap-3">
-                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-                                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDDXSJSZps974dSmZos44bQ4fkVJvtVwiH3d7TXHIdpmz3GwZlK5Ntcd1NJUcd-6g8bZUiLD4FGP3Ja7r8X6IsNfzOC5XwSlD8dTS321IodUu8SSmC11Tq1cQeJzFXpCYuVrirtXgVOFcibUQPIXcF3hWDvx9TuHppAF5yqeA1RxWVPfk37kj-r25aJA2rksTLnAN3FPKU7WhoUuGS1vS19-C6IXVkli9flviCrfkgBLGJeFcgIi6Cs-jamK7CGv9BsGEFvtoldckBo");'>
+                                class="p-6 bg-white dark:bg-background-dark/50 rounded-lg shadow-sm space-y-3 border border-gray-200 dark:border-gray-700">
+                                <div class="flex items-start gap-3">
+                                    <div
+                                        class="size-12 rounded-full bg-center bg-no-repeat bg-cover bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center font-bold text-white">
+                                        J
                                     </div>
                                     <div class="flex-1">
                                         <p
                                             class="text-sm font-semibold text-background-dark dark:text-background-light">
-                                            Sophia
+                                            James
                                         </p>
-                                        <p class="text-xs text-background-dark/60 dark:text-background-light/60">2 weeks
-                                            ago
-                                        </p>
+                                        <p class="text-xs text-background-dark/60 dark:text-background-light/60">3
+                                            months
+                                            ago</p>
                                     </div>
                                 </div>
                                 <div class="flex gap-0.5 text-primary">
@@ -187,48 +202,18 @@
                                     <span class="material-symbols-outlined text-base">star</span>
                                 </div>
                                 <p class="text-sm text-background-dark/80 dark:text-background-light/80">
-                                    Absolutely love the throw blanket I purchased! It's so soft and cozy, perfect for
-                                    chilly
-                                    evenings. The quality is excellent, and the craftsmanship is evident. Highly
-                                    recommend!
+                                    I've always loved handcrafted candles, but these are next level! The scents are
+                                    amazing, and
+                                    they burn evenly. Every room in my house smells fantastic now. Great quality!
                                 </p>
                             </div>
+
                             <div
-                                class="flex flex-col gap-3 p-4 rounded-lg bg-white dark:bg-background-dark/50 shadow-sm">
-                                <div class="flex items-center gap-3">
-                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-                                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA8OR5kpRLPMky4F6t0lMZm_G4o3WNgP5M2uxKWJOXHUyFAaPDwUeDLt4Ccv0wKiDKya4MeGm_74lmKLI9NvPiLZKzWnba2oD1o1ZL_Afqsi5i7W-5lGuBScMWHOwS0EDvBKl2irDcYgCRkkN-a1TGVYlBP-JL_jYT_IPwayaoPvWhuKn3U-j4Yh_e2ocWCZHpuotpk7cFjIEXfpbKKcSCiFtyCvYN3LN-qp8ASWis8dCVAk4NDpEE7O7Fnm_BtGuz5d2b01ljaIOFn");'>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p
-                                            class="text-sm font-semibold text-background-dark dark:text-background-light">
-                                            Ethan
-                                        </p>
-                                        <p class="text-xs text-background-dark/60 dark:text-background-light/60">1 month
-                                            ago
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex gap-0.5">
-                                    <span class="material-symbols-outlined text-base text-primary">star</span>
-                                    <span class="material-symbols-outlined text-base text-primary">star</span>
-                                    <span class="material-symbols-outlined text-base text-primary">star</span>
-                                    <span class="material-symbols-outlined text-base text-primary">star</span>
-                                    <span
-                                        class="material-symbols-outlined text-base text-background-dark/30 dark:text-background-light/30">star</span>
-                                </div>
-                                <p class="text-sm text-background-dark/80 dark:text-background-light/80">
-                                    The scented candles are lovely, but the scent could be a bit stronger. Overall, a
-                                    good
-                                    product
-                                    for the price.
-                                </p>
-                            </div>
-                            <div
-                                class="flex flex-col gap-3 p-4 rounded-lg bg-white dark:bg-background-dark/50 shadow-sm">
-                                <div class="flex items-center gap-3">
-                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-                                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBDXu2pguYR7AezNQUFVJpWpYk048Zh5-5JBnNGcZCQgEmSuYW52uOeSm82u56G4oOAjXKNN0XyVrb_dmTVv-w0yIvE2VUl4bYITx0EatHHHgB8jlZbwSHNARNDW2cpxByTgLKB7BKkA-4iuKoV0c10lexiYhiYN72V5QkvdLqwHZiaNpZdUp7imVopNqsMxX5hcom67-6qB-PZt2TXrqxu1iD-FG2AqaEFzLAvZbyYNyWZAQxfpHci5DgfeAox8aFxS9N72PSw_4FJ");'>
+                                class="p-6 bg-white dark:bg-background-dark/50 rounded-lg shadow-sm space-y-3 border border-gray-200 dark:border-gray-700">
+                                <div class="flex items-start gap-3">
+                                    <div
+                                        class="size-12 rounded-full bg-center bg-no-repeat bg-cover bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center font-bold text-white">
+                                        O
                                     </div>
                                     <div class="flex-1">
                                         <p
@@ -302,6 +287,7 @@ import { getBusinesses } from '@/firebase/services/home/business.js';
 import { onMounted, onUnmounted, ref, computed } from "vue";
 import { useRoute } from "vue-router";
 import Loading from '@/components/status/Loading.vue';
+import MessageButton from '@/components/messageButton.vue';
 import defaultProfilePic from '@/assets/defaultBusinessLogo.png'
 import { getSellerProductsSortedBySales } from '@/composables/productUtils.js';
 

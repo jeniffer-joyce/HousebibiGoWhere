@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { auth } from '../firebase/firebase_config';
 import { getOrCreateConversation } from '../firebase/messageService';
@@ -57,11 +57,23 @@ async function handleMessageClick() {
   
   if (!props.sellerId) {
     alert('Invalid seller ID');
+    console.error('Seller ID is missing:', props.sellerId);
+    return;
+  }
+  
+  // Prevent messaging yourself
+  if (currentUserId.value === props.sellerId) {
+    alert('You cannot message yourself');
     return;
   }
   
   try {
     loading.value = true;
+    
+    console.log('Creating conversation between:', {
+      buyer: currentUserId.value,
+      seller: props.sellerId
+    });
     
     // Create or get conversation
     const conversation = await getOrCreateConversation(
@@ -69,14 +81,28 @@ async function handleMessageClick() {
       props.sellerId
     );
     
+    console.log('Conversation created/retrieved:', conversation);
+    
+    if (!conversation || !conversation.id) {
+      throw new Error('Invalid conversation object received');
+    }
+    
     // Navigate to messages page with conversation ID
-    router.push({
-      name: 'BuyerMessages', // or your route name
+    console.log('Navigating to messages with conversation ID:', conversation.id);
+    
+    await router.push({
+      path: '/buyer-messages',
       query: { conversation: conversation.id }
     });
+    
   } catch (error) {
-    console.error('Error opening conversation:', error);
-    alert('Failed to open conversation. Please try again.');
+    console.error('Error details:', {
+      message: error.message,
+      error: error,
+      sellerId: props.sellerId,
+      currentUserId: currentUserId.value
+    });
+    alert(`Failed to open conversation: ${error.message}`);
   } finally {
     loading.value = false;
   }
