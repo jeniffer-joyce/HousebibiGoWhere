@@ -6,6 +6,8 @@ import { signOut } from 'firebase/auth'
 /* 🔽 Firestore helpers to read displayName + username */
 import { doc, getDoc } from 'firebase/firestore'
 import { useRouter } from 'vue-router'
+import { useToast } from '@/composables/useToast'
+const { success, error:toastError } = useToast()
 
 const router = useRouter()
 
@@ -15,6 +17,12 @@ const router = useRouter()
 const displayName = ref('')     // shown text
 const username = ref('')        // 🔵 NEW: used for /:username/ routing
 
+const avatarUrl = computed(() => {
+  if (user.avatar) return user.avatar
+  
+  const name = displayName.value || user.email || 'Seller'
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff&size=200`
+})
 /* Robust loader: prefers Firestore, falls back to Auth */
 async function loadName () {
   try {
@@ -54,6 +62,20 @@ const profileTo = computed(() => {
   // graceful fallback if username not set yet
   return '/complete-profile/'
 })
+
+//  🔵 NEW: seller messages tab 
+  import { useMessages } from '@/composables/useMessages';
+
+  // Get unread message count
+  const currentUserId = computed(() => auth.currentUser?.uid);
+  const { totalUnreadCount, loadConversations } = useMessages(currentUserId);
+
+  // Load conversations when user is logged in
+  watch(() => [user.isLoggedIn, user.uid], ([loggedIn, uid]) => {
+    if (loggedIn && uid) {
+      loadConversations();
+    }
+  }, { immediate: true });
 
 /* ------------------------------
  * Theme (light/dark)
@@ -97,7 +119,7 @@ async function handleLogout () {
     window.location.reload()
   } catch (err) {
     console.error('Error logging out:', err)
-    alert('Failed to logout. Please try again.')
+    toastError('Failed to logout. Please try again.')
   }
 }
 
@@ -139,9 +161,13 @@ const closeMobileNav  = () => { showMobileNav.value = false }
             Orders
           </RouterLink>
           <RouterLink
-            to="/about/"
-            class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary transition-colors">
+            to="/seller-messages/"
+            class="relative text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary transition-colors">
             Messages
+            <span v-if="totalUnreadCount > 0" 
+              class="absolute -top-1 -right-3 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+              {{ totalUnreadCount > 9 ? '9+' : totalUnreadCount }}
+            </span>
           </RouterLink>
           <RouterLink
             to="/dashboard/"
@@ -189,10 +215,13 @@ const closeMobileNav  = () => { showMobileNav.value = false }
             <button
               @click.stop="showProfileDropdown = !showProfileDropdown"
               class="focus:outline-none focus:ring-2 focus:ring-primary rounded-full">
-              <div
-                class="h-10 w-10 rounded-full bg-cover bg-center cursor-pointer hover:opacity-80 transition-opacity"
-                :style="{ backgroundImage: `url('${user.avatar || '/avatar.png'}')` }"></div>
-            </button>
+              <img 
+                  :src="user.avatar || '/avatar.png'" 
+                  @error="$event.target.src = '/avatar.png'"
+                  alt="Profile" 
+                  class="h-8 w-8 rounded-full object-cover"
+              />
+          </button>
 
             <Transition
               enter-active-class="transition ease-out duration-100"
@@ -275,10 +304,16 @@ const closeMobileNav  = () => { showMobileNav.value = false }
               Orders
             </RouterLink>
             <RouterLink
-              to="/about/"
+              to="/seller-messages/"
               @click="closeMobileNav"
-              class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
-              Messages
+              class="relative rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+              <span class="flex items-center justify-between">
+                Messages
+                <span v-if="totalUnreadCount > 0" 
+                  class="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                  {{ totalUnreadCount > 9 ? '9+' : totalUnreadCount }}
+                </span>
+              </span>
             </RouterLink>
             <RouterLink
               to="/dashboard/"
@@ -308,8 +343,12 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 :to="profileTo"
                 @click="closeMobileNav"
                 class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <span class="inline-block h-8 w-8 rounded-full bg-cover bg-center"
-                  :style="{ backgroundImage: `url('${user.avatar || '/avatar.png'}')` }"></span>
+                <img 
+                  :src="user.avatar || '/avatar.png'" 
+                  @error="$event.target.src = '/avatar.png'"
+                  alt="Profile" 
+                  class="h-8 w-8 rounded-full object-cover"
+              />
                 <div class="min-w-0">
                   <p class="truncate font-medium">{{ displayName }}</p>
                   <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ user.email }}</p>

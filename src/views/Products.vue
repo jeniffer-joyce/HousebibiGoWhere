@@ -225,9 +225,20 @@ const displayedProducts = computed(() => {
           <div class="relative overflow-hidden rounded-lg bg-background-light dark:bg-background-dark">
             <div class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
                  :style="{ backgroundImage: `url(${item.img_url})` }"></div>
-            <button class="absolute top-3 right-3 rounded-full p-2 bg-white/50 dark:bg-black/50 backdrop-blur-sm text-foreground-light dark:text-foreground-dark hover:text-primary transition-colors">
-              <span class="material-symbols-outlined">favorite_border</span>
-            </button>
+                  <button
+                  class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                  <svg
+                    :class="'h-6 w-6'"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                </button>
           </div>
           <div class="pt-3">
             <h3 class="font-bold text-base">{{ item.item_name }}</h3>

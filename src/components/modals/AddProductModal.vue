@@ -273,6 +273,8 @@
 import { ref, reactive, computed } from 'vue'
 import { auth } from '@/firebase/firebase_config'
 import ImagePickerModal from '@/components/ImagePickerModal.vue'
+import { useToast } from '@/composables/useToast'
+const { success, error:toastError } = useToast()
 
 const props = defineProps({
   show: Boolean
@@ -371,7 +373,7 @@ function resetForm() {
 async function handleSubmit() {
   // Validate images
   if (productImages.value.length === 0) {
-    alert('Please add at least one product image')
+    toastError('Please add at least one product image')
     return
   }
 
@@ -405,7 +407,7 @@ async function handleSubmit() {
     resetForm()
   } catch (error) {
     console.error('Error preparing product data:', error)
-    alert('Failed to add product. Please try again.')
+    toastError('Failed to add product. Please try again.')
   } finally {
     saving.value = false
   }

@@ -1,6 +1,8 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { useUnsplashImages } from '@/composables/useUnsplashImages';
+import { useToast } from '@/composables/useToast'
+const { success, error:toastError } = useToast()
 
 const props = defineProps({
     modelValue: {
@@ -36,7 +38,7 @@ async function handleSelectPhoto(photo) {
         emit('select', selected);
         showPicker.value = false;
     } catch (err) {
-        alert('Failed to select image. Please try again.');
+        toastError('Failed to select image. Please try again.');
     }
 }
 
