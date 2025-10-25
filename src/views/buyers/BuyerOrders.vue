@@ -244,9 +244,11 @@ import {
 } from 'firebase/firestore'
 
 import CancelledDetailsModal from '@/components/orders/CancelledDetailsModal.vue'
+import OrderDetailsModal from '@/components/orders/OrderDetailsModal.vue'
+import { useToast } from '@/composables/useToast'
 import OrderDetailsModal   from '@/components/orders/OrderDetailsModal.vue'
 import ReturnRequestModal  from '@/components/orders/ReturnRequestModal.vue'
-import ReturnRequestDetailsModal from '@/components/orders/ReturnRequestDetailsModal.vue'
+const { success, error:toastError, info } = useToast()
 
 /* UI state */
 const isSidebarCollapsed = ref(false)
@@ -369,9 +371,7 @@ function formatDate(ts) {
 }
 
 /* Actions */
-function payNow(o){ alert(`Pay for order ${o.orderId}`) }
-function changePayment(o){ alert(`Change payment for ${o.orderId}`) }
-
+function payNow(o){ info(`Pay for order ${o.orderId}`) }
 function openCancelConfirm(o){ orderToCancel.value = o; showCancelConfirm.value = true }
 
 async function confirmCancel(){
@@ -391,12 +391,12 @@ function markReceived(o){
     statusLog: arrayUnion({ status:'completed', by:'buyer', time: Timestamp.now() })
   })
 }
-
-function rateOrder(o){ alert(`Rate order ${o.orderId}`) }
-
-function openReturnModal(o){
-  orderForReturn.value = o
-  showReturnModal.value = true
+function rateOrder(o){ info(`Rate order ${o.orderId}`) }
+function requestReturn(o){
+  updateDoc(doc(db, 'orders', o.id), {
+    status:'return_refund',
+    statusLog: arrayUnion({ status:'return_refund', by:'buyer', time: Timestamp.now() })
+  })
 }
 function handleReturnSubmitted() {
   showReturnModal.value = false

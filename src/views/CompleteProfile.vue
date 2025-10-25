@@ -1,20 +1,51 @@
 <template>
   <div class="min-h-[70vh] flex items-center justify-center py-10 px-4">
     <div class="w-full max-w-3xl bg-background-light dark:bg-background-dark rounded-xl border border-black/5 dark:border-white/10 p-6 sm:p-8">
-      <!-- Role toggle -->
-      <div class="flex gap-3">
-        <button
-          type="button"
-          :class="role==='buyer' ? activeTab : inactiveTab"
-          @click="role='buyer'">I’m a Buyer</button>
-        <button
-          type="button"
-          :class="role==='seller' ? activeTab : inactiveTab"
-          @click="role='seller'">I’m a Seller</button>
+    <!-- Role toggle - only show if NOT pre-selected -->
+    <div v-if="!rolePreSelected" class="flex gap-3">
+      <button
+        type="button"
+        :class="role==='buyer' ? activeTab : inactiveTab"
+        @click="role='buyer'">I'm a Buyer</button>
+      <button
+        type="button"
+        :class="role==='seller' ? activeTab : inactiveTab"
+        @click="role='seller'">I'm a Seller</button>
+    </div>
+
+    <!-- ✅ Show role badge when locked -->
+    <div v-else class="mb-6">
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary border border-primary/20">
+        <span class="font-medium">
+          {{ role === 'buyer' ? '🛍️ Completing Buyer Registration' : '🏪 Completing Seller Registration' }}
+        </span>
       </div>
+    </div>
 
       <!-- SELLER -->
       <form v-if="role==='seller'" class="mt-6 space-y-6" @submit.prevent="onSubmit">
+        <!-- SingPass Verification (Seller only) -->
+        <section v-if="role==='seller'">
+          <h2 class="text-base font-semibold">Business Verification</h2>
+          <p class="mt-1 text-sm text-background-dark/70 dark:text-background-light/70">
+            Verify your business details via SingPass for faster registration.
+          </p>
+          
+          <div class="mt-4">
+            <button
+              type="button"
+              @click="showSingPassModal = true"
+              class="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2">
+              <span>🇸🇬 Verify with SingPass</span>
+            </button>
+            
+            <div v-if="isSingPassVerified" class="mt-2 p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
+              <p class="text-sm text-green-800 dark:text-green-200">
+                ✓ Verified: {{ verifiedBusinessData.businessName }}
+              </p>
+            </div>
+          </div>
+        </section>
         <section>
           <h2 class="text-base font-semibold">Business Information</h2>
           <p class="mt-1 text-sm text-background-dark/70 dark:text-background-light/70">
@@ -214,9 +245,6 @@
             <span v-else-if="isSaving">Saving…</span>
             <span v-else>Completed</span>
           </button>
-          <button v-if="done" type="button" @click="goToRoleHome()" class="px-4 py-2 rounded-lg border">
-            Go to Seller page
-          </button>
         </div>
 
         <div v-if="done" class="rounded-lg bg-green-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 p-3 text-sm mt-2">
@@ -306,16 +334,32 @@
       </form>
     </div>
   </div>
+  <!-- SingPass Modal -->
+<SingPassVerificationModal 
+  :show="showSingPassModal"
+  @close="showSingPassModal = false"
+  @verified="handleSingPassVerified"
+/>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { user } from '@/store/user.js'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/firebase/firebase_config'
 import {
   doc, getDoc, setDoc, serverTimestamp, deleteField
 } from 'firebase/firestore'
 import { uploadBusinessLicense } from '@/firebase/services/fileUpload.js'
+import SingPassVerificationModal from '@/components/SingPassVerificationModal.vue'
+import { markBusinessAsRegistered } from '@/firebase/services/singpassVerification.js'
+import { useToast } from '@/composables/useToast'
+const { success, error:toastError } = useToast()
+
+// Add these refs
+const showSingPassModal = ref(false)
+const verifiedBusinessData = ref(null)
+const isSingPassVerified = ref(false)
 
 const router = useRouter()
 
@@ -325,6 +369,7 @@ const inactiveTab = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-[#0b1220]'
 // core state
 const uid = ref(null)
 const role = ref('buyer')
+const rolePreSelected = ref(false)  // ✅ Add this if missing
 const username = ref('')
 const email = ref('')
 const displayName = ref('')
@@ -396,16 +441,31 @@ onMounted(async()=>{
   uid.value=u.uid
   email.value=u.email||''
   displayName.value=u.displayName||''
+  
   const snap=await getDoc(doc(db,'users',u.uid))
   if(snap.exists()){
     const d=snap.data()
-    if(d.role&&d.username)return goToRoleHome(d.role)
-    role.value=d.role||'buyer'
+    
+    // ✅ Check if profile is actually complete
+    if(d.role && d.username && d.profileComplete === true) {
+      // Profile is complete - redirect to home
+      return goToRoleHome(d.role)
+    }
+    
+    // ✅ If user has a role saved in Firestore, lock the toggle
+    if(d.role) {
+      role.value = d.role
+      rolePreSelected.value = true
+      console.log('🔒 Role locked from Firestore:', d.role)
+    } else {
+      rolePreSelected.value = false
+      console.log('🆕 No role saved - toggle enabled')
+    }
+    
     username.value=d.username||''
     phone.value=d.phone||''
     birthday.value=d.birthday||''
     gender.value=d.gender||''
-    /* seller-only (prefill if present) */
     postalCode.value=d.postalCode||''
     addressLine.value=d.addressLine||''
     unitNo.value=d.unitNo||''
@@ -416,6 +476,25 @@ onMounted(async()=>{
   }
 })
 
+function handleSingPassVerified(data) {
+  console.log('✅ SingPass verified:', data)
+  verifiedBusinessData.value = data
+  isSingPassVerified.value = true
+  
+  // Pre-fill form fields with verified data
+  nric.value = data.nric
+  displayName.value = data.fullName
+  birthday.value = data.dateOfBirth
+  gender.value = data.gender
+  phone.value = data.phone
+  companyName.value = data.businessName
+  uen.value = data.uen
+  postalCode.value = data.businessAddress.postalCode
+  addressLine.value = data.businessAddress.addressLine
+  unitNo.value = data.businessAddress.unitNo || ''
+  
+  success('✅ Your business details have been verified and pre-filled!')
+}
 // handlers
 function onPickLicense(e){
   const f=e.target.files?.[0]
@@ -438,25 +517,32 @@ async function onSubmit(){
     if(role.value==='seller'&&licenseFile.value)
       uploadedURL=await uploadBusinessLicense(licenseFile.value,uid.value)
 
+    // ✅ Generate default avatar if not already set
+    const defaultAvatar = `${encodeURIComponent(displayName.value || username.value)}&background=0D8ABC&color=fff&size=200`
+
     // Base payload (fields common to both roles)
     const payload = {
       uid: uid.value,
-      username: uname,                 // <-- store username ONLY in users/{uid}
+      username: uname,
       role: role.value,
       displayName: displayName.value.trim(),
       email: email.value,
       phone: phone.value.trim(),
       birthday: birthday.value,
       gender: gender.value,
+      photoURL: defaultAvatar,  // ✅ Add this
+      profileComplete: true,
       createdAt: serverTimestamp(),
     }
+
+    // ... rest of your code
 
     if(role.value==='seller'){
       // include seller-only fields
       payload.postalCode = postalCode.value.trim()
       payload.addressLine = addressLine.value.trim()
       payload.unitNo = unitNo.value.trim()
-      payload.nric = nric.value.trim()
+      payload.nric = nric.value.trim().toUpperCase()
       payload.companyName = companyName.value.trim()
       payload.uen = uen.value.trim()
       payload.licenseFileName = licenseFileName.value
@@ -474,15 +560,60 @@ async function onSubmit(){
     }
 
     await setDoc(doc(db,'users',uid.value),payload,{merge:true})
-    done.value=true
+    
+    // ✅ Mark SingPass verification as registered for sellers
+    if (role.value === 'seller' && isSingPassVerified.value && nric.value) {
+      try {
+        console.log('🔗 Marking SingPass verification as registered...')
+        await markBusinessAsRegistered(nric.value, {
+          email: email.value,
+          username: uname,
+          uid: uid.value
+        })
+        console.log('✅ SingPass verification marked as registered')
+      } catch (verificationError) {
+        console.error('⚠️ Failed to update verification record:', verificationError)
+      }
+    }
+    
+    done.value = true
+    isCompleted.value = true
+
+    // ✅ Auto-redirect based on role (NO RELOAD!)
+    setTimeout(async () => {
+      if (role.value === 'seller') {
+        // ✅ Seller - trigger onboarding modal (same as Signup.vue)
+        console.log('🎯 Seller profile complete - triggering onboarding...')
+        
+        // Small delay to ensure Firestore save completes
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Set the flag that App.vue watches
+        user.needsOnboarding = true
+        console.log('✅ needsOnboarding set to:', user.needsOnboarding)
+        
+        // Give the watcher time to react
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // Navigate home where modal will show (NO RELOAD)
+        await router.push('/')
+      } else {
+        // ✅ Buyer - hard reload to show preferences
+        console.log('👤 Buyer profile complete - reloading...')
+        await router.push('/')
+        
+        // Small delay then reload
+        setTimeout(() => {
+          window.location.reload()
+        }, 100)
+      }
+    }, 1500)
+    
   }catch(e){
     console.error(e)
     error.value='Could not save profile.'
   }finally {
     isSaving.value = false
-    if (done.value) {
-      isCompleted.value = true
-    }
   }
 }
 

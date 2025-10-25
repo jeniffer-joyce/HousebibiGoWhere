@@ -10,8 +10,15 @@ import About from '../views/About.vue'
 import ForSellers from '../views/ForSellers.vue'
 import SellerOrders from '../views/sellers/SellerOrders.vue'
 import { user } from '../store/user.js'
+import SellerMessages from "../views/sellers/SellerMessages.vue";
 import BusinessHomepage from "../views/sellers/BusinessHomepage.vue";
 import EditAccount from "../views/sellers/EditAccount.vue";
+
+import MyProfile from "../views/sellers/account/MyProfile.vue";
+import MyBusiness from "../views/sellers/account/MyBusiness.vue";
+import Notifications from "../views/sellers/account/Notifications.vue";
+import ChangePassword from "../views/sellers/account/ChangePassword.vue";
+import DeleteAccount from "../views/sellers/account/DeleteAccount.vue";
 
 // Seller TEST View (Developers only)
 import CurrentSeller from "../views/sellers/CurrentSeller.vue";
@@ -21,7 +28,7 @@ import BuyerDashboard from "../views/buyers/BuyerDashboard.vue";
 import BuyerOrders from "../views/buyers/BuyerOrders.vue";
 import BuyerAccount from "../views/buyers/BuyerAccount.vue";
 import BuyerFavourites from "../views/buyers/Favourites.vue";
-import BuyerMessages from "../views/buyers/messages.vue";
+import BuyerMessages from "../views/buyers/BuyerMessages.vue";
 import CompleteProfile from '../views/CompleteProfile.vue';
 
 import ProfileTab from '../views/buyers/account/ProfileTab.vue'
@@ -75,6 +82,10 @@ const routes = [
     component: SellerOrders
   },
   {
+    path: '/seller-messages/',
+    component: SellerMessages
+  },
+  {
     path: '/current-seller/',
     component: CurrentSeller
   },
@@ -85,10 +96,18 @@ const routes = [
     props: r => ({ username: String(r.params.username || '').toLowerCase() })
   },
   {
-    path: '/:username/edit-profile',
-    name: 'edit-profile',
+    path: '/:username/edit-profile/',
     component: EditAccount,
+    name: 'edit-profile',
     props: r => ({ username: String(r.params.username || '').toLowerCase() }),
+    children: [
+      { path: '', redirect: { name: 'edit-profile.my-profile' } },
+      { path: 'my-profile', name: 'edit-profile.my-profile', component: MyProfile },
+      { path: 'my-business', name: 'edit-profile.my-business', component: MyBusiness },
+      { path: 'notifications', name: 'edit-profile.notifications', component: Notifications },
+      { path: 'change-password', name: 'edit-profile.change-password', component: ChangePassword },
+      { path: 'delete-account', name: 'edit-profile.delete-account', component: DeleteAccount },
+    ]
   },
   {
     path: '/buyer-dashboard/',

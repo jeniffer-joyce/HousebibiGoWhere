@@ -2,6 +2,8 @@
 import { ref, computed, watch } from 'vue';
 import { user } from '@/store/user.js';
 import { saveUserPreferences, markPreferencesPrompted } from '@/firebase/services/preferences.js';
+import { useToast } from '@/composables/useToast'
+const { success, error:toastError } = useToast()
 
 export function usePreferences(selectedCategories, categories) {
   // Only show prompt if user is logged in AND hasn't set preferences yet
@@ -86,7 +88,7 @@ export function usePreferences(selectedCategories, categories) {
       console.log('Preferences saved and applied!', selectedPreferences.value);
     } catch (error) {
       console.error('Failed to save preferences:', error);
-      alert('Failed to save preferences. Please try again.');
+      toastError('Failed to save preferences. Please try again.');
     }
   }
 

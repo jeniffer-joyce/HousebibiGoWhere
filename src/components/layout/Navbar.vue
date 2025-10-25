@@ -9,11 +9,20 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/firebase/firebase_config'
 
 import SearchOverlay from '@/components/layout/SearchOverlay.vue'
+import { useToast } from '@/composables/useToast'
+const { success, error:toastError } = useToast()
 
 const router = useRouter()
 
 /* 🔽 NEW: reactive name shown in the navbar */
 const displayName = ref('')
+const avatarUrl = computed(() => {
+  if (user.avatar) return user.avatar
+  
+  // Generate default avatar using UI Avatars
+  const name = displayName.value || user.email || 'User'
+  return `/avatar.png`
+})
 
 /* 🔽 NEW: robust loader that prefers Firestore, falls back to Auth */
 async function loadName () {
@@ -75,7 +84,7 @@ async function handleLogout () {
     window.location.reload()
   } catch (err) {
     console.error('Error logging out:', err)
-    alert('Failed to logout. Please try again.')
+    toastError('Failed to logout. Please try again.')
   }
 }
 onMounted(() => {
@@ -188,10 +197,15 @@ const closeMobileNav  = () => { showMobileNav.value = false }
         <!-- Profile Dropdown -->
         <div class="hidden [@media(min-width:880px)]:flex relative profile-dropdown-container">
             <button 
-            @click.stop="showProfileDropdown = !showProfileDropdown"
-            class="focus:outline-none focus:ring-2 focus:ring-primary rounded-full">
-                <img :src="user.avatar" alt="avatar" class="h-10 w-10 rounded-full cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0" />
-            </button>
+              @click.stop="showProfileDropdown = !showProfileDropdown"
+              class="focus:outline-none focus:ring-2 focus:ring-primary rounded-full">
+              <img 
+                  :src="user.avatar || '/avatar.png'" 
+                  @error="$event.target.src = '/avatar.png'"
+                  alt="avatar" 
+                  class="h-10 w-10 rounded-full cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0" 
+              />
+          </button>
 
             <!-- Dropdown Menu -->
             <Transition
@@ -363,8 +377,12 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 to="/buyer-profile/"
                 @click="closeMobileNav"
                 class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <span class="inline-block h-8 w-8 rounded-full bg-cover bg-center"
-                  :style="{ backgroundImage: `url('${user.avatar || '/avatar.png'}')` }"></span>
+                <img 
+                  :src="user.avatar || '/avatar.png'" 
+                  @error="$event.target.src = '/avatar.png'"
+                  alt="avatar" 
+                  class="h-10 w-10 rounded-full cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0" 
+              />
                 <div class="min-w-0">
                   <!-- 🔽 CHANGED: use displayName -->
                   <p class="truncate font-medium">{{ displayName }}</p>

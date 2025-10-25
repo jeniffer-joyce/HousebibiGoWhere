@@ -43,7 +43,6 @@
         <p class="text-gray-500 dark:text-gray-400 text-center mt-2">
           Join our community of buyers and sellers!
         </p>
-
         <!-- Role -->
         <div class="grid grid-cols-2 gap-2 mt-6">
           <button type="button"
@@ -63,6 +62,33 @@
             I'm a Seller
           </button>
         </div>
+
+        <!-- ✅ Google Sign-Up -->
+        <div class="mt-6 space-y-4">
+          <button
+            type="button"
+            @click="onGoogleSignup"
+            :disabled="loadingGoogle"
+            class="w-full inline-flex items-center justify-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold
+                  border border-background-dark/15 dark:border-background-light/15
+                  bg-white hover:bg-gray-50 dark:bg-[#0E1526] dark:hover:bg-[#111a2c]
+                  text-background-dark dark:text-background-light
+                  transition disabled:opacity-60 disabled:cursor-not-allowed"
+            aria-label="Sign up with Google">
+            <img :src="googleLogo" alt="Google" class="h-5 w-5" />
+            <span v-if="!loadingGoogle">Sign up with Google</span>
+            <span v-else>Connecting…</span>
+          </button>
+
+          <!-- Divider -->
+          <div class="flex items-center gap-4">
+            <div class="h-px grow bg-background-dark/10 dark:bg-background-light/10"></div>
+            <span class="text-xs text-background-dark/60 dark:text-background-light/60">OR</span>
+            <div class="h-px grow bg-background-dark/10 dark:bg-background-light/10"></div>
+          </div>
+        </div>
+
+        
 
         <!-- Business Information Header (Seller only) -->
         <br></br>
@@ -317,13 +343,19 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { registerUserWithUsername } from '../firebase/auth/authService'
 import { markBusinessAsRegistered, verifySingPass } from '@/firebase/services/singpassVerification.js'
-import { auth } from '../firebase/firebase_config'
+import { auth, db } from '../firebase/firebase_config'
 import { user } from '@/store/user.js'
 import { useRoute } from 'vue-router'
 import SingPassVerificationModal from '@/components/SingPassVerificationModal.vue'
+import { loginWithGooglePopup } from '@/firebase/auth/authService'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import googleLogo from '@/assets/google-logo.png'
+import { useToast } from '@/composables/useToast'
+const { success, error:toastError } = useToast()
 
 const route = useRoute()
 const router = useRouter()
+const loadingGoogle = ref(false)
 
 // SingPass verification
 const showSingPassModal = ref(false)
@@ -351,7 +383,7 @@ function handleSingPassVerified(data) {
   unitNo.value = data.businessAddress.unitNo || ''
   
   // Show success message
-  alert('✅ Your business details have been verified and pre-filled!')
+  success('✅ Your business details have been verified and pre-filled!')
 }
 /* Role */
 const role = ref('buyer')
@@ -487,7 +519,53 @@ function renderRecaptcha() {
     }
   })
 }
-
+async function onGoogleSignup() {
+  loadingGoogle.value = true
+  errorMsg.value = ''
+  
+  try {
+    // 1) Sign up with Google
+    const result = await loginWithGooglePopup()
+    const { user: u, isNewUser } = result
+    
+    // 2) For NEW users - save role and redirect to CompleteProfile
+    if (isNewUser) {
+      await setDoc(doc(db, 'users', u.uid), {
+        role: role.value,
+        profileComplete: false
+      }, { merge: true })
+      
+      console.log(`✅ Google signup - Role saved: ${role.value}`)
+      
+      // Redirect to CompleteProfile to finish registration
+      await router.push('/complete-profile')
+      return
+    }
+    
+    // 3) EXISTING user - check if profile is complete
+    const userDoc = await getDoc(doc(db, 'users', u.uid))
+    const userData = userDoc.data()
+    
+    if (userData.profileComplete === false || !userData.username) {
+      // Profile incomplete - go to CompleteProfile
+      await router.push('/complete-profile')
+      return
+    }
+    
+    // 4) Profile complete - redirect to appropriate home
+    if (userData.role === 'seller' && userData.username) {
+      await router.push({ name: 'business-home', params: { username: userData.username.toLowerCase() } })
+    } else {
+      await router.push('/')
+    }
+    
+  } catch (e) {
+    console.error('Google signup error:', e)
+    errorMsg.value = e?.hint || e?.message || 'Google sign-up failed. Please try again.'
+  } finally {
+    loadingGoogle.value = false
+  }
+}
 function validateCaptcha() {
   if (!captchaToken.value) {
     captchaError.value = true
@@ -500,6 +578,11 @@ function validateCaptcha() {
 onMounted(() => {
   if (route.query.role === 'seller') {
     role.value = 'seller'
+
+    // Auto-show SingPass modal if requested
+    if (route.query.showSingPass === 'true') {
+      showSingPassModal.value = true
+    }
   }
 })
 
@@ -622,7 +705,7 @@ async function onSubmit(){
     user.isSigningUp = false
 
     // Show success alert
-    alert('✅ Account created successfully!')
+    success('✅ Account created successfully!')
 
     // ✅ HANDLE BUYER VS SELLER DIFFERENTLY
     if (role.value === 'seller') {

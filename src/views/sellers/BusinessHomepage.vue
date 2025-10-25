@@ -239,6 +239,8 @@ import { user } from '@/store/user.js'
 import Loading from '@/components/status/Loading.vue'
 import AddProductModal from '@/components/modals/AddProductModal.vue'
 import { auth } from '@/firebase/firebase_config'
+import { useToast } from '@/composables/useToast'
+const { success, error:toastError, info } = useToast()
 
 
 // Auth-linked seller info (now from /businesses/{uid})
@@ -445,10 +447,10 @@ async function handleAddProduct(productData) {
     showAddModal.value = false
     
     // Success feedback
-    alert('✅ Product added successfully!')
+    success('✅ Product added successfully!')
   } catch (error) {
     console.error('❌ Error adding product:', error)
-    alert('Failed to add product. Please try again.')
+    toastError('Failed to add product. Please try again.')
   }
 }
 
