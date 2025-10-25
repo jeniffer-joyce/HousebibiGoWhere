@@ -25,6 +25,7 @@ import BuyerFavourites from "../views/buyers/Favourites.vue";
 import BuyerMessages from "../views/buyers/messages.vue";
 import CompleteProfile from '../views/CompleteProfile.vue';
 
+import ProductDetails from '../views/buyers/ProductDetails.vue'
 import ShopDetails from "../views/buyers/ShopDetails.vue";
 
 import ProfileTab from '../views/buyers/account/ProfileTab.vue'
@@ -141,6 +142,12 @@ const routes = [
     name: "ShopDetails",
     props: true
   },
+  {
+    path: '/product-details/:id',
+    component: ProductDetails,
+    name: "ProductDetails",
+    props: true
+  }
 
 ]
 

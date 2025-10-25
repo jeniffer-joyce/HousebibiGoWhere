@@ -108,7 +108,8 @@
                         </h2>
                         <TransitionGroup tag="div" name="fade" v-if="topProducts.length > 0"
                             class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <div v-for="(product, index) in topProducts" :key="product.productId"
+                            <RouterLink :to="`/product-details/${product.productId}`"
+                                v-for="(product, index) in topProducts" :key="product.productId"
                                 :style="{ '--delay': index }"
                                 class="group flex flex-col rounded-lg overflow-hidden bg-white dark:bg-background-dark/50 shadow-sm transition-shadow hover:shadow-lg relative">
 
@@ -142,7 +143,7 @@
                                 </div>
 
 
-                            </div>
+                            </RouterLink>
                         </TransitionGroup>
 
 

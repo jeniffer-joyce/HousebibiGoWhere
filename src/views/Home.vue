@@ -5,6 +5,7 @@ import { useCategories } from '@/composables/home/useCategories';
 import { usePreferences } from '@/composables/signup/usePreferences';
 import { useSearch } from '@/composables/useSearch';
 import Loading from '@/components/status/Loading.vue'
+import { RouterLink } from 'vue-router'
 
 const {
     loading,
@@ -360,6 +361,19 @@ function scrollCategoriesRight() {
                                 </p>
                             </RouterLink>
                         </div>
+
+                        <!-- <div ref="scrollContainer"
+                            class="hide-scrollbar -mx-4 flex gap-6 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 scroll-smooth">
+                            <RouterLink v-for="business in filteredBusinesses" :key="business.id || business.name"
+                                :to="{ name: 'ProductDetails', params: { id: business.id } }"
+                                :data-business="business.name"
+                                class="flex w-64 shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900 transition-transform hover:scale-105 cursor-pointer">
+                                <img :src="business.image" :alt="business.name" class="h-40 w-full object-cover" />
+                                <p class="px-4 py-3 text-base font-semibold text-slate-800 dark:text-slate-200">
+                                    {{ business.name }}
+                                </p>
+                            </RouterLink>
+                        </div> -->
 
                         <!-- Right Arrow -->
                         <button v-if="canScroll" @click="scrollRight"
