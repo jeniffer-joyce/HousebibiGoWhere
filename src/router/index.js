@@ -6,6 +6,7 @@ import Login from '../views/Login.vue'
 import SignUp from '../views/SignUp.vue'
 import Products from '../views/Products.vue'
 import About from '../views/About.vue'
+
 // Seller Views
 import ForSellers from '../views/ForSellers.vue'
 import SellerOrders from '../views/sellers/SellerOrders.vue'
@@ -31,6 +32,9 @@ import BuyerFavourites from "../views/buyers/Favourites.vue";
 import BuyerMessages from "../views/buyers/BuyerMessages.vue";
 import CompleteProfile from '../views/CompleteProfile.vue';
 
+import ProductDetails from '../views/buyers/ProductDetails.vue'
+import ShopDetails from "../views/buyers/ShopDetails.vue";
+
 import ProfileTab from '../views/buyers/account/ProfileTab.vue'
 import AddressesTab from '../views/buyers/account/AddressesTab.vue'
 import PaymentsTab from '../views/buyers/account/PaymentsTab.vue'
@@ -38,6 +42,8 @@ import NotificationsTab from '../views/buyers/account/NotificationsTab.vue'
 import ChangePasswordTab from '../views/buyers/account/ChangePasswordTab.vue'
 import PrivacySettingsTab from '../views/buyers/account/PrivacySettingsTab.vue'
 import EmailChangeDone from '../firebase/auth/EmailChangeDone.vue'
+
+
 
 import { db } from '@/firebase/firebase_config'
 import { doc, getDoc } from 'firebase/firestore'
@@ -149,6 +155,18 @@ const routes = [
     path: '/complete-profile/',
     component: CompleteProfile
   },
+  {
+    path: '/shop-details/:id',
+    component: ShopDetails,
+    name: "ShopDetails",
+    props: true
+  },
+  {
+    path: '/product-details/:id',
+    component: ProductDetails,
+    name: "ProductDetails",
+    props: true
+  }
 
 ]
 
