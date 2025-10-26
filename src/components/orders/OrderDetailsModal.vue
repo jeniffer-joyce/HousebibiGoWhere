@@ -1,238 +1,160 @@
 <template>
-  <transition name="fade">
-    <div v-if="visible" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
-      <!-- Panel -->
+  <teleport to="body">
+    <div
+      v-if="visible"
+      class="fixed inset-0 z-[120] flex items-center justify-center"
+      aria-modal="true"
+      role="dialog"
+      @keydown.esc="$emit('close')"
+    >
+      <div class="absolute inset-0 bg-black/50" @click="$emit('close')" />
       <div
-        class="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1
-               ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+        class="relative z-[121] w-[min(900px,95vw)] max-h-[90vh] overflow-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-800"
+        @click.stop
       >
-        <!-- Title (no close button) -->
-        <div class="sticky top-0 z-10 bg-green-600 px-5 py-3 text-white">
-          <h2 class="text-base font-semibold">Order Details</h2>
+        <h2 class="mb-1 text-xl font-semibold text-slate-900 dark:text-white">Order Details</h2>
+        <p class="mb-4 text-sm text-slate-600 dark:text-slate-300">
+          Order #{{ order?.orderId }} • Placed {{ fmt(order?.createdAt) }}
+        </p>
+
+        <!-- Cancellation banner (if cancelled) -->
+        <div
+          v-if="lastStatus === 'cancelled'"
+          class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-800 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-200"
+        >
+          <p class="text-sm font-medium">
+            Order cancelled on {{ fmt(lastStatusTime) }}
+          </p>
+          <p class="text-xs opacity-80">Cancelled by {{ cancelledBy }}</p>
         </div>
 
-        <!-- Content -->
-        <div class="max-h-[85vh] overflow-y-auto px-5 py-6">
-          <!-- Cancelled banner -->
-          <div v-if="isCancelled" class="mb-5 rounded-xl bg-emerald-600/90 px-4 py-3 text-white">
-            <div class="text-sm font-semibold">
-              Order cancelled on {{ formatDate(cancelledTime) }}
-            </div>
-            <div class="text-sm opacity-90">
-              Cancelled by {{ cancelledBy }}
+        <!-- Items -->
+        <div
+          v-for="(it, idx) in order?.products || []"
+          :key="idx"
+          class="mb-3 flex items-center justify-between rounded-xl border border-slate-200 p-3 dark:border-slate-700"
+        >
+          <div class="flex items-center gap-3">
+            <img :src="it.img_url" class="h-12 w-12 rounded object-cover" alt="">
+            <div>
+              <p class="font-medium text-slate-900 dark:text-white">{{ it.item_name }}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                <span v-if="it.size">Size: {{ it.size }}</span>
+                <span v-if="it.size && it.quantity"> • </span>
+                Qty: {{ it.quantity ?? 1 }}
+              </p>
             </div>
           </div>
+          <div class="text-right font-semibold text-slate-900 dark:text-white">
+            S${{ ((it.totalPrice ?? it.price * (it.quantity ?? 1)) || 0).toFixed(2) }}
+          </div>
+        </div>
 
-          <!-- Shipping information -->
-          <section class="mb-4 space-y-2">
-            <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Shipping Information</h3>
-            <div class="rounded-xl border border-slate-200 p-4 text-sm dark:border-slate-700">
-              <div class="font-medium text-slate-900 dark:text-white">
-                {{ shippingMethod }}
-              </div>
+        <!-- Shipping info -->
+        <div class="mt-5 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+          <p class="mb-2 font-semibold text-slate-900 dark:text-white">Shipping Information</p>
+          <div class="text-sm text-slate-700 dark:text-slate-200">
+            <p>{{ order?.shippingAddress?.fullName }}</p>
+            <p>{{ order?.shippingAddress?.streetName }} #{{ order?.shippingAddress?.unitNumber }}</p>
+            <p>Singapore {{ order?.shippingAddress?.postalCode }}</p>
+            <p class="mt-1 text-slate-500 dark:text-slate-400">Tel: {{ order?.shippingAddress?.phoneNumber }}</p>
 
-              <!-- Only show logistics when paid OR moved to ship/receive/completed -->
-              <div v-if="showLogistics" class="mt-1 text-slate-500">
-                Shipper:
-                <span class="font-medium text-slate-700 dark:text-slate-200">
-                  {{ order?.logistics?.shipper || '—' }}
-                </span>
-                <span v-if="order?.logistics?.trackingNumber" class="ml-2">
-                  • Tracking #: {{ order.logistics.trackingNumber }}
-                </span>
-              </div>
-            </div>
-          </section>
+            <!-- Hide carrier/track if not shipped yet (e.g., to_pay) -->
+            <template v-if="order?.status !== 'to_pay' && order?.logistics?.shippedAt">
+              <p class="mt-3 text-slate-500 dark:text-slate-400">Carrier: {{ order?.logistics?.shipper || '—' }}</p>
+              <p class="text-slate-500 dark:text-slate-400">Tracking: {{ order?.logistics?.trackingNumber || '—' }}</p>
+            </template>
+          </div>
+        </div>
 
-          <!-- Delivery information (address) -->
-          <section class="mb-4 space-y-2">
-            <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Delivery Information</h3>
-            <div class="rounded-xl border border-slate-200 p-4 text-sm dark:border-slate-700">
-              <div class="font-medium text-slate-900 dark:text-white">
-                {{ order?.shippingAddress?.fullName }}
-                <span class="ml-2 text-slate-500">{{ order?.shippingAddress?.phoneNumber }}</span>
-              </div>
-              <div class="mt-1 text-slate-600 dark:text-slate-300">
-                {{ addressLine }}
-              </div>
-            </div>
-          </section>
+        <!-- Totals -->
+        <div class="mt-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-slate-600 dark:text-slate-300">Products Total</span>
+            <span class="font-medium text-slate-900 dark:text-white">S${{ (order?.totals?.productsTotalPrice ?? 0).toFixed(2) }}</span>
+          </div>
+          <div class="mt-1 flex items-center justify-between text-sm">
+            <span class="text-slate-600 dark:text-slate-300">Shipping</span>
+            <span class="font-medium text-slate-900 dark:text-white">S${{ (order?.totals?.shippingFee ?? 0).toFixed(2) }}</span>
+          </div>
+          <div class="mt-1 flex items-center justify-between text-sm">
+            <span class="text-slate-600 dark:text-slate-300">Discount</span>
+            <span class="font-medium text-slate-900 dark:text-white">- S${{ (order?.totals?.discount ?? 0).toFixed(2) }}</span>
+          </div>
+          <div class="mt-2 border-t border-slate-200 pt-2 dark:border-slate-700" />
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-900 dark:text-white">Grand Total</span>
+            <span class="text-lg font-bold text-slate-900 dark:text-white">S${{ grand.toFixed(2) }}</span>
+          </div>
+        </div>
 
-          <!-- Shop & items -->
-          <section class="mb-4">
-            <div class="mb-2 text-sm font-semibold text-slate-900 dark:text-white">
-              {{ order?.products?.[0]?.shopName || 'Shop' }}
-            </div>
+        <!-- Footer buttons -->
+        <div class="mt-6 flex items-center justify-between">
+          <!-- Left: Buy again -->
+          <button
+            class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+            @click="$emit('buy-again', order)"
+          >
+            Buy Again
+          </button>
 
-            <div
-              v-for="(p, i) in order?.products || []"
-              :key="i"
-              class="mb-3 flex items-center justify-between rounded-xl border border-slate-200 p-3 dark:border-slate-700"
-            >
-              <div class="flex items-center gap-3">
-                <img :src="p.img_url" class="h-14 w-14 rounded-md object-cover" />
-                <div>
-                  <p class="font-medium text-slate-900 dark:text-white">{{ p.item_name }}</p>
-                  <p class="text-xs text-slate-500">
-                    Qty: {{ p.quantity }} <span v-if="p.size"> • Size: {{ p.size }}</span>
-                  </p>
-                </div>
-              </div>
-              <div class="text-right font-semibold text-slate-900 dark:text-white">
-                S${{ (p.totalPrice ?? (p.price * p.quantity)).toFixed(2) }}
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-              <span class="text-sm text-slate-600 dark:text-slate-300">Order Total:</span>
-              <span class="text-lg font-bold text-slate-900 dark:text-white">
-                S${{ orderTotal.toFixed(2) }}
-              </span>
-            </div>
-          </section>
-
-          <!-- Support -->
-          <section class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <RouterLink
-              :to="`/${(order?.products?.[0]?.sellerUsername || 'shop').toLowerCase()}/?id=${order?.products?.[0]?.sellerId || ''}`"
-              class="flex items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700">
-              Contact Seller
-            </RouterLink>
-            <a
-              href="#"
-              class="flex items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700">
-              Help Center
-            </a>
-          </section>
-
-          <!-- Meta -->
-          <section class="rounded-xl border border-slate-200 p-4 text-sm dark:border-slate-700">
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <div class="text-slate-500">Order ID</div>
-                <div class="break-all font-medium text-slate-900 dark:text-white">{{ order?.orderId }}</div>
-              </div>
-              <div>
-                <div class="text-slate-500">Paid by</div>
-                <div class="font-medium text-slate-900 dark:text-white">{{ order?.payment?.method || '—' }}</div>
-              </div>
-              <div>
-                <div class="text-slate-500">Order Time</div>
-                <div class="font-medium text-slate-900 dark:text-white">{{ formatDate(order?.createdAt) }}</div>
-              </div>
-              <div>
-                <div class="text-slate-500">Payment Time</div>
-                <div class="font-medium text-slate-900 dark:text-white">{{ formatDate(order?.payment?.paidAt) }}</div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Footer actions (Buy Again LEFT, Close/Refund RIGHT) -->
-          <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <!-- Right: Refund details & Close -->
+          <div class="flex items-center gap-2">
             <button
-              class="rounded-xl bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700">
-              Buy Again
+              class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+              @click="$emit('open-refund', order)"
+            >
+              Refund Details
             </button>
-
-            <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-              <button
-                @click="closeAll"
-                class="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-700 hover:bg-slate-50 sm:w-auto dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">
-                Close
-              </button>
-              <button
-                @click="$emit('showRefund')"
-                class="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-700 hover:bg-slate-50 sm:w-auto dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">
-                Refund Details
-              </button>
-            </div>
+            <button
+              class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+              @click="$emit('close')"
+            >
+              Close
+            </button>
           </div>
         </div>
-        <!-- /content -->
       </div>
     </div>
-  </transition>
+  </teleport>
 </template>
 
 <script setup>
-import { computed, onMounted, onBeforeUnmount } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed } from 'vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
-  order:   { type: Object,  default: null  }
+  order:   { type: Object,  default: null }
 })
-const emit = defineEmits(['closeAll', 'showRefund'])
+defineEmits(['close','open-refund','buy-again'])
 
-/* Totals */
-const orderTotal = computed(() => {
-  if (props.order?.totals?.grandTotal != null) return Number(props.order.totals.grandTotal)
-  const items = props.order?.products || []
-  return items.reduce((s, p) => s + (p.totalPrice ?? (p.price * p.quantity)), 0)
-})
-
-/* Address line */
-const addressLine = computed(() => {
-  const a = props.order?.shippingAddress || {}
-  const unit = a.unitNumber ? `#${a.unitNumber}` : ''
-  return [a.streetName, unit, a.postalCode].filter(Boolean).join(', ')
-})
-
-/* Shipping method */
-const shippingMethod = computed(() =>
-  props.order?.shipping?.method ||
-  props.order?.logistics?.deliveryMethod ||
-  'Doorstep Delivery'
-)
-
-/* Show logistics only when paid or after shipping stage */
-const showLogistics = computed(() => {
-  const paid = !!props.order?.payment?.paidAt
-  const progressed = (props.order?.statusLog || []).some(e =>
-    ['to_ship', 'to_receive', 'completed'].includes(e.status)
-  )
-  return paid || progressed
-})
-
-/* Cancelled helpers */
-const isCancelled = computed(() => {
-  if (props.order?.status === 'cancelled') return true
-  return (props.order?.statusLog || []).some(e => e.status === 'cancelled')
-})
-const cancelledEntry = computed(() => {
-  const log = (props.order?.statusLog || []).filter(e => e.status === 'cancelled')
-  return log.length ? log[log.length - 1] : null
-})
-const cancelledTime = computed(() => cancelledEntry.value?.time || props.order?.updatedAt || null)
-const cancelledBy = computed(() => {
-  const by = cancelledEntry.value?.by
-  if (by === 'buyer') return 'you'
-  if (by === 'seller') return 'seller'
-  return by || 'system'
-})
-
-/* Utils */
-function formatDate(ts) {
+function fmt(ts) {
   if (!ts) return '—'
-  if (ts.toDate) {
-    return ts.toDate().toLocaleString('en-SG', {
-      year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'
-    })
-  }
+  if (ts.toDate) return ts.toDate().toLocaleString('en-SG', {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  })
   try { return new Date(ts).toLocaleString('en-SG') } catch { return '—' }
 }
 
-/* Close all */
-function closeAll(){ emit('closeAll') }
+const grand = computed(() => {
+  const t = props.order?.totals?.grandTotal
+  if (t != null) return Number(t)
+  const s = (props.order?.products || []).reduce(
+    (a, p) => a + (p.totalPrice ?? (p.price * (p.quantity ?? 1))), 0
+  )
+  return Number(s.toFixed(2))
+})
 
-/* Lock background scroll while open */
-function lockBody(){ document.documentElement.style.overflow = 'hidden' }
-function unlockBody(){ document.documentElement.style.overflow = '' }
-onMounted(() => { if (props.visible) lockBody() })
-onBeforeUnmount(() => unlockBody())
+/* cancellation banner helpers */
+const lastEntry = computed(() => {
+  const log = props.order?.statusLog || []
+  return log.length ? log[log.length - 1] : null
+})
+const lastStatus = computed(() => lastEntry.value?.status || props.order?.status)
+const lastStatusTime = computed(() => lastEntry.value?.time || props.order?.updatedAt || props.order?.createdAt)
+const cancelledBy = computed(() => {
+  if (lastStatus.value !== 'cancelled') return '—'
+  return lastEntry.value?.by === 'seller' ? 'seller' : 'you'
+})
 </script>
-
-<style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity .15s ease }
-.fade-enter-from, .fade-leave-to { opacity: 0 }
-</style>

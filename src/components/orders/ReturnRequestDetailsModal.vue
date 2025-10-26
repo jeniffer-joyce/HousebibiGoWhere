@@ -1,10 +1,11 @@
 <template>
   <teleport to="body">
     <div
-      v-show="visible"
+      v-if="visible"
       class="fixed inset-0 z-[120] flex items-center justify-center"
       aria-modal="true"
       role="dialog"
+      @keydown.esc="$emit('close')"
     >
       <!-- Backdrop; click to close -->
       <div class="absolute inset-0 bg-black/50" @click="$emit('close')" />
@@ -40,6 +41,7 @@
         </div>
 
         <div class="mt-6 flex items-center justify-between">
+          <!-- Left: Close -->
           <button
             class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
             @click="$emit('close')"
@@ -47,6 +49,7 @@
             Close
           </button>
 
+          <!-- Right: Order details -->
           <button
             class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
             @click="$emit('open-order', order)"
