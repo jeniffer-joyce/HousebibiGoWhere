@@ -46,24 +46,10 @@
                     <span class="text-gray-400 dark:text-gray-600">·</span>
                     <span>{{ followersCount }} Followers</span>
                 </div>
-                
-                <!-- Action Buttons -->
-                <div class="mt-4 flex items-center gap-3">
-                    <button
-                        class="flex items-center justify-center rounded-lg h-10 px-6 bg-primary text-white text-sm font-bold shadow-sm hover:bg-opacity-90 transition-colors">
-                        Follow
-                    </button>
-                    
-                    <!-- Message Button -->
-                    <MessageButton 
-                        :seller-id="business.uid"
-                        :seller-name="business.name"
-                        variant="secondary"
-                        size="md"
-                    />
-                </div>
+                <button
+                    class="mt-4 flex items-center justify-center rounded-lg h-10 px-6 bg-primary text-white text-sm font-bold shadow-sm hover:bg-opacity-90 transition-colors">Follow</button>
             </div>
-            <!-- Mobile Sidebar Toggle (hamburger) -->
+            <!-- Mobile Sidebar Toggle (hamburger)
             <div class="sm:hidden flex justify-between items-center gap-8 mt-8 px-4 py-2">
                 <button @click="sidebarOpen = !sidebarOpen" class="text-primary focus:outline-none">
                     <span class="material-symbols-outlined text-2xl">
@@ -73,7 +59,22 @@
                 <h2 class="text-base font-semibold text-background-dark dark:text-background-light">
                     Menu
                 </h2>
-            </div>
+            </div> -->
+            <!-- Mobile Horizontal Menu -->
+            <nav
+                class="sm:hidden sticky z-40 dark:bg-gray-800/80 backdrop-blur-md border-y border-gray-200 dark:border-gray-700 flex justify-center gap-6 py-2 text-sm font-medium text-background-dark dark:text-background-light
+                 transition-transform duration-300 ease-in-out"
+                :class="showTopNav ? 'top-16 mt-10' : 'top-0 mt-0'">
+                <button v-for="section in ['about', 'products', 'reviews']" :key="section"
+                    @click="scrollToSection(section)" :class="[
+                        activeSection === section
+                            ? 'text-primary font-semibold'
+                            : 'text-background-dark/70 dark:text-background-light/70 hover:text-primary',
+                        'transition-colors',
+                    ]">
+                    {{ section.charAt(0).toUpperCase() + section.slice(1) }}
+                </button>
+            </nav>
             <div class="flex max-w-5xl mx-auto gap-8 mt-8">
                 <!-- Sidebar -->
                 <aside :class="[
@@ -82,13 +83,6 @@
                     'sticky top-32 self-start'
                 ]">
                     <nav aria-label="Sidebar" class="flex flex-col space-y-4 border-r border-primary/20 pr-4">
-                        <!-- <a class="py-2 font-medium text-sm text-background-dark/60 dark:text-background-light/60 hover:text-primary"
-                            href="#about">About</a>
-                        <a aria-current="page"
-                            class="py-2 font-medium text-sm text-primary border-l-4 border-primary pl-2 bg-primary/5"
-                            href="#products">Products</a>
-                        <a class="py-2 font-medium text-sm text-background-dark/60 dark:text-background-light/60 hover:text-primary"
-                            href="#reviews">Reviews</a> -->
                         <a href="javascript:void(0)" @click="scrollToSection('about')" :class="[
                             'py-2 font-medium text-sm',
                             activeSection === 'about'
@@ -118,13 +112,62 @@
                         {{ business.bio || 'No bio yet.' }}
                     </section>
                     <section class="mt-10" id="products">
-                        <h2 class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">Best Selling
+                        <h2 v-if="showAll"
+                            class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">All Products
                         </h2>
-                        <TransitionGroup tag="div" name="fade" v-if="topProducts.length > 0"
+                        <h2 v-else class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">Best
+                            Selling
+                        </h2>
+                        <div v-if="showAll"
+                            class="mb-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-between w-full">
+                            <!-- Search -->
+                            <div class="relative w-full md:w-80">
+                                <span
+                                    class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                                <input v-model.trim="searchTerm" type="text" placeholder="Search in this shop…"
+                                    class="w-full h-10 pl-10 pr-9 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                                <button v-if="searchTerm" @click="searchTerm = ''"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                    title="Clear">
+                                    <span class="material-symbols-outlined text-gray-500 text-base">close</span>
+                                </button>
+                            </div>
+
+                            <!-- Sort -->
+                            <div class="relative sort-menu-root self-end md:self-auto">
+                                <button @click="toggleSortMenu" @keydown.escape="showSort = false"
+                                    class="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800">
+                                    <span class="material-symbols-outlined text-base">sort</span>
+                                    <span>{{ currentSortLabel }}</span>
+                                    <span class="material-symbols-outlined text-base transition-transform"
+                                        :class="showSort ? 'rotate-180' : ''">expand_more</span>
+                                </button>
+
+                                <!-- Sort Menu -->
+                                <div v-show="showSort"
+                                    class="absolute right-0 mt-2 w-60 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg overflow-hidden z-10">
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                        Sort by
+                                    </div>
+
+                                    <button v-for="opt in sortOptions" :key="opt.value"
+                                        class="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                                        :class="sortMode === opt.value
+                                            ? 'text-primary font-semibold'
+                                            : 'text-gray-700 dark:text-gray-200'
+                                            " @click="setSort(opt.value)">
+                                        <span>{{ opt.label }}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <TransitionGroup tag="div" name="fade"
+                            v-if="(showAll ? filteredSortedProducts.length : topProducts.length) > 0"
                             class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             <RouterLink :to="`/product-details/${product.productId}`"
-                                v-for="(product, index) in topProducts" :key="product.productId"
-                                :style="{ '--delay': index }"
+                                v-for="(product, index) in showAll ? filteredSortedProducts : topProducts"
+                                :key="product.productId" :style="{ '--delay': index }"
                                 class="group flex flex-col rounded-lg overflow-hidden bg-white dark:bg-background-dark/50 shadow-sm transition-shadow hover:shadow-lg relative">
 
                                 <div class="w-full bg-center bg-no-repeat aspect-square bg-cover bg-gray-200"
@@ -162,8 +205,13 @@
 
 
                         <div v-else class="text-center py-8 text-background-dark/70 dark:text-background-light/70">
-                            No products sold yet
+                            <p v-if="!showAll && topProducts.length === 0">No products sold yet</p>
+                            <p v-else-if="showAll && allProducts.length === 0">No products sold yet</p>
+                            <p v-else-if="showAll && allProducts.length > 0 && filteredSortedProducts.length === 0">
+                                This product doesn’t exist
+                            </p>
                         </div>
+
 
                         <div class="mt-8 flex justify-center">
                             <button @click="viewAllProducts"
@@ -172,26 +220,25 @@
                             </button>
                         </div>
                     </section>
-                    <section class="mt-12" id="reviews">
+                    <section id="reviews" class="mt-12">
                         <h2 class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">Customer
                             Reviews
                         </h2>
-                        <div class="space-y-4">
+                        <div class="space-y-8">
                             <div
-                                class="p-6 bg-white dark:bg-background-dark/50 rounded-lg shadow-sm space-y-3 border border-gray-200 dark:border-gray-700">
-                                <div class="flex items-start gap-3">
-                                    <div
-                                        class="size-12 rounded-full bg-center bg-no-repeat bg-cover bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center font-bold text-white">
-                                        J
+                                class="flex flex-col gap-3 p-4 rounded-lg bg-white dark:bg-background-dark/50 shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+                                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDDXSJSZps974dSmZos44bQ4fkVJvtVwiH3d7TXHIdpmz3GwZlK5Ntcd1NJUcd-6g8bZUiLD4FGP3Ja7r8X6IsNfzOC5XwSlD8dTS321IodUu8SSmC11Tq1cQeJzFXpCYuVrirtXgVOFcibUQPIXcF3hWDvx9TuHppAF5yqeA1RxWVPfk37kj-r25aJA2rksTLnAN3FPKU7WhoUuGS1vS19-C6IXVkli9flviCrfkgBLGJeFcgIi6Cs-jamK7CGv9BsGEFvtoldckBo");'>
                                     </div>
                                     <div class="flex-1">
                                         <p
                                             class="text-sm font-semibold text-background-dark dark:text-background-light">
-                                            James
+                                            Sophia
                                         </p>
-                                        <p class="text-xs text-background-dark/60 dark:text-background-light/60">3
-                                            months
-                                            ago</p>
+                                        <p class="text-xs text-background-dark/60 dark:text-background-light/60">2 weeks
+                                            ago
+                                        </p>
                                     </div>
                                 </div>
                                 <div class="flex gap-0.5 text-primary">
@@ -202,18 +249,48 @@
                                     <span class="material-symbols-outlined text-base">star</span>
                                 </div>
                                 <p class="text-sm text-background-dark/80 dark:text-background-light/80">
-                                    I've always loved handcrafted candles, but these are next level! The scents are
-                                    amazing, and
-                                    they burn evenly. Every room in my house smells fantastic now. Great quality!
+                                    Absolutely love the throw blanket I purchased! It's so soft and cozy, perfect for
+                                    chilly
+                                    evenings. The quality is excellent, and the craftsmanship is evident. Highly
+                                    recommend!
                                 </p>
                             </div>
-
                             <div
-                                class="p-6 bg-white dark:bg-background-dark/50 rounded-lg shadow-sm space-y-3 border border-gray-200 dark:border-gray-700">
-                                <div class="flex items-start gap-3">
-                                    <div
-                                        class="size-12 rounded-full bg-center bg-no-repeat bg-cover bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center font-bold text-white">
-                                        O
+                                class="flex flex-col gap-3 p-4 rounded-lg bg-white dark:bg-background-dark/50 shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+                                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA8OR5kpRLPMky4F6t0lMZm_G4o3WNgP5M2uxKWJOXHUyFAaPDwUeDLt4Ccv0wKiDKya4MeGm_74lmKLI9NvPiLZKzWnba2oD1o1ZL_Afqsi5i7W-5lGuBScMWHOwS0EDvBKl2irDcYgCRkkN-a1TGVYlBP-JL_jYT_IPwayaoPvWhuKn3U-j4Yh_e2ocWCZHpuotpk7cFjIEXfpbKKcSCiFtyCvYN3LN-qp8ASWis8dCVAk4NDpEE7O7Fnm_BtGuz5d2b01ljaIOFn");'>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p
+                                            class="text-sm font-semibold text-background-dark dark:text-background-light">
+                                            Ethan
+                                        </p>
+                                        <p class="text-xs text-background-dark/60 dark:text-background-light/60">1 month
+                                            ago
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-0.5">
+                                    <span class="material-symbols-outlined text-base text-primary">star</span>
+                                    <span class="material-symbols-outlined text-base text-primary">star</span>
+                                    <span class="material-symbols-outlined text-base text-primary">star</span>
+                                    <span class="material-symbols-outlined text-base text-primary">star</span>
+                                    <span
+                                        class="material-symbols-outlined text-base text-background-dark/30 dark:text-background-light/30">star</span>
+                                </div>
+                                <p class="text-sm text-background-dark/80 dark:text-background-light/80">
+                                    The scented candles are lovely, but the scent could be a bit stronger. Overall, a
+                                    good
+                                    product
+                                    for the price.
+                                </p>
+                            </div>
+                            <div
+                                class="flex flex-col gap-3 p-4 rounded-lg bg-white dark:bg-background-dark/50 shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+                                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBDXu2pguYR7AezNQUFVJpWpYk048Zh5-5JBnNGcZCQgEmSuYW52uOeSm82u56G4oOAjXKNN0XyVrb_dmTVv-w0yIvE2VUl4bYITx0EatHHHgB8jlZbwSHNARNDW2cpxByTgLKB7BKkA-4iuKoV0c10lexiYhiYN72V5QkvdLqwHZiaNpZdUp7imVopNqsMxX5hcom67-6qB-PZt2TXrqxu1iD-FG2AqaEFzLAvZbyYNyWZAQxfpHci5DgfeAox8aFxS9N72PSw_4FJ");'>
                                     </div>
                                     <div class="flex-1">
                                         <p
@@ -287,9 +364,11 @@ import { getBusinesses } from '@/firebase/services/home/business.js';
 import { onMounted, onUnmounted, ref, computed } from "vue";
 import { useRoute } from "vue-router";
 import Loading from '@/components/status/Loading.vue';
-import MessageButton from '@/components/messageButton.vue';
-import defaultProfilePic from '@/assets/defaultBusinessLogo.png'
+import defaultProfilePic from '@/assets/defaultBusinessLogo.png';
 import { getSellerProductsSortedBySales } from '@/composables/productUtils.js';
+import { uiState } from '@/store/ui.js';
+
+const showTopNav = uiState.showTopNav;
 
 const sidebarOpen = ref(false);
 const activeSection = ref('about'); // Default to 'about' or whichever section you want to start with
@@ -372,5 +451,49 @@ const followingCount = computed(() => Number(business.value?.following ?? 0))
 
 function toggleFavorite(id) {
     // alert(id);
+}
+// SEARCH + SORT 
+const searchTerm = ref('')
+const showSort = ref(false)
+const sortMode = ref('none')
+
+const sortOptions = [
+    { value: 'none', label: 'Best Selling' },
+    { value: 'name_asc', label: 'A → Z' },
+    { value: 'name_desc', label: 'Z → A' },
+    { value: 'price_asc', label: 'Price: Low → High' },
+    { value: 'price_desc', label: 'Price: High → Low' },
+]
+
+const currentSortLabel = computed(() =>
+    sortOptions.find(o => o.value === sortMode.value)?.label || 'Best Selling'
+)
+
+function toggleSortMenu() { showSort.value = !showSort.value }
+function setSort(mode) { sortMode.value = mode; showSort.value = false }
+
+/* Filter + Sort logic only used when showAll is true */
+const filteredSortedProducts = computed(() => {
+    let filtered = allProducts.value.filter(p =>
+        p.name?.toLowerCase().includes(searchTerm.value.toLowerCase())
+    )
+
+    switch (sortMode.value) {
+        case 'name_asc': return filtered.sort((a, b) => a.name.localeCompare(b.name))
+        case 'name_desc': return filtered.sort((a, b) => b.name.localeCompare(a.name))
+        case 'price_asc': return filtered.sort((a, b) => getMinPrice(a) - getMinPrice(b))
+        case 'price_desc': return filtered.sort((a, b) => getMaxPrice(b) - getMaxPrice(a))
+        case 'sales_desc': return filtered.sort((a, b) => (b.totalSales || 0) - (a.totalSales || 0))
+        default: return filtered
+    }
+})
+
+function getMinPrice(p) {
+    const prices = Array.isArray(p.price) ? p.price : [p.price]
+    return Math.min(...prices.map(Number).filter(n => !isNaN(n)))
+}
+function getMaxPrice(p) {
+    const prices = Array.isArray(p.price) ? p.price : [p.price]
+    return Math.max(...prices.map(Number).filter(n => !isNaN(n)))
 }
 </script>
