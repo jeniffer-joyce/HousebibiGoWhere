@@ -110,8 +110,8 @@
                 </span>
                 <RouterLink
                   class="rounded-lg border border-slate-300 px-3 py-1 text-slate-700 hover:bg-slate-50
-                         dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
-                  :to="`/${(o.products?.[0]?.sellerUsername || 'shop').toLowerCase()}/?id=${o.products?.[0]?.sellerId || ''}`"
+                        dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                  :to="`/shop-details/${o.products?.[0]?.sellerId || ''}`"
                 >
                   Visit Shop
                 </RouterLink>
@@ -210,12 +210,12 @@
                 </template>
 
                 <!-- Contact Seller -->
-                <RouterLink
+                <button
+                  @click="contactSeller(o)"
                   class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
-                  :to="`/${(o.products?.[0]?.sellerUsername || 'shop').toLowerCase()}/?id=${o.products?.[0]?.sellerId || ''}`"
                 >
                   Contact Seller
-                </RouterLink>
+                </button>
               </div>
             </div>
           </article>
@@ -283,7 +283,8 @@ import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
 import { auth, db } from '@/firebase/firebase_config'
 import {
   collection, query as fsQuery, where, orderBy, onSnapshot,
-  doc, updateDoc, arrayUnion, Timestamp
+  doc, updateDoc, arrayUnion, Timestamp,
+  getDocs, addDoc, serverTimestamp, limit          
 } from 'firebase/firestore'
 
 import CancelledDetailsModal from '@/components/orders/CancelledDetailsModal.vue'
@@ -463,6 +464,45 @@ function openOrderFromRefund(o) {
   showReturnDetails.value = false
   orderForReturnDetails.value = null
   selectedOrder.value = o
+}
+
+async function contactSeller(o) {
+  try {
+    const buyerUid  = auth.currentUser?.uid
+    const sellerUid = o?.products?.[0]?.sellerId
+    if (!buyerUid || !sellerUid) return
+
+    // Look for an existing conversation that includes the buyer,
+    // then pick the one that also has the seller.
+    const snap = await getDocs(
+      fsQuery(collection(db, 'conversations'), where('participants', 'array-contains', buyerUid), limit(50))
+    )
+
+    let conversationId = null
+    snap.forEach(d => {
+      const parts = d.data()?.participants || []
+      if (parts.includes(sellerUid)) conversationId = d.id
+    })
+
+    // Create if not found
+    if (!conversationId) {
+      const ref = await addDoc(collection(db, 'conversations'), {
+        participants: [buyerUid, sellerUid],
+        createdAt: serverTimestamp(),
+        lastMessage: '',
+        lastMessageSenderId: '',
+        lastMessageTime: serverTimestamp(),
+        [`unreadCount_${buyerUid}`]: 0,
+        [`unreadCount_${sellerUid}`]: 0
+      })
+      conversationId = ref.id
+    }
+
+    // Go to Buyer Messages with the conversation id
+    window.location.href = `/buyer-messages?conversation=${conversationId}`
+  } catch (err) {
+    console.error('contactSeller failed:', err)
+  }
 }
 </script>
 
