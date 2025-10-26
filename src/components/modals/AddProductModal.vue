@@ -4,21 +4,28 @@
       <div
         v-if="show"
         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-        @click.self="close">
-        <div class="relative w-full max-w-2xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-          
+        @click.self="close"
+      >
+        <div
+          class="relative w-full max-w-2xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        >
           <!-- Header -->
-          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+          <div
+            class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800"
+          >
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Add New Product</h2>
-            <button @click="close" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-              <span class="material-symbols-outlined text-gray-500">close</span>
+            <button
+              @click="close"
+              class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Close"
+            >
+              <span class="material-symbols-outlined text-gray-500 dark:text-gray-400">close</span>
             </button>
           </div>
 
           <!-- Form -->
           <form @submit.prevent="handleSubmit" class="flex-1 overflow-y-auto px-6 py-6">
             <div class="space-y-6">
-              
               <!-- Product Name -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -29,10 +36,9 @@
                   type="text"
                   required
                   placeholder="e.g., Handmade Ceramic Mug"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40"
+                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
-
 
               <!-- Description -->
               <div>
@@ -44,12 +50,14 @@
                   required
                   rows="3"
                   placeholder="Describe your product..."
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40 resize-none"
+                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
                 ></textarea>
               </div>
 
-              <!-- Has Multiple Sizes Toggle -->
-              <div class="flex items-center justify-between p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <!-- Multiple Sizes Toggle -->
+              <div
+                class="flex items-center justify-between p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+              >
                 <div>
                   <p class="text-sm font-medium text-blue-900 dark:text-blue-100">Multiple Sizes?</p>
                   <p class="text-xs text-blue-700 dark:text-blue-300">Enable if product has different sizes</p>
@@ -58,10 +66,12 @@
                   type="button"
                   @click="toggleMultipleSizes"
                   class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-                  :class="hasMultipleSizes ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'">
-                  <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                    :class="hasMultipleSizes ? 'translate-x-6' : 'translate-x-1'">
-                  </span>
+                  :class="hasMultipleSizes ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                    :class="hasMultipleSizes ? 'translate-x-6' : 'translate-x-1'"
+                  ></span>
                 </button>
               </div>
 
@@ -72,14 +82,18 @@
                     Price (SGD) <span class="text-red-500">*</span>
                   </label>
                   <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <span
+                      class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400"
+                      aria-hidden="true"
+                      >$</span
+                    >
                     <input
                       v-model.number="form.price"
                       type="number"
                       step="0.01"
                       min="0"
                       required
-                      class="w-full pl-8 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40"
+                      class="w-full pl-8 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
                 </div>
@@ -92,7 +106,7 @@
                     type="number"
                     min="0"
                     required
-                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40"
+                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                 </div>
               </div>
@@ -101,23 +115,28 @@
               <div v-else class="space-y-3">
                 <div class="flex items-center justify-between">
                   <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Size Variants</label>
-                  <button
-                    type="button"
-                    @click="addSize"
-                    class="text-sm text-primary font-medium hover:underline">
+                  <button type="button" @click="addSize" class="text-sm text-primary font-medium hover:underline">
                     + Add Size
                   </button>
                 </div>
-                <div v-for="(size, idx) in form.sizes" :key="idx" class="flex gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <div
+                  v-for="(size, idx) in form.sizes"
+                  :key="idx"
+                  class="flex gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
+                >
                   <input
                     v-model="size.name"
                     type="text"
                     placeholder="Size"
                     required
-                    class="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                    class="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none"
                   />
                   <div class="relative">
-                    <span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">$</span>
+                    <span
+                      class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400"
+                      aria-hidden="true"
+                      >$</span
+                    >
                     <input
                       v-model.number="size.price"
                       type="number"
@@ -125,7 +144,7 @@
                       min="0"
                       placeholder="Price"
                       required
-                      class="w-24 pl-6 pr-2 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                      class="w-24 pl-6 pr-2 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none"
                     />
                   </div>
                   <input
@@ -134,13 +153,15 @@
                     min="0"
                     placeholder="Qty"
                     required
-                    class="w-20 px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                    class="w-20 px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none"
                   />
                   <button
                     v-if="form.sizes.length > 1"
                     type="button"
                     @click="removeSize(idx)"
-                    class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
+                    class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    aria-label="Remove size"
+                  >
                     <span class="material-symbols-outlined text-base">delete</span>
                   </button>
                 </div>
@@ -151,47 +172,45 @@
                 <div class="flex items-center justify-between mb-2">
                   <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Product Images <span class="text-red-500">*</span>
-                    <span class="text-xs text-gray-500 ml-1">({{ productImages.length }}/5)</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">({{ productImages.length }}/5)</span>
                   </label>
                   <button
                     v-if="productImages.length < 5"
                     type="button"
                     @click="showImagePicker = true"
-                    class="text-sm text-primary font-medium hover:underline">
+                    class="text-sm text-primary font-medium hover:underline"
+                  >
                     + Add Image
                   </button>
                 </div>
 
                 <!-- Selected Images Grid -->
                 <div v-if="productImages.length > 0" class="grid grid-cols-3 gap-3 mb-4">
-                  <div
-                    v-for="(url, idx) in productImages"
-                    :key="idx"
-                    class="relative group aspect-square">
-                    <img
-                      :src="url"
-                      :alt="`Product image ${idx + 1}`"
-                      class="w-full h-full object-cover rounded-lg"
-                    />
+                  <div v-for="(url, idx) in productImages" :key="idx" class="relative group aspect-square">
+                    <img :src="url" :alt="`Product image ${idx + 1}`" class="w-full h-full object-cover rounded-lg" />
                     <!-- Primary Badge -->
                     <div
                       v-if="idx === 0"
-                      class="absolute top-2 left-2 px-2 py-1 bg-primary text-white text-xs font-medium rounded">
+                      class="absolute top-2 left-2 px-2 py-1 bg-primary text-white text-xs font-medium rounded shadow"
+                    >
                       Primary
                     </div>
                     <!-- Delete Button -->
                     <button
                       type="button"
                       @click="removeImage(idx)"
-                      class="absolute top-2 right-2 p-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
+                      class="absolute top-2 right-2 p-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                      aria-label="Remove image"
+                    >
                       <span class="material-symbols-outlined text-sm">close</span>
                     </button>
-                    <!-- Set as Primary (if not already) -->
+                    <!-- Set as Primary -->
                     <button
                       v-if="idx !== 0"
                       type="button"
                       @click="setAsPrimary(idx)"
-                      class="absolute bottom-2 left-2 right-2 px-2 py-1 bg-white/90 dark:bg-gray-800/90 text-xs font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      class="absolute bottom-2 left-2 right-2 px-2 py-1 bg-white/90 dark:bg-gray-800/90 text-gray-800 dark:text-gray-100 text-xs font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
                       Set as Primary
                     </button>
                   </div>
@@ -201,7 +220,8 @@
                 <div
                   v-else
                   @click="showImagePicker = true"
-                  class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                >
                   <div class="flex flex-col items-center gap-3">
                     <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                       <span class="text-3xl">🖼️</span>
@@ -210,9 +230,7 @@
                       <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Click to add product images
                       </p>
-                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Add up to 5 images
-                      </p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Add up to 5 images</p>
                     </div>
                   </div>
                 </div>
@@ -228,33 +246,37 @@
                   type="button"
                   @click="form.availability = !form.availability"
                   class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-                  :class="form.availability ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'">
-                  <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                    :class="form.availability ? 'translate-x-6' : 'translate-x-1'">
-                  </span>
+                  :class="form.availability ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                    :class="form.availability ? 'translate-x-6' : 'translate-x-1'"
+                  ></span>
                 </button>
               </div>
-
             </div>
           </form>
 
           <!-- Footer -->
-          <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+          <div
+            class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50"
+          >
             <button
               type="button"
               @click="close"
-              class="px-6 py-2.5 rounded-lg font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
+              class="px-6 py-2.5 rounded-lg font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            >
               Cancel
             </button>
             <button
               @click="handleSubmit"
               :disabled="saving || !isFormValid"
-              class="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
+              class="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <span v-if="saving" class="material-symbols-outlined animate-spin text-base">progress_activity</span>
               <span>{{ saving ? 'Adding...' : 'Add Product' }}</span>
             </button>
           </div>
-
         </div>
       </div>
     </Transition>
@@ -268,6 +290,7 @@
     />
   </Teleport>
 </template>
+
 
 <script setup>
 import { ref, reactive, computed } from 'vue'

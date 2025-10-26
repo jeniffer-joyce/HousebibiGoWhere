@@ -238,16 +238,16 @@ import { ref, computed, onMounted, watch, onActivated } from 'vue'
 import { user } from '@/store/user.js'
 import Loading from '@/components/status/Loading.vue'
 import AddProductModal from '@/components/modals/AddProductModal.vue'
-import { auth } from '@/firebase/firebase_config'
 import { useToast } from '@/composables/useToast'
-const { success, error:toastError, info } = useToast()
+import { auth } from '@/firebase/firebase_config'
 
+// ✅ new imports for auto-refresh
+import { authReady, fetchSellerComposite } from '@/firebase/services/sellers/seller_crud'
 
-// Auth-linked seller info (now from /businesses/{uid})
-import { waitForAuthReady, getCurrentSellerAccount } from '@/firebase/services/sellers/seller_info.js'
-
-// Products service
+// existing product functions
 import { getSellerProducts, createProduct } from '@/firebase/services/sellers/seller_product.js'
+
+const { success, error: toastError } = useToast()
 
 const loading = ref(true)
 const seller = ref({})
@@ -255,42 +255,79 @@ const products = ref([])
 const searchTerm = ref('')
 const showAddModal = ref(false)
 
-// Sorting state (default: no explicit sorting)
+// sorting + pagination
 const showSort = ref(false)
 const sortMode = ref('none')
-const sortOptions = [
-  { value: 'none',      label: 'Default' },
-  { value: 'name_asc',  label: 'A → Z' },
-  { value: 'name_desc', label: 'Z → A' },
-  { value: 'price_asc', label: 'Price: Low → High' },
-  { value: 'price_desc',label: 'Price: High → Low' },
-  { value: 'date_desc', label: 'Date: Most recent → Oldest' },
-  { value: 'date_asc',  label: 'Date: Oldest → Most recent' },
-]
-
-// Pagination
 const pageSize = 8
 const page = ref(1)
 
-// Derived seller rating
+const sortOptions = [
+  { value: 'none', label: 'Default' },
+  { value: 'name_asc', label: 'A → Z' },
+  { value: 'name_desc', label: 'Z → A' },
+  { value: 'price_asc', label: 'Price: Low → High' },
+  { value: 'price_desc', label: 'Price: High → Low' },
+  { value: 'date_desc', label: 'Date: Most recent → Oldest' },
+  { value: 'date_asc', label: 'Date: Oldest → Most recent' },
+]
+
+/* ==========================================================
+   🔄 AUTO REFRESH / FETCH SELLER DATA
+   ========================================================== */
+async function loadSellerData() {
+  try {
+    loading.value = true
+    await authReady()
+    const { business } = await fetchSellerComposite()
+    if (business) {
+      seller.value = business
+      console.log('✅ Seller data loaded:', business)
+    } else {
+      console.warn('⚠️ No business document found for user.')
+    }
+
+    // also load seller products
+    products.value = await getSellerProducts()
+  } catch (e) {
+    console.error('❌ Failed to load seller data:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+// load when component mounts
+onMounted(loadSellerData)
+
+// reload when page re-activates (like switching tabs)
+onActivated(() => {
+  console.log('📄 BusinessHomepage re-activated — refreshing data.')
+  loadSellerData()
+})
+
+// reload when user avatar or profile changes
+watch(() => user.avatar, (newVal, oldVal) => {
+  if (newVal !== oldVal) loadSellerData()
+}, { deep: true })
+
+/* ==========================================================
+   📈 RATING + FOLLOWERS
+   ========================================================== */
 const displayRating = computed(() => {
   const n = Number(seller.value?.rating)
   return Number.isFinite(n) ? n.toFixed(1) : '0.0'
 })
-
-// Followers / Following counters (safe defaults)
 const followersCount = computed(() => Number(seller.value?.followers ?? 0))
 const followingCount = computed(() => Number(seller.value?.following ?? 0))
 
+/* ==========================================================
+   🔍 SEARCH + SORT + PAGINATION
+   ========================================================== */
 const currentSortLabel = computed(() =>
   sortOptions.find(o => o.value === sortMode.value)?.label || 'Default'
 )
-
-// Toggle handlers
 function toggleSortMenu() { showSort.value = !showSort.value }
 function setSort(mode) { sortMode.value = mode; showSort.value = false; page.value = 1 }
 
-// Search-only filter (no categories)
 const filteredProducts = computed(() => {
   const term = searchTerm.value.trim().toLowerCase()
   if (!term) return products.value
@@ -303,10 +340,8 @@ const filteredProducts = computed(() => {
   )
 })
 
-// Sorting helpers
 function toDate(val) {
   if (!val) return 0
-  if (val instanceof Date) return val.getTime()
   const d = new Date(val)
   return isNaN(d.getTime()) ? 0 : d.getTime()
 }
@@ -321,132 +356,57 @@ function maxPrice(p) {
   return nums.length ? Math.max(...nums) : 0
 }
 
-// Sorted products based on sortMode
 const sortedProducts = computed(() => {
   const arr = [...filteredProducts.value]
   switch (sortMode.value) {
-    case 'none':
-      return arr
-    case 'name_asc':
-      return arr.sort((a, b) => String(a.item_name || '').localeCompare(String(b.item_name || '')))
-    case 'name_desc':
-      return arr.sort((a, b) => String(b.item_name || '').localeCompare(String(a.item_name || '')))
-    case 'price_asc':
-      return arr.sort((a, b) => minPrice(a) - minPrice(b))
-    case 'price_desc':
-      return arr.sort((a, b) => maxPrice(b) - maxPrice(a))
-    case 'date_asc':
-      return arr.sort((a, b) => toDate(a.createdAt) - toDate(b.createdAt))
-    case 'date_desc':
-      return arr.sort((a, b) => toDate(b.createdAt) - toDate(a.createdAt))
-    default:
-      return arr
+    case 'name_asc': return arr.sort((a, b) => a.item_name.localeCompare(b.item_name))
+    case 'name_desc': return arr.sort((a, b) => b.item_name.localeCompare(a.item_name))
+    case 'price_asc': return arr.sort((a, b) => minPrice(a) - minPrice(b))
+    case 'price_desc': return arr.sort((a, b) => maxPrice(b) - maxPrice(a))
+    case 'date_asc': return arr.sort((a, b) => toDate(a.createdAt) - toDate(b.createdAt))
+    case 'date_desc': return arr.sort((a, b) => toDate(b.createdAt) - toDate(a.createdAt))
+    default: return arr
   }
 })
 
-// Reset to page 1 when search/sort changes
-watch([searchTerm, sortMode], () => { page.value = 1 })
+watch([searchTerm, sortMode], () => page.value = 1)
 
-// Pagination derived values
 const pagesTotal = computed(() => Math.max(1, Math.ceil(sortedProducts.value.length / pageSize)))
 const pagedProducts = computed(() => {
   const start = (page.value - 1) * pageSize
   return sortedProducts.value.slice(start, start + pageSize)
 })
 
-// ✅ Function to reload seller data
-async function reloadSellerData() {
-  try {
-    console.log('🔄 Reloading seller data...')
-    const acct = await getCurrentSellerAccount()
-    if (acct) {
-      seller.value = acct
-      console.log('✅ Seller data reloaded:', acct)
-    }
-  } catch (error) {
-    console.error('❌ Error reloading seller data:', error)
-  }
-}
+/* ==========================================================
+   🛒 PRODUCT FUNCTIONS
+   ========================================================== */
+function onAddProduct() { showAddModal.value = true }
 
-// Load data
-onMounted(async () => {
-  try {
-    await waitForAuthReady()
-
-    // Load business account
-    const acct = await getCurrentSellerAccount()
-    if (acct) seller.value = acct
-
-    // Load products
-    products.value = await getSellerProducts()
-  } catch (e) {
-    console.error('❌ Error initializing BusinessHomepage:', e)
-  } finally {
-    loading.value = false
-  }
-})
-
-// ✅ Reload when page becomes active (after navigation)
-onActivated(() => {
-  console.log('📄 BusinessHomepage activated, reloading data...')
-  reloadSellerData()
-})
-
-// ✅ Watch for user avatar changes
-watch(() => user.avatar, (newAvatar, oldAvatar) => {
-  if (newAvatar !== oldAvatar) {
-    console.log('👤 User avatar changed:', newAvatar)
-    reloadSellerData()
-  }
-}, { deep: true })
-
-// ===================== Product Card helpers =====================
-
-// Open Add Product Modal
-function onAddProduct() {
-  showAddModal.value = true
-}
-
-// Handle saving new product
 async function handleAddProduct(productData) {
   try {
-    console.log('💾 Saving product:', productData)
-    
-    // Add seller's business category to product data
     const productDataWithCategory = {
       ...productData,
       category: seller.value.category || 'uncategorized'
     }
-    
-    // Save to Firebase
+
     const newId = await createProduct(productDataWithCategory)
-    
-    console.log('✅ Product created with ID:', newId)
-    
-    // Add to local products array with normalized structure
+
     products.value.push({
       id: newId,
       item_name: productData.item_name,
       category: seller.value.category || 'uncategorized',
       description: productData.description,
       thumbnail: productData.img_url,
-      img_url: productData.img_url,
-      additional_images: productData.additional_images || [],
-      images: [productData.img_url, ...(productData.additional_images || [])],
       price: Array.isArray(productData.price) ? productData.price : [productData.price],
       quantity: Array.isArray(productData.quantity) ? productData.quantity : [productData.quantity],
       size: Array.isArray(productData.size) ? productData.size : (productData.size ? [productData.size] : []),
       availability: productData.availability,
-      imageSource: productData.imageSource,
       createdAt: productData.createdAt || new Date().toISOString(),
       sellerId: productData.sellerId,
       sellerName: productData.sellerName
     })
-    
-    // Close modal
+
     showAddModal.value = false
-    
-    // Success feedback
     success('✅ Product added successfully!')
   } catch (error) {
     console.error('❌ Error adding product:', error)
@@ -454,43 +414,27 @@ async function handleAddProduct(productData) {
   }
 }
 
-// Edit product handler
-function onEdit(p) {
-  console.log('Edit product clicked:', p.id)
-  // TODO: Implement edit functionality
-}
+/* ==========================================================
+   🧩 UI HELPERS
+   ========================================================== */
+function onEdit(p) { console.log('Edit product clicked:', p.id) }
 
-// check if product has variants/sizes
-function hasSizes(p) {
-  return Array.isArray(p.size) && p.size.length > 0
-}
+function hasSizes(p) { return Array.isArray(p.size) && p.size.length > 0 }
 
-// compute total quantity (array or single)
 function totalQuantity(p) {
-  if (Array.isArray(p.quantity)) {
-    return p.quantity.reduce((sum, n) => sum + (Number(n) || 0), 0)
-  }
+  if (Array.isArray(p.quantity)) return p.quantity.reduce((sum, n) => sum + (Number(n) || 0), 0)
   return Number(p.quantity) || 0
 }
+function fmt2(n) { const num = Number(n); return isNaN(num) ? '0.00' : num.toFixed(2) }
 
-// format price to 2 decimals
-function fmt2(n) {
-  const num = Number(n)
-  return isNaN(num) ? '0.00' : num.toFixed(2)
-}
-
-// price display ($x.xx or $x.xx - $y.xx)
 function priceDisplay(p) {
   const arr = Array.isArray(p.price) ? p.price : [p.price]
   const nums = arr.map(Number).filter(n => !isNaN(n))
   if (nums.length === 0) return '$0.00'
   if (nums.length === 1) return `$${fmt2(nums[0])}`
-  const min = Math.min(...nums)
-  const max = Math.max(...nums)
-  return `$${fmt2(min)} - $${fmt2(max)}`
+  return `$${fmt2(Math.min(...nums))} - $${fmt2(Math.max(...nums))}`
 }
 
-// stock label / class (colors as requested)
 function stockLabel(p) {
   const qty = totalQuantity(p)
   if (qty <= 0) return 'Out of Stock'
@@ -503,12 +447,10 @@ function stockClass(p) {
   if (qty <= 10) return 'bg-amber-500 text-white'
   return 'bg-emerald-600 text-white'
 }
-
-// size chip color (disabled if that variant has 0 qty)
 function sizeChipClass(p, i) {
   const q = Array.isArray(p.quantity) ? Number(p.quantity[i]) || 0 : 0
-  if (q <= 0)
-    return 'border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-500 opacity-60 cursor-not-allowed'
-  return 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200'
+  return q <= 0
+    ? 'border-gray-300 dark:border-gray-700 text-gray-400 opacity-60 cursor-not-allowed'
+    : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200'
 }
 </script>
