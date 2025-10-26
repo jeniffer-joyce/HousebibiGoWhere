@@ -1,4 +1,3 @@
-<!-- src/views/buyers/BuyerOrders.vue -->
 <template>
   <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
     <BuyerSideBar v-model:collapsed="isSidebarCollapsed" />
@@ -8,6 +7,10 @@
       :class="isSidebarCollapsed ? 'ml-16' : 'ml-64'"
     >
       <div class="mx-auto w-full max-w-6xl space-y-8">
+        <!-- success banner -->
+        <div v-if="banner.show" class="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+          {{ banner.msg }}
+        </div>
 
         <!-- Title + Search -->
         <div class="flex items-center justify-between">
@@ -289,6 +292,7 @@ import ReturnRequestModal from '@/components/orders/ReturnRequestModal.vue'
 import ReturnRequestDetailsModal from '@/components/orders/ReturnRequestDetailsModal.vue'
 
 /* UI states */
+const banner = ref({ show:false, msg:'' })
 const isSidebarCollapsed = ref(false)
 const loading = ref(true)
 const active = ref('all')
@@ -316,11 +320,11 @@ const tabs = [
 
 /* Status map */
 const statusMap = {
-  to_pay: { label: 'To Pay', cls: 'bg-blue-50 text-blue-700', dot: 'bg-blue-600' },
-  to_ship: { label: 'To Ship', cls: 'bg-indigo-50 text-indigo-700', dot: 'bg-indigo-600' },
-  to_receive: { label: 'To Receive', cls: 'bg-sky-50 text-sky-700', dot: 'bg-sky-600' },
-  completed: { label: 'Delivered', cls: 'bg-green-50 text-green-700', dot: 'bg-green-600' },
-  cancelled: { label: 'Cancelled', cls: 'bg-slate-100 text-slate-700', dot: 'bg-slate-500' },
+  to_pay:        { label: 'To Pay',        cls: 'bg-blue-50 text-blue-700',   dot: 'bg-blue-600' },
+  to_ship:       { label: 'To Ship',       cls: 'bg-indigo-50 text-indigo-700', dot: 'bg-indigo-600' },
+  to_receive:    { label: 'To Receive',    cls: 'bg-sky-50 text-sky-700',     dot: 'bg-sky-600' },
+  completed:     { label: 'Delivered',     cls: 'bg-green-50 text-green-700', dot: 'bg-green-600' },
+  cancelled:     { label: 'Cancelled',     cls: 'bg-slate-100 text-slate-700', dot: 'bg-slate-500' },
   return_refund: { label: 'Return/Refund', cls: 'bg-amber-50 text-amber-700', dot: 'bg-amber-600' }
 }
 
@@ -358,7 +362,7 @@ const visibleOrders = computed(() => {
     : base
   return filtered.sort((a, b) => {
     const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : +new Date(a.createdAt || 0)
-    const tb =     b.createdAt?.toMillis ? b.createdAt.toMillis() : +new Date(b.createdAt || 0)
+    const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : +new Date(b.createdAt || 0)
     return tb - ta
   })
 })
@@ -390,7 +394,7 @@ onMounted(() => {
         orders.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         loading.value = false
       },
-      () => { loading.value = false }
+      (err) => { console.error('orders onSnapshot error:', err); loading.value = false }
     )
   })
   onBeforeUnmount(() => { stop(); unsub?.() })
@@ -408,14 +412,9 @@ function formatDate(ts) {
   try { return new Date(ts).toLocaleString('en-SG') } catch { return '—' }
 }
 
-/* Actions */
-function payNow(o) {
-  // integrate your gateway here
-  alert(`Pay for order ${o.orderId}`)
-}
-function changePayment(o) {
-  alert(`Change payment method for ${o.orderId}`)
-}
+/* Actions (no alerts) */
+function payNow(o) { /* integrate your gateway */ }
+function changePayment(o) { /* open change payment UI */ }
 
 function openCancelConfirm(o) {
   orderToCancel.value = o
@@ -438,19 +437,18 @@ function markReceived(o) {
     statusLog: arrayUnion({ status: 'completed', by: 'buyer', time: Timestamp.now() })
   })
 }
-function rateOrder(o) {
-  alert(`Rate order ${o.orderId}`)
-}
+function rateOrder(o) { /* open rating UI */ }
 
 function openReturnModal(o) {
   orderForReturn.value = o
   showReturnModal.value = true
 }
 function handleReturnSubmitted() {
-  // Close the modal and optionally surface a toast/snackbar
+  // Close the modal and show banner message (no alert)
   showReturnModal.value = false
   orderForReturn.value = null
-  alert('Return/Refund request submitted.')
+  banner.value = { show: true, msg: 'Return/Refund request submitted successfully.' }
+  setTimeout(() => { banner.value.show = false }, 3500)
 }
 
 function viewCancelledDetails(o) { selectedCancelled.value = o }
@@ -482,4 +480,3 @@ article:hover {
   background-color: rgba(100,116,139,0.5);
 }
 </style>
-
