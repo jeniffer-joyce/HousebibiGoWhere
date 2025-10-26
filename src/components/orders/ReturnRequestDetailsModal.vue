@@ -26,7 +26,8 @@
         <div class="mb-6">
           <div class="h-2 w-full rounded-full bg-slate-200">
             <div
-              class="h-2 rounded-full bg-amber-400 transition-all"
+              class="h-2 rounded-full transition-all"
+              :class="barClass"
               :style="{ width: barWidth }"
             />
           </div>
@@ -155,6 +156,15 @@ const barWidth = computed(() => {
   if (state.value === 'pending') return '50%'
   return '100%'
 })
+/* ✅ NEW: dynamic bar color — amber (pending), green (approved), red (declined) */
+const barClass = computed(() =>
+  state.value === 'pending'
+    ? 'bg-amber-400'
+    : state.value === 'approved'
+      ? 'bg-green-500'
+      : 'bg-rose-500'
+)
+
 const step1Class = computed(() =>
   state.value === 'pending'
     ? 'border-amber-400 text-amber-600'
@@ -193,7 +203,6 @@ const selectedItems = computed(() => {
   const items = summary.value?.items
   const products = props.order?.products || []
   if (Array.isArray(items) && items.length) {
-    // map each chosen item to the product snapshot
     return items.map(it => {
       const p = products.find(x => x.productId === it.productId) || {}
       return {
@@ -205,14 +214,12 @@ const selectedItems = computed(() => {
       }
     })
   }
-  // Fallback: show nothing (user didn’t pick any – unlikely) or show first item
   return []
 })
 
 const totalAmount = computed(() => {
   const sAmt = Number(summary.value?.amount ?? 0)
   if (sAmt > 0) return sAmt
-  // in case amount not provided, sum selected items
   return selectedItems.value.reduce((a, it) => a + Number(it.itemTotal || 0), 0)
 })
 </script>
