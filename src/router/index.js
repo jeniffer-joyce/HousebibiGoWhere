@@ -20,7 +20,7 @@ import MyBusiness from "../views/sellers/account/MyBusiness.vue";
 import Notifications from "../views/sellers/account/Notifications.vue";
 import ChangePassword from "../views/sellers/account/ChangePassword.vue";
 import DeleteAccount from "../views/sellers/account/DeleteAccount.vue";
-import ReturnRequest from "../views/sellers/account/ReturnRequest.vue";
+import ReturnRefund from "../views/sellers/account/ReturnRefund.vue";
 
 // Seller TEST View (Developers only)
 import CurrentSeller from "../views/sellers/CurrentSeller.vue";
@@ -112,7 +112,7 @@ const routes = [
       { path: '', redirect: { name: 'edit-profile.my-profile' } },
       { path: 'my-profile', name: 'edit-profile.my-profile', component: MyProfile },
       { path: 'my-business', name: 'edit-profile.my-business', component: MyBusiness },
-      { path: 'return-request', name: 'edit-profile.return-request', component: ReturnRequest },
+      { path: 'return-refund', name: 'edit-profile.return-refund', component: ReturnRefund },
       { path: 'notifications', name: 'edit-profile.notifications', component: Notifications },
       { path: 'change-password', name: 'edit-profile.change-password', component: ChangePassword },
       { path: 'delete-account', name: 'edit-profile.delete-account', component: DeleteAccount },
