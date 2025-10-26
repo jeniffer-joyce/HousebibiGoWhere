@@ -2,10 +2,8 @@
 <template>
   <div>
     <!-- Page header -->
-    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Delete Account</h2>
-    <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-      Permanently delete your account and personal data.
-    </p>
+    <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Delete Account</h2>
+    <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Permanently delete your account and personal data.</p>
 
     <!-- Danger card -->
     <section
