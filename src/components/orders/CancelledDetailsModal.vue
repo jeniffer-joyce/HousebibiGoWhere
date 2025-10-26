@@ -1,42 +1,62 @@
 <template>
-  <transition name="fade">
-    <div v-if="visible" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
-      <div class="w-full max-w-2xl rounded-2xl bg-white shadow-xl dark:bg-slate-900">
-        <div class="px-6 py-5">
-          <!-- mini timeline + summary (keep your design here) -->
-          <h2 class="mb-3 text-xl font-semibold text-slate-900 dark:text-white">Refund Details</h2>
-          <p class="mb-4 text-slate-600 dark:text-slate-300">
-            {{ summaryText }}
-          </p>
+  <teleport to="body">
+    <div
+      v-show="visible"
+      class="fixed inset-0 z-[120] flex items-center justify-center"
+      aria-modal="true"
+      role="dialog"
+    >
+      <!-- Backdrop; click to close -->
+      <div class="absolute inset-0 bg-black/50" @click="$emit('close')" />
 
-          <!-- one-line item summary -->
-          <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-            <div class="flex items-center gap-3">
-              <img :src="firstItem?.img_url" class="h-12 w-12 rounded object-cover" />
-              <div class="flex-1">
-                <p class="font-medium text-slate-900 dark:text-white">{{ firstItem?.item_name }}</p>
-                <p class="text-sm text-slate-500">x{{ firstItem?.quantity }}</p>
-              </div>
-              <p class="font-semibold text-slate-900 dark:text-white">
-                S${{ (firstItem?.totalPrice ?? firstItem?.price * firstItem?.quantity).toFixed(2) }}
-              </p>
+      <!-- Card -->
+      <div
+        class="relative z-[121] w-[min(900px,95vw)] max-h-[90vh] overflow-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-800"
+        @click.stop
+      >
+        <h2 class="mb-1 text-xl font-semibold text-slate-900 dark:text-white">
+          Refund Details
+        </h2>
+        <p class="mb-4 text-sm text-slate-600 dark:text-slate-300">
+          Refund completed. S${{ totalRefund.toFixed(2) }} has been refunded to
+          {{ order?.payment?.method || 'card' }}.
+        </p>
+
+        <div
+          v-for="(it, idx) in order?.products || []"
+          :key="idx"
+          class="mb-3 flex items-center justify-between rounded-xl border border-slate-200 p-3 dark:border-slate-700"
+        >
+          <div class="flex items-center gap-3">
+            <img :src="it.img_url" class="h-12 w-12 rounded object-cover" alt="">
+            <div>
+              <p class="font-medium text-slate-900 dark:text-white">{{ it.item_name }}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">x{{ it.quantity ?? 1 }}</p>
             </div>
+          </div>
+          <div class="text-right font-semibold text-slate-900 dark:text-white">
+            S${{ ((it.totalPrice ?? it.price * (it.quantity ?? 1)) || 0).toFixed(2) }}
           </div>
         </div>
 
-        <div class="flex items-center justify-between gap-3 border-t border-slate-200 p-4 dark:border-slate-700">
-          <button @click="$emit('closeAll')"
-                  class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">
+        <div class="mt-6 flex items-center justify-between">
+          <button
+            class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+            @click="$emit('close')"
+          >
             Close
           </button>
-          <button @click="$emit('showOrder')"
-                  class="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700">
+
+          <button
+            class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            @click="$emit('open-order', order)"
+          >
             Order Details
           </button>
         </div>
       </div>
     </div>
-  </transition>
+  </teleport>
 </template>
 
 <script setup>
@@ -44,20 +64,16 @@ import { computed } from 'vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
-  order:   { type: Object,  default: () => ({}) }
+  order:   { type: Object,  default: null }
 })
-defineEmits(['closeAll','showOrder'])
+defineEmits(['close','open-order'])
 
-const firstItem = computed(() => props.order?.products?.[0] || null)
-
-const summaryText = computed(() => {
-  const amt = (props.order?.totals?.grandTotal ?? 0).toFixed(2)
-  const mask = props.order?.payment?.masked || props.order?.payment?.method || 'your card'
-  return `Refund completed. S$${amt} has been refunded to ${mask}.`
+const totalRefund = computed(() => {
+  if (!props.order) return 0
+  const t = props.order?.totals?.grandTotal
+  if (t != null) return Number(t)
+  return (props.order?.products || []).reduce(
+    (a, p) => a + (p.totalPrice ?? (p.price * (p.quantity ?? 1))), 0
+  )
 })
 </script>
-
-<style scoped>
-.fade-enter-active,.fade-leave-active{transition:opacity .15s ease}
-.fade-enter-from,.fade-leave-to{opacity:0}
-</style>

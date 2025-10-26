@@ -1,104 +1,175 @@
 <template>
   <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
-    <BuyerSideBar :collapsed="isSidebarCollapsed" />
+    <BuyerSideBar v-model:collapsed="isSidebarCollapsed" />
 
-    <main class="flex-1 p-6 sm:p-8 transition-all duration-300 ml-64">
+    <main
+      class="flex-1 p-6 sm:p-8 transition-all duration-300"
+      :class="isSidebarCollapsed ? 'ml-16' : 'ml-64'"
+    >
       <div class="mx-auto w-full max-w-6xl space-y-8">
+        <!-- success banner -->
+        <div v-if="banner.show" class="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+          {{ banner.msg }}
+        </div>
 
-        <!-- ===== Header ===== -->
+        <!-- Title + Search -->
         <div class="flex items-center justify-between">
           <div>
-            <h1 class="text-2xl font-semibold text-slate-900 dark:text-white">My Orders</h1>
-            <p class="text-slate-500 dark:text-slate-400">Track, manage and review your purchases</p>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">My Orders</h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Track, manage and review your purchases
+            </p>
           </div>
-          <input
-            v-model="queryStr"
-            type="text"
-            placeholder="Search by product, order #, or shop"
-            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          />
-        </div>
 
-        <!-- ===== Tabs ===== -->
-        <div class="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div v-for="t in tabs" :key="t.key"
-            @click="active = t.key"
-            class="relative flex-1 cursor-pointer select-none rounded-lg px-4 py-2 text-center text-sm font-medium transition-all"
-            :class="[
-              active === t.key
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700'
-            ]">
-            {{ t.label }}
-            <span v-if="tabCounts[t.key] > 0"
-                  class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-semibold text-blue-600 dark:bg-blue-700 dark:text-white">
-              {{ tabCounts[t.key] }}
-            </span>
+          <div class="w-full max-w-md">
+            <div class="relative">
+              <input
+                v-model="queryStr"
+                type="text"
+                placeholder="Search by product, order #, or shop"
+                class="w-full rounded-xl border border-slate-300 bg-white px-10 py-2.5 text-sm
+                       shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500
+                       dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <svg
+                class="absolute left-3 top-2.5 h-5 w-5 text-slate-400"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"
+                />
+              </svg>
+            </div>
           </div>
         </div>
 
-        <!-- ===== Orders ===== -->
-        <div v-if="loading" class="flex items-center justify-center py-20">
-          <span class="text-slate-500 dark:text-slate-300">Loading orders...</span>
+        <!-- Tabs -->
+        <div class="rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800">
+          <div class="grid grid-cols-7 gap-2">
+            <button
+              v-for="t in tabs"
+              :key="t.key"
+              @click="active = t.key"
+              class="flex h-11 items-center justify-center gap-2 rounded-xl border transition dark:border-slate-700"
+              :class="active === t.key
+                       ? 'border-transparent bg-blue-600 text-white'
+                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200'"
+            >
+              <span class="text-sm font-medium">{{ t.label }}</span>
+              <span
+                v-if="tabCounts[t.key] > 0"
+                class="rounded-full px-2 py-0.5 text-xs font-bold"
+                :class="active === t.key ? 'bg-white/20 text-white' : 'bg-blue-600 text-white'"
+              >
+                {{ tabCounts[t.key] }}
+              </span>
+            </button>
+          </div>
         </div>
 
-        <div v-else-if="!visibleOrders.length" class="flex items-center justify-center py-20">
-          <span class="text-slate-500 dark:text-slate-300">You don’t have any orders here yet.</span>
+        <!-- Loading / Empty -->
+        <div v-if="loading" class="flex h-48 items-center justify-center text-slate-500 dark:text-slate-400">
+          <svg class="mr-2 h-5 w-5 animate-spin text-blue-600" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
+          </svg>
+          Loading orders…
         </div>
 
+        <div
+          v-else-if="visibleOrders.length === 0"
+          class="rounded-2xl border border-dashed border-slate-300 bg-white py-20 text-center dark:border-slate-700 dark:bg-slate-800"
+        >
+          <p class="text-lg font-semibold text-slate-900 dark:text-white">No orders yet</p>
+          <p class="mt-1 text-slate-500 dark:text-slate-400">You don’t have any orders here.</p>
+        </div>
+
+        <!-- Orders List -->
         <div v-else class="space-y-6">
-          <article v-for="o in visibleOrders" :key="o.id"
-            class="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            
+          <article
+            v-for="o in visibleOrders"
+            :key="o.id"
+            class="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
+          >
             <!-- Header -->
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-700">
-              <div class="flex flex-wrap items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                <span class="font-medium">Order #{{ o.orderId }}</span>
-                <span>•</span>
-                <span>Shop: <span class="font-semibold">{{ o.products?.[0]?.shopName }}</span></span>
+            <div class="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-700">
+              <div class="flex flex-wrap items-center gap-3 text-sm">
+                <span class="text-slate-700 dark:text-slate-200">
+                  <span class="font-medium">Order #:</span> {{ o.orderId }}
+                </span>
+                <span class="text-slate-300">•</span>
+                <span class="text-slate-700 dark:text-slate-200">
+                  <span class="font-medium">Shop:</span>
+                  <span class="font-semibold">{{ o.products?.[0]?.shopName || '—' }}</span>
+                </span>
                 <RouterLink
-                  :to="`/${(o.products?.[0]?.sellerUsername || 'shop').toLowerCase()}/?id=${o.products?.[0]?.sellerId || ''}`"
-                  class="ml-2 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">
+                  class="rounded-lg border border-slate-300 px-3 py-1 text-slate-700 hover:bg-slate-50
+                        dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                  :to="`/shop-details/${o.products?.[0]?.sellerId || ''}`"
+                >
                   Visit Shop
                 </RouterLink>
               </div>
 
-              <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-                      :class="statusMap[statusOf(o)]?.cls">
+              <div class="flex items-center gap-3 text-sm">
+                <span class="text-slate-500 dark:text-slate-400">Placed: {{ formatDate(o.createdAt) }}</span>
+                <span
+                  class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
+                  :class="statusMap[statusOf(o)]?.cls"
+                >
                   <span class="h-2 w-2 rounded-full" :class="statusMap[statusOf(o)]?.dot"></span>
-                  {{ statusMap[statusOf(o)]?.label }}
+                  {{ statusMap[statusOf(o)]?.label || statusOf(o) }}
                 </span>
-                <span>Placed: {{ formatDate(o.createdAt) }}</span>
               </div>
             </div>
 
             <!-- Items -->
             <div class="divide-y divide-slate-100 dark:divide-slate-700">
-              <div v-for="(p, i) in o.products" :key="i"
-                   class="flex items-center justify-between gap-4 p-4">
-                <div class="flex items-center gap-3">
-                  <img :src="p.img_url" class="h-14 w-14 rounded-md object-cover" />
+              <div
+                v-for="(it, idx) in o.products || []"
+                :key="idx"
+                class="flex items-start justify-between gap-4 p-4"
+              >
+                <div class="flex items-start gap-3">
+                  <img :src="it.img_url" class="h-16 w-16 rounded-md object-cover" />
                   <div>
-                    <p class="font-medium text-slate-900 dark:text-white">{{ p.item_name }}</p>
-                    <p class="text-sm text-slate-500">Qty: {{ p.quantity }} <span v-if="p.size">• Size: {{ p.size }}</span></p>
+                    <p class="font-medium text-slate-900 dark:text-white">{{ it.item_name }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">
+                      <span v-if="it.size">Size: {{ it.size }}</span>
+                      <span v-if="it.size && (it.quantity ?? 1)"> • </span>
+                      Qty: {{ it.quantity ?? 1 }}
+                    </p>
                   </div>
                 </div>
-                <p class="font-semibold text-slate-900 dark:text-white">S${{ (p.totalPrice ?? (p.price * p.quantity)).toFixed(2) }}</p>
+                <div class="text-right">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Item total</p>
+                  <p class="text-lg font-semibold text-slate-900 dark:text-white">
+                    S${{ ((it.totalPrice ?? it.price * (it.quantity ?? 1)) || 0).toFixed(2) }}
+                  </p>
+                </div>
               </div>
             </div>
 
             <!-- Footer -->
-            <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4 dark:border-slate-700">
-              <div class="text-slate-500 dark:text-slate-400">
-                <p class="text-sm">Order Total</p>
-                <p class="text-xl font-bold text-slate-900 dark:text-white">S${{ orderGrand(o).toFixed(2) }}</p>
+            <div class="flex flex-col gap-3 border-t border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700">
+              <div>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Order Total</p>
+                <p class="text-xl font-bold text-slate-900 dark:text-white">
+                  S${{ orderGrand(o).toFixed(2) }}
+                </p>
               </div>
 
               <div class="flex flex-wrap items-center justify-end gap-2">
-                <!-- Buttons based on status -->
+                <!-- Buttons -->
                 <template v-if="statusOf(o) === 'to_pay'">
                   <button @click="payNow(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Pay Now</button>
+                  <button @click="changePayment(o)" class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50">Change Payment</button>
                   <button @click="openCancelConfirm(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Cancel Order</button>
                 </template>
 
@@ -112,54 +183,97 @@
 
                 <template v-else-if="statusOf(o) === 'completed'">
                   <button @click="rateOrder(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Rate</button>
-                  <button @click="requestReturn(o)" class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">Request Return/Refund</button>
+                  <button
+                    @click="openReturnModal(o)"
+                    class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                  >
+                    Request Return/Refund
+                  </button>
                 </template>
 
                 <template v-else-if="statusOf(o) === 'cancelled'">
-                  <button @click="viewCancelledDetails(o)" class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">Cancelled Details</button>
+                  <button
+                    @click="viewCancelledDetails(o)"
+                    class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                  >
+                    Cancelled Details
+                  </button>
                 </template>
 
-                <RouterLink
-                  class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
-                  :to="`/${(o.products?.[0]?.sellerUsername || 'shop').toLowerCase()}/?id=${o.products?.[0]?.sellerId || ''}`">
+                <template v-else-if="statusOf(o) === 'return_refund'">
+                  <button
+                    @click="viewReturnDetails(o)"
+                    class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                  >
+                    View Return/Refund Details
+                  </button>
+                </template>
+
+                <!-- Contact Seller -->
+                <button
+                  @click="contactSeller(o)"
+                  class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                >
                   Contact Seller
-                </RouterLink>
+                </button>
               </div>
             </div>
           </article>
         </div>
       </div>
     </main>
-  </div>
 
-  <!-- Cancel confirmation popup -->
-  <div v-if="showCancelConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-slate-800">
-      <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Cancel Order</h2>
-      <p class="text-slate-600 dark:text-slate-300 mb-6">Are you sure you want to cancel this order?</p>
-      <div class="flex justify-end gap-3">
-        <button @click="showCancelConfirm = false" class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200">No</button>
-        <button @click="confirmCancel" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Yes, Cancel</button>
+    <!-- Cancel Confirm Modal -->
+    <div
+      v-if="showCancelConfirm"
+      class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
+      @click="showCancelConfirm=false"
+    >
+      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:mx-4 dark:bg-slate-800" @click.stop>
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Cancel this order?</h3>
+        <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          Are you sure you want to cancel order <span class="font-medium">{{ orderToCancel?.orderId }}</span>?
+        </p>
+        <div class="mt-5 flex justify-end gap-2">
+          <button @click="showCancelConfirm=false" class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50">No, keep order</button>
+          <button @click="confirmCancel" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Yes, cancel</button>
+        </div>
       </div>
     </div>
+
+    <!-- Modals -->
+    <CancelledDetailsModal
+      v-if="!!selectedCancelled"
+      :visible="true"
+      :order="selectedCancelled"
+      @close="selectedCancelled = null"
+      @open-order="(o)=>{ selectedCancelled=null; selectedOrder=o }"
+    />
+
+    <OrderDetailsModal
+      v-if="!!selectedOrder"
+      :visible="true"
+      :order="selectedOrder"
+      @close="selectedOrder = null"
+      @open-refund="(o)=>{ selectedOrder=null; orderForReturnDetails=o; showReturnDetails=true }"
+    />
+
+    <ReturnRequestModal
+      v-if="showReturnModal"
+      :visible="true"
+      :order="orderForReturn"
+      @submitted="handleReturnSubmitted"
+      @close="showReturnModal=false; orderForReturn=null"
+    />
+
+    <ReturnRequestDetailsModal
+      v-if="showReturnDetails"
+      :visible="true"
+      :order="orderForReturnDetails"
+      @close="showReturnDetails=false; orderForReturnDetails=null"
+      @open-order="openOrderFromRefund"
+    />
   </div>
-
-  <!-- Modals -->
-  <CancelledDetailsModal
-    v-if="selectedCancelled"
-    :visible="!!selectedCancelled"
-    :order="selectedCancelled"
-    @closeAll="closeAllModals"
-    @showOrder="() => { selectedOrder = selectedCancelled; selectedCancelled = null }"
-  />
-
-  <OrderDetailsModal
-    v-if="selectedOrder"
-    :visible="!!selectedOrder"
-    :order="selectedOrder"
-    @closeAll="closeAllModals"
-    @showRefund="() => { selectedCancelled = selectedOrder; selectedOrder = null }"
-  />
 </template>
 
 <script setup>
@@ -169,31 +283,32 @@ import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
 import { auth, db } from '@/firebase/firebase_config'
 import {
   collection, query as fsQuery, where, orderBy, onSnapshot,
-  doc, updateDoc, arrayUnion, Timestamp
+  doc, updateDoc, arrayUnion, Timestamp,
+  getDocs, addDoc, serverTimestamp, limit          
 } from 'firebase/firestore'
+
 import CancelledDetailsModal from '@/components/orders/CancelledDetailsModal.vue'
 import OrderDetailsModal from '@/components/orders/OrderDetailsModal.vue'
-import { useToast } from '@/composables/useToast'
-const { success, error:toastError, info } = useToast()
+import ReturnRequestModal from '@/components/orders/ReturnRequestModal.vue'
+import ReturnRequestDetailsModal from '@/components/orders/ReturnRequestDetailsModal.vue'
 
-/* UI state */
+/* UI states */
+const banner = ref({ show:false, msg:'' })
 const isSidebarCollapsed = ref(false)
 const loading = ref(true)
 const active = ref('all')
 const queryStr = ref('')
-
-/* cancel confirm */
 const showCancelConfirm = ref(false)
 const orderToCancel = ref(null)
-
-/* modals */
 const selectedCancelled = ref(null)
 const selectedOrder = ref(null)
-
-/* orders */
+const showReturnModal = ref(false)
+const orderForReturn = ref(null)
+const showReturnDetails = ref(false)
+const orderForReturnDetails = ref(null)
 const orders = ref([])
 
-/* tabs */
+/* Tabs */
 const tabs = [
   { key: 'all', label: 'All' },
   { key: 'to_pay', label: 'To Pay' },
@@ -204,26 +319,27 @@ const tabs = [
   { key: 'return_refund', label: 'Return/Refund' }
 ]
 
-/* status chips */
+/* Status map */
 const statusMap = {
-  to_pay: { label: 'To Pay', cls: 'bg-blue-50 text-blue-700', dot: 'bg-blue-600' },
-  to_ship: { label: 'To Ship', cls: 'bg-indigo-50 text-indigo-700', dot: 'bg-indigo-600' },
-  to_receive: { label: 'To Receive', cls: 'bg-sky-50 text-sky-700', dot: 'bg-sky-600' },
-  completed: { label: 'Delivered', cls: 'bg-green-50 text-green-700', dot: 'bg-green-600' },
-  cancelled: { label: 'Cancelled', cls: 'bg-slate-100 text-slate-700', dot: 'bg-slate-500' },
+  to_pay:        { label: 'To Pay',        cls: 'bg-blue-50 text-blue-700',   dot: 'bg-blue-600' },
+  to_ship:       { label: 'To Ship',       cls: 'bg-indigo-50 text-indigo-700', dot: 'bg-indigo-600' },
+  to_receive:    { label: 'To Receive',    cls: 'bg-sky-50 text-sky-700',     dot: 'bg-sky-600' },
+  completed:     { label: 'Delivered',     cls: 'bg-green-50 text-green-700', dot: 'bg-green-600' },
+  cancelled:     { label: 'Cancelled',     cls: 'bg-slate-100 text-slate-700', dot: 'bg-slate-500' },
   return_refund: { label: 'Return/Refund', cls: 'bg-amber-50 text-amber-700', dot: 'bg-amber-600' }
 }
 
-/* helpers */
+/* Status helpers */
 function lastStatusFromLog(o) {
   const log = o?.statusLog || []
-  return log.length ? log[log.length - 1].status : null
+  if (!log.length) return null
+  return log[log.length - 1]?.status || null
 }
 function statusOf(o) {
   return o?.status || lastStatusFromLog(o) || 'to_pay'
 }
 
-/* counts */
+/* Counts */
 const tabCounts = computed(() => {
   const c = { all: orders.value.length, to_pay: 0, to_ship: 0, to_receive: 0, completed: 0, cancelled: 0, return_refund: 0 }
   for (const o of orders.value) {
@@ -233,15 +349,17 @@ const tabCounts = computed(() => {
   return c
 })
 
-/* visible orders */
+/* Search and filter */
 const visibleOrders = computed(() => {
   const q = queryStr.value.trim().toLowerCase()
-  const base = active.value === 'all' ? orders.value : orders.value.filter(o => statusOf(o) === active.value)
+  const base = active.value === 'all'
+    ? orders.value
+    : orders.value.filter(o => statusOf(o) === active.value)
   const filtered = q
     ? base.filter(o => {
-        const hay = [o.orderId, o.products?.[0]?.shopName, ...(o.products || []).map(p => p.item_name)].join(' ').toLowerCase()
-        return hay.includes(q)
-      })
+      const hay = [o.orderId, o.products?.[0]?.shopName, ...(o.products || []).map(p => p.item_name)].join(' ').toLowerCase()
+      return hay.includes(q)
+    })
     : base
   return filtered.sort((a, b) => {
     const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : +new Date(a.createdAt || 0)
@@ -250,10 +368,13 @@ const visibleOrders = computed(() => {
   })
 })
 
-/* totals helper */
+/* subtotal helper if totals missing */
 function orderGrand(o) {
   if (o?.totals?.grandTotal != null) return Number(o.totals.grandTotal)
-  const sum = (o.products || []).reduce((acc, p) => acc + (p.totalPrice ?? (p.price * p.quantity)), 0)
+  const sum = (o.products || []).reduce(
+    (acc, p) => acc + (p.totalPrice ?? (p.price * (p.quantity ?? 1))),
+    0
+  )
   return Number(sum.toFixed(2))
 }
 
@@ -262,58 +383,140 @@ let unsub = null
 onMounted(() => {
   const stop = auth.onAuthStateChanged(async (u) => {
     if (!u) { loading.value = false; return }
-    const q = fsQuery(collection(db, 'orders'), where('uid', '==', u.uid), orderBy('createdAt', 'desc'))
+    const q = fsQuery(
+      collection(db, 'orders'),
+      where('uid', '==', u.uid),
+      orderBy('createdAt', 'desc')
+    )
     unsub?.()
-    unsub = onSnapshot(q, (snap) => {
-      orders.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      loading.value = false
-    }, () => { loading.value = false })
+    unsub = onSnapshot(
+      q,
+      (snap) => {
+        orders.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        loading.value = false
+      },
+      (err) => { console.error('orders onSnapshot error:', err); loading.value = false }
+    )
   })
   onBeforeUnmount(() => { stop(); unsub?.() })
 })
 
-/* format date */
+/* Utils */
 function formatDate(ts) {
   if (!ts) return '—'
-  if (ts.toDate) return ts.toDate().toLocaleString('en-SG', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
+  if (ts.toDate) {
+    return ts.toDate().toLocaleString('en-SG', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    })
+  }
   try { return new Date(ts).toLocaleString('en-SG') } catch { return '—' }
 }
 
-/* Actions */
-function payNow(o){ info(`Pay for order ${o.orderId}`) }
-function openCancelConfirm(o){ orderToCancel.value = o; showCancelConfirm.value = true }
-async function confirmCancel(){
+/* Actions (no alerts) */
+function payNow(o) { /* integrate your gateway */ }
+function changePayment(o) { /* open change payment UI */ }
+
+function openCancelConfirm(o) {
+  orderToCancel.value = o
+  showCancelConfirm.value = true
+}
+async function confirmCancel() {
   if (!orderToCancel.value) return
   const o = orderToCancel.value
   showCancelConfirm.value = false
   await updateDoc(doc(db, 'orders', o.id), {
     status: 'cancelled',
-    statusLog: arrayUnion({ status:'cancelled', by:'buyer', time: Timestamp.now() })
+    statusLog: arrayUnion({ status: 'cancelled', by: 'buyer', time: Timestamp.now() })
   })
   orderToCancel.value = null
 }
-function markReceived(o){
+
+function markReceived(o) {
   updateDoc(doc(db, 'orders', o.id), {
-    status:'completed',
-    statusLog: arrayUnion({ status:'completed', by:'buyer', time: Timestamp.now() })
+    status: 'completed',
+    statusLog: arrayUnion({ status: 'completed', by: 'buyer', time: Timestamp.now() })
   })
 }
-function rateOrder(o){ info(`Rate order ${o.orderId}`) }
-function requestReturn(o){
-  updateDoc(doc(db, 'orders', o.id), {
-    status:'return_refund',
-    statusLog: arrayUnion({ status:'return_refund', by:'buyer', time: Timestamp.now() })
-  })
+function rateOrder(o) { /* open rating UI */ }
+
+function openReturnModal(o) {
+  orderForReturn.value = o
+  showReturnModal.value = true
 }
-function viewCancelledDetails(o){ selectedCancelled.value = o }
-function viewOrderDetails(o){ selectedOrder.value = o }
-function closeAllModals(){
-  selectedCancelled.value = null
-  selectedOrder.value = null
-  showCancelConfirm.value = false
+function handleReturnSubmitted() {
+  // Close the modal and show banner message (no alert)
+  showReturnModal.value = false
+  orderForReturn.value = null
+  banner.value = { show: true, msg: 'Return/Refund request submitted successfully.' }
+  setTimeout(() => { banner.value.show = false }, 3500)
+}
+
+function viewCancelledDetails(o) { selectedCancelled.value = o }
+function viewOrderDetails(o)      { selectedOrder.value = o }
+function viewReturnDetails(o) {
+  orderForReturnDetails.value = o
+  showReturnDetails.value = true
+}
+
+/* Relay from ReturnRequestDetails -> OrderDetails */
+function openOrderFromRefund(o) {
+  showReturnDetails.value = false
+  orderForReturnDetails.value = null
+  selectedOrder.value = o
+}
+
+async function contactSeller(o) {
+  try {
+    const buyerUid  = auth.currentUser?.uid
+    const sellerUid = o?.products?.[0]?.sellerId
+    if (!buyerUid || !sellerUid) return
+
+    // Look for an existing conversation that includes the buyer,
+    // then pick the one that also has the seller.
+    const snap = await getDocs(
+      fsQuery(collection(db, 'conversations'), where('participants', 'array-contains', buyerUid), limit(50))
+    )
+
+    let conversationId = null
+    snap.forEach(d => {
+      const parts = d.data()?.participants || []
+      if (parts.includes(sellerUid)) conversationId = d.id
+    })
+
+    // Create if not found
+    if (!conversationId) {
+      const ref = await addDoc(collection(db, 'conversations'), {
+        participants: [buyerUid, sellerUid],
+        createdAt: serverTimestamp(),
+        lastMessage: '',
+        lastMessageSenderId: '',
+        lastMessageTime: serverTimestamp(),
+        [`unreadCount_${buyerUid}`]: 0,
+        [`unreadCount_${sellerUid}`]: 0
+      })
+      conversationId = ref.id
+    }
+
+    // Go to Buyer Messages with the conversation id
+    window.location.href = `/buyer-messages?conversation=${conversationId}`
+  } catch (err) {
+    console.error('contactSeller failed:', err)
+  }
 }
 </script>
 
 <style scoped>
-article:hover { transform: translateY(-1px); transition: box-shadow .2s, transform .2s; }
+article:hover {
+  transform: translateY(-1px);
+  transition: box-shadow .2s, transform .2s;
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb {
+  background-color: rgba(100,116,139,0.3);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100,116,139,0.5);
+}
 </style>

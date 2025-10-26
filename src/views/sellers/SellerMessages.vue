@@ -1,177 +1,215 @@
 <template>
-  <div class="seller-messages-container">
-    <!-- Header -->
-    <div class="messages-header">
-      <h1>Customer Messages</h1>
-      <span v-if="totalUnreadCount > 0" class="unread-badge">
-        {{ totalUnreadCount }} unread
-      </span>
-    </div>
-
-    <div class="messages-layout">
+  <div class="flex h-screen bg-slate-50 dark:bg-slate-900">
+    <div class="flex w-full h-full">
       <!-- Conversations List -->
-      <div class="conversations-sidebar">
-        <div class="search-bar">
-          <input
-            type="text"
-            placeholder="Search customers"
-            v-model="searchQuery"
-            class="search-input"
-          />
-        </div>
-
-        <!-- Loading State -->
-        <div v-if="loading && conversations.length === 0" class="loading-state">
-          <p>Loading conversations...</p>
-        </div>
-
-        <!-- Empty State -->
-        <div v-else-if="!loading && filteredConversations.length === 0" class="empty-state">
-          <div class="empty-icon">💬</div>
-          <p>No customer messages yet</p>
+      <div class="w-96 border-r border-slate-200 dark:border-slate-700 flex flex-col bg-white dark:bg-slate-800">
+        <!-- Header -->
+        <div class="p-4 border-b border-slate-200 dark:border-slate-700">
+          <div class="flex items-center justify-between mb-4">
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Customer Messages</h1>
+            <span v-if="totalUnreadCount > 0" 
+              class="px-3 py-1 bg-primary text-white text-xs font-semibold rounded-full">
+              {{ totalUnreadCount }} unread
+            </span>
+          </div>
+          
+          <!-- Search -->
+          <div class="relative">
+            <input 
+              v-model="searchQuery"
+              type="text" 
+              placeholder="Search customers"
+              class="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+            <svg class="absolute left-3 top-2.5 h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
         </div>
 
         <!-- Conversations List -->
-        <div v-else class="conversations-list">
-          <div
-            v-for="conversation in filteredConversations"
-            :key="conversation.id"
-            @click="selectConversation(conversation.id)"
-            :class="[
-              'conversation-item',
-              { active: activeConversationId === conversation.id }
-            ]"
-          >
-            <!-- Avatar -->
-            <div class="conversation-avatar">
-              <img
-                v-if="getBuyerAvatar(conversation)"
-                :src="getBuyerAvatar(conversation)"
-                :alt="getBuyerName(conversation)"
-              />
-              <div v-else class="avatar-placeholder">
-                {{ getInitials(getBuyerName(conversation)) }}
-              </div>
+        <div class="flex-1 overflow-y-auto">
+          <!-- Loading State -->
+          <div v-if="loading && conversations.length === 0" class="flex items-center justify-center h-full">
+            <div class="text-center">
+              <svg class="animate-spin h-10 w-10 mx-auto text-primary mb-3" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              <p class="text-slate-600 dark:text-slate-400">Loading conversations...</p>
             </div>
+          </div>
 
-            <!-- Conversation Details -->
-            <div class="conversation-details">
-              <div class="conversation-header">
-                <h3 class="customer-name">
-                  {{ getBuyerName(conversation) }}
-                </h3>
-                <span class="message-time">
-                  {{ formatMessageTime(conversation.lastMessageTime) }}
-                </span>
-              </div>
-              <div class="conversation-preview">
-                <p class="last-message">
-                  <span v-if="conversation.lastMessageSenderId === currentBusinessId">
-                    You: 
+          <!-- Empty State -->
+          <div v-else-if="filteredConversations.length === 0" class="flex items-center justify-center h-full">
+            <div class="text-center px-4">
+              <svg class="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+              </svg>
+              <p class="text-slate-600 dark:text-slate-400">
+                {{ searchQuery ? 'No conversations found' : 'No customer messages yet' }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Conversations -->
+          <div v-else>
+            <div 
+              v-for="conversation in filteredConversations" 
+              :key="conversation.id"
+              @click="selectConversation(conversation.id)"
+              :class="[
+                'p-4 border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors',
+                activeConversationId === conversation.id ? 'bg-slate-100 dark:bg-slate-700 border-l-4 border-l-primary' : ''
+              ]">
+              <div class="flex items-start gap-3">
+                <div class="relative">
+                  <img 
+                    :src="getBuyerAvatar(conversation)" 
+                    :alt="getBuyerName(conversation)" 
+                    class="w-12 h-12 rounded-full object-cover" />
+                  <span v-if="conversation.unreadCount > 0" 
+                    class="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center">
+                    {{ conversation.unreadCount }}
                   </span>
-                  {{ conversation.lastMessage || 'No messages yet' }}
-                </p>
-                <span v-if="conversation.unreadCount > 0" class="unread-count">
-                  {{ conversation.unreadCount }}
-                </span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-start justify-between mb-1">
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                      {{ getBuyerName(conversation) }}
+                    </h3>
+                    <span class="text-xs text-slate-500 dark:text-slate-400 ml-2 flex-shrink-0">
+                      {{ formatMessageTime(conversation.lastMessageTime) }}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <p class="text-sm text-slate-600 dark:text-slate-400 truncate flex-1">
+                      <span v-if="conversation.lastMessageSenderId === currentBusinessId" class="font-medium">You: </span>
+                      {{ conversation.lastMessage || 'No messages yet' }}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Messages Area -->
-      <div class="messages-area">
-        <!-- No Conversation Selected -->
-        <div v-if="!activeConversationId" class="no-conversation">
-          <div class="no-conversation-icon">💬</div>
-          <h2>No conversation selected</h2>
-          <p>Choose a conversation to start messaging your customers</p>
+      <!-- Chat Area -->
+      <div v-if="activeConversationId" class="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900">
+        <!-- Chat Header -->
+        <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4">
+          <div class="flex items-center gap-3">
+            <img 
+              :src="activeBuyerAvatar" 
+              :alt="activeBuyerName" 
+              class="w-10 h-10 rounded-full object-cover" />
+            <div>
+              <h2 class="text-base font-semibold text-slate-900 dark:text-white">
+                {{ activeBuyerName }}
+              </h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                {{ activeBuyerData?.email || 'Customer' }}
+              </p>
+            </div>
+          </div>
         </div>
 
-        <!-- Active Conversation -->
-        <div v-else class="active-conversation">
-          <!-- Conversation Header - SHOWS BUYER INFO -->
-          <div class="conversation-header-bar">
-            <div class="header-user-info">
-              <div class="header-avatar">
-                <img
-                  v-if="activeBuyerData?.photoURL || activeBuyerData?.avatar"
-                  :src="activeBuyerData?.photoURL || activeBuyerData?.avatar"
-                  :alt="activeBuyerData?.displayName || activeBuyerData?.name"
-                />
-                <div v-else class="avatar-placeholder">
-                  {{ getInitials(activeBuyerData?.displayName || activeBuyerData?.name || 'Customer') }}
-                </div>
-              </div>
-              <div class="header-details">
-                <h2>{{ activeBuyerData?.displayName || activeBuyerData?.name || activeBuyerData?.email || 'Customer' }}</h2>
-                <p class="user-type">{{ activeBuyerData?.email || 'Buyer' }}</p>
-              </div>
+        <!-- Messages -->
+        <div 
+          ref="messagesList"
+          class="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-900">
+          <div v-if="!messages || messages.length === 0" class="flex items-center justify-center h-full">
+            <div class="text-center">
+              <svg class="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+              </svg>
+              <p class="text-slate-600 dark:text-slate-400">No messages yet. Start the conversation!</p>
             </div>
           </div>
 
-          <!-- Messages List -->
-          <div class="messages-list" ref="messagesList">
-            <div v-if="messages.length === 0" class="no-messages">
-              <p>No messages yet. Start the conversation!</p>
-            </div>
-
-            <!-- Grouped messages by date -->
-            <div v-else class="space-y-4">
-              <div v-for="group in groupedMessages" :key="group.date">
-                <!-- Date Separator -->
-                <div class="date-separator">
-                  <div class="date-separator-line"></div>
-                  <div class="date-separator-text">
-                    <span>{{ group.date }}</span>
-                  </div>
+          <!-- Grouped messages by date -->
+          <div v-else class="space-y-4">
+            <div v-for="group in groupedMessages" :key="group.date">
+              <!-- Date Separator -->
+              <div class="relative flex items-center justify-center my-4">
+                <div class="absolute inset-0 flex items-center">
+                  <div class="w-full border-t border-slate-200 dark:border-slate-700"></div>
                 </div>
+                <div class="relative px-3 bg-slate-50 dark:bg-slate-900">
+                  <span class="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    {{ group.date }}
+                  </span>
+                </div>
+              </div>
 
-                <!-- Messages for this date -->
-                <div class="messages-group">
-                  <div
-                    v-for="message in group.messages"
-                    :key="message.id"
-                    :class="[
-                      'message',
-                      { 'message-sent': message.senderId === currentBusinessId },
-                      { 'message-received': message.senderId !== currentBusinessId }
-                    ]"
-                  >
-                    <div class="message-content">
-                      <div class="message-bubble">
-                        <p>{{ message.text }}</p>
-                        <span class="message-timestamp">
-                          {{ formatMessageTimeDetailed(message.timestamp || message.createdAt) }}
-                        </span>
-                      </div>
-                    </div>
+              <!-- Messages for this date -->
+              <div class="space-y-2">
+                <div
+                  v-for="message in group.messages"
+                  :key="message.id"
+                  :class="[
+                    'flex',
+                    message.senderId === currentBusinessId ? 'justify-end' : 'justify-start'
+                  ]">
+                  <div :class="[
+                    'max-w-xs px-3 py-2 rounded-2xl',
+                    message.senderId === currentBusinessId
+                      ? 'bg-blue-500 text-white rounded-br-md'
+                      : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-md shadow-sm'
+                  ]">
+                    <p class="text-sm whitespace-pre-wrap break-words">{{ message.text }}</p>
+                    <p :class="[
+                      'text-xs mt-1',
+                      message.senderId === currentBusinessId ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'
+                    ]">
+                      {{ formatMessageTimeDetailed(message.timestamp || message.createdAt) }}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Message Input -->
-          <div class="message-input-container">
-            <form @submit.prevent="handleSendMessage" class="message-form">
-              <input
-                type="text"
-                v-model="newMessage"
-                placeholder="Type your message..."
-                class="message-input"
-                :disabled="sending"
-              />
-              <button
-                type="submit"
-                :disabled="!newMessage.trim() || sending"
-                class="send-button"
-              >
-                {{ sending ? 'Sending...' : 'Send' }}
-              </button>
-            </form>
-          </div>
+        <!-- Message Input -->
+        <div class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4">
+          <form @submit.prevent="handleSendMessage" class="flex items-end gap-3">
+            <textarea
+              v-model="newMessage"
+              @keydown.enter.exact.prevent="handleSendMessage"
+              placeholder="Type your message..."
+              rows="1"
+              :disabled="sending"
+              class="flex-1 px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
+            <button
+              type="submit"
+              :disabled="!newMessage.trim() || sending"
+              :class="[
+                'p-3 rounded-lg transition-colors',
+                newMessage.trim() && !sending
+                  ? 'bg-primary text-white hover:bg-primary/90' 
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500'
+              ]">
+              <svg v-if="!sending" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+              </svg>
+              <svg v-else class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else class="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div class="text-center">
+          <svg class="h-24 w-24 mx-auto text-slate-300 dark:text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+          </svg>
+          <h3 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">No conversation selected</h3>
+          <p class="text-slate-600 dark:text-slate-400">Choose a conversation to start messaging your customers</p>
         </div>
       </div>
     </div>
@@ -305,13 +343,17 @@ const getBuyerName = (conversation) => {
 
 // Get buyer avatar from conversation
 const getBuyerAvatar = (conversation) => {
-  if (!conversation) return null;
+  if (!conversation) return getDefaultAvatar('Customer');
   
   const buyerId = conversation.otherUserId;
   const cachedBuyer = buyersCache.value[buyerId];
   
-  if (cachedBuyer) {
-    return cachedBuyer.photoURL || cachedBuyer.avatar;
+  if (cachedBuyer?.photoURL) {
+    return cachedBuyer.photoURL;
+  }
+  
+  if (cachedBuyer?.avatar) {
+    return cachedBuyer.avatar;
   }
   
   // Fallback to otherUser if available
@@ -319,40 +361,92 @@ const getBuyerAvatar = (conversation) => {
     return conversation.otherUser.avatar;
   }
   
-  return null;
+  const name = getBuyerName(conversation);
+  return getDefaultAvatar(name);
 };
 
-// Initialize useMessages with business ID
-const {
-  conversations,
-  activeConversationId,
-  activeConversation,
-  messages,
-  loading,
-  error,
-  totalUnreadCount,
-  loadConversations,
-  loadMessages,
-  sendNewMessage,
-  formatMessageTime,
-  formatMessageTimeDetailed
-} = useMessages(currentBusinessId);
+// Get default avatar URL
+const getDefaultAvatar = (name) => {
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff&size=50`;
+};
 
-// Filtered conversations based on search
+// Get initials for avatar placeholder
+const getInitials = (name) => {
+  if (!name) return '?';
+  const parts = name.split(' ');
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};
+
+// Initialize composable with current business ID
+const currentBusinessIdComputed = computed(() => currentBusinessId.value);
+
+// Initialize the messages composable
+const messaging = useMessages(currentBusinessIdComputed);
+
+// Destructure
+const conversations = messaging.conversations;
+const activeConversationId = messaging.activeConversationId;
+const activeConversation = messaging.activeConversation;
+const messages = messaging.messages;
+const loading = messaging.loading;
+const error = messaging.error;
+const totalUnreadCount = messaging.totalUnreadCount;
+const loadConversations = messaging.loadConversations;
+const loadMessages = messaging.loadMessages;
+const sendNewMessage = messaging.sendNewMessage;
+const formatMessageTime = messaging.formatMessageTime;
+const formatMessageTimeDetailed = messaging.formatMessageTimeDetailed;
+
+// Filtered conversations based on search query
 const filteredConversations = computed(() => {
   if (!searchQuery.value.trim()) {
     return conversations.value;
   }
-
+  
   const query = searchQuery.value.toLowerCase();
   return conversations.value.filter(conv => {
-    const buyerName = getBuyerName(conv);
-    return buyerName.toLowerCase().includes(query) ||
-           conv.lastMessage?.toLowerCase().includes(query);
+    const buyerName = getBuyerName(conv).toLowerCase();
+    const lastMessage = (conv.lastMessage || '').toLowerCase();
+    return buyerName.includes(query) || lastMessage.includes(query);
   });
 });
 
-// Format date separator (e.g., "Today", "Yesterday", "October 24, 2025")
+// Computed properties for active buyer
+const activeBuyerName = computed(() => {
+  if (!activeConversation.value) return 'Customer';
+  return getBuyerName(activeConversation.value);
+});
+
+const activeBuyerAvatar = computed(() => {
+  if (!activeConversation.value) return getDefaultAvatar('Customer');
+  return getBuyerAvatar(activeConversation.value);
+});
+
+// Watch for active conversation changes to fetch buyer data
+watch(activeConversationId, async (newId) => {
+  if (newId) {
+    const conv = conversations.value.find(c => c.id === newId);
+    if (conv && conv.otherUserId) {
+      activeBuyerData.value = await fetchBuyerData(conv.otherUserId);
+    }
+  } else {
+    activeBuyerData.value = null;
+  }
+});
+
+// Watch conversations to pre-fetch buyer data
+watch(conversations, async (newConversations) => {
+  for (const conv of newConversations) {
+    if (conv.otherUserId && !buyersCache.value[conv.otherUserId]) {
+      await fetchBuyerData(conv.otherUserId);
+    }
+  }
+}, { deep: true, immediate: true });
+
+// Format date separator
 const formatDateSeparator = (timestamp) => {
   if (!timestamp) return '';
   
@@ -361,7 +455,6 @@ const formatDateSeparator = (timestamp) => {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   
-  // Reset time to midnight for comparison
   const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
@@ -405,37 +498,24 @@ const groupedMessages = computed(() => {
   return groups;
 });
 
-// Get initials for avatar
-const getInitials = (name) => {
-  if (!name) return '?';
-  const parts = name.split(' ');
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  return name.substring(0, 2).toUpperCase();
-};
-
 // Select a conversation
-const selectConversation = async (conversationId) => {
+const selectConversation = (conversationId) => {
   loadMessages(conversationId);
-  
-  // Find the conversation and fetch buyer data
-  const conversation = conversations.value.find(c => c.id === conversationId);
-  if (conversation && conversation.otherUserId) {
-    activeBuyerData.value = await fetchBuyerData(conversation.otherUserId);
-  }
+  nextTick(() => {
+    scrollToBottom();
+  });
 };
 
-// Handle sending message
+// Send message
 const handleSendMessage = async () => {
-  if (!newMessage.value.trim() || sending.value) {
-    return;
-  }
-
+  if (!newMessage.value.trim() || sending.value) return;
+  
   try {
     sending.value = true;
     await sendNewMessage(newMessage.value);
     newMessage.value = '';
+    await nextTick();
+    scrollToBottom();
   } catch (err) {
     console.error('Error sending message:', err);
     alert('Failed to send message. Please try again.');
@@ -444,526 +524,26 @@ const handleSendMessage = async () => {
   }
 };
 
-// Pre-fetch buyer data for all conversations
-const preloadBuyerData = async () => {
-  if (!conversations.value || conversations.value.length === 0) return;
-  
-  for (const conversation of conversations.value) {
-    if (conversation.otherUserId && !buyersCache.value[conversation.otherUserId]) {
-      await fetchBuyerData(conversation.otherUserId);
+// Scroll to bottom
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messagesList.value) {
+      messagesList.value.scrollTop = messagesList.value.scrollHeight;
     }
-  }
+  });
 };
 
-// Watch for conversations changes and preload buyer data
-watch(conversations, async (newConversations) => {
-  if (newConversations && newConversations.length > 0) {
-    await preloadBuyerData();
-  }
-}, { deep: true });
-
-// Watch for active conversation changes
-watch(activeConversationId, async (newId) => {
-  if (newId) {
-    const conversation = conversations.value.find(c => c.id === newId);
-    if (conversation && conversation.otherUserId) {
-      activeBuyerData.value = await fetchBuyerData(conversation.otherUserId);
-    }
-  } else {
-    activeBuyerData.value = null;
-  }
-});
-
-// Auto-scroll to bottom when new messages arrive
-watch(messages, async () => {
-  await nextTick();
-  if (messagesList.value) {
-    messagesList.value.scrollTop = messagesList.value.scrollHeight;
-  }
-}, { deep: true });
-
-// Initialize on mount
+// Initialize
 onMounted(async () => {
   await fetchBusinessData();
-  
-  // Load conversations after business ID is set
   if (currentBusinessId.value) {
     loadConversations();
-  }
-});
-
-// Handle errors
-watch(error, (newError) => {
-  if (newError) {
-    console.error('Messages error:', newError);
   }
 });
 </script>
 
 <style scoped>
-.seller-messages-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f5f5f5;
-}
-
-.messages-header {
-  background: white;
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid #e0e0e0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.messages-header h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-}
-
-.unread-badge {
-  background: #ff4444;
-  color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.messages-layout {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-/* Conversations Sidebar */
-.conversations-sidebar {
-  width: 350px;
-  background: white;
-  border-right: 1px solid #e0e0e0;
-  display: flex;
-  flex-direction: column;
-}
-
-.search-bar {
-  padding: 1rem;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.search-input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 0.875rem;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #4CAF50;
-}
-
-.conversations-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.conversation-item {
-  display: flex;
-  padding: 1rem;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.conversation-item:hover {
-  background: #f9f9f9;
-}
-
-.conversation-item.active {
-  background: #e8f5e9;
-  border-left: 3px solid #4CAF50;
-}
-
-.conversation-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
-  margin-right: 1rem;
-}
-
-.conversation-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.avatar-placeholder {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.conversation-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.conversation-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.25rem;
-}
-
-.customer-name {
-  font-size: 0.938rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.message-time {
-  font-size: 0.75rem;
-  color: #999;
-  flex-shrink: 0;
-}
-
-.conversation-preview {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.last-message {
-  font-size: 0.875rem;
-  color: #666;
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-}
-
-.unread-count {
-  background: #4CAF50;
-  color: white;
-  padding: 0.125rem 0.5rem;
-  border-radius: 10px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  margin-left: 0.5rem;
-  flex-shrink: 0;
-}
-
-/* Empty/Loading States */
-.loading-state,
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #999;
-  padding: 2rem;
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-/* Messages Area */
-.messages-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: white;
-}
-
-.no-conversation {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #999;
-  text-align: center;
-}
-
-.no-conversation-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-  opacity: 0.3;
-}
-
-.no-conversation h2 {
-  font-size: 1.5rem;
-  color: #666;
-  margin: 0 0 0.5rem 0;
-}
-
-.no-conversation p {
-  color: #999;
-}
-
-/* Active Conversation */
-.active-conversation {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.conversation-header-bar {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e0e0e0;
-  background: white;
-}
-
-.header-user-info {
-  display: flex;
-  align-items: center;
-}
-
-.header-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  overflow: hidden;
-  margin-right: 1rem;
-}
-
-.header-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.header-details h2 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-}
-
-.user-type {
-  font-size: 0.813rem;
-  color: #999;
-  margin: 0.125rem 0 0 0;
-  text-transform: capitalize;
-}
-
-/* Messages List */
-.messages-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.5rem;
-  background: #f8f9fa;
-}
-
-.no-messages {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: #999;
-}
-
-.space-y-4 > * + * {
-  margin-top: 1rem;
-}
-
-/* Date Separator */
-.date-separator {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 1.5rem 0;
-}
-
-.date-separator-line {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-}
-
-.date-separator-line::before {
-  content: '';
-  width: 100%;
-  border-top: 1px solid #e0e0e0;
-}
-
-.date-separator-text {
-  position: relative;
-  padding: 0 0.75rem;
-  background: #f8f9fa;
-}
-
-.date-separator-text span {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #666;
-}
-
-/* Messages Group */
-.messages-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.message {
-  display: flex;
-  margin-bottom: 0.5rem;
-}
-
-.message-sent {
-  justify-content: flex-end;
-}
-
-.message-received {
-  justify-content: flex-start;
-}
-
-.message-content {
-  display: flex;
-  flex-direction: column;
-  max-width: 60%;
-}
-
-.message-sent .message-content {
-  align-items: flex-end;
-}
-
-.message-received .message-content {
-  align-items: flex-start;
-}
-
-.message-bubble {
-  padding: 0.75rem 1rem;
-  border-radius: 18px;
-  word-wrap: break-word;
-  position: relative;
-}
-
-.message-sent .message-bubble {
-  background: #2563eb;
-  color: white;
-  border-bottom-right-radius: 4px;
-}
-
-.message-received .message-bubble {
-  background: white;
-  color: #1f2937;
-  border: 1px solid #e5e7eb;
-  border-bottom-left-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.message-bubble p {
-  margin: 0 0 0.25rem 0;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.message-timestamp {
-  font-size: 0.688rem;
-  margin-top: 0.25rem;
-  display: block;
-}
-
-.message-sent .message-timestamp {
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.message-received .message-timestamp {
-  color: #9ca3af;
-}
-
-/* Message Input */
-.message-input-container {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #e0e0e0;
-  background: white;
-}
-
-.message-form {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.message-input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 24px;
-  font-size: 0.938rem;
-}
-
-.message-input:focus {
-  outline: none;
-  border-color: #4CAF50;
-}
-
-.send-button {
-  padding: 0.75rem 1.5rem;
-  background: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 24px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.send-button:hover:not(:disabled) {
-  background: #45a049;
-}
-
-.send-button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
-
-/* Scrollbar Styling */
-.conversations-list::-webkit-scrollbar,
-.messages-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.conversations-list::-webkit-scrollbar-track,
-.messages-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.conversations-list::-webkit-scrollbar-thumb,
-.messages-list::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 3px;
-}
-
-.conversations-list::-webkit-scrollbar-thumb:hover,
-.messages-list::-webkit-scrollbar-thumb:hover {
-  background: #555;
+textarea {
+  max-height: 150px;
 }
 </style>
