@@ -39,6 +39,16 @@ export function useProduct(productId) {
         return images[selectedImage.value] || images[0]
     })
 
+    const additionalImages = computed(() => {
+        if (!product.value) return []
+
+        if (product.value.additional_images && Array.isArray(product.value.additional_images)) {
+            return product.value.additional_images
+        }
+
+        return []
+    })
+
     // Availability status
     const stockStatus = computed(() => {
         if (!product.value) return { text: 'Loading...', color: 'text-gray-500' }
@@ -110,6 +120,7 @@ export function useProduct(productId) {
         formattedPrice,
         productImages,
         mainImage,
+        additionalImages,
         stockStatus,
 
         // Methods

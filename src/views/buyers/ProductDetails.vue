@@ -18,6 +18,7 @@ const {
     selectedImage,
     formattedPrice,
     productImages,
+    additionalImages,
     mainImage,
     stockStatus,
     loadProduct,
@@ -27,7 +28,14 @@ const {
 // Load product on mount
 onMounted(() => {
     loadProduct()
+
 })
+
+alert(JSON.stringify(additionalImages.value, null, 2));
+
+
+
+
 </script>
 
 <template>
@@ -60,7 +68,7 @@ onMounted(() => {
                     </div>
 
                     <!-- Thumbnail Images -->
-                    <div v-for="(image, index) in productImages.slice(0, 3)" :key="index" @click="selectImage(index)"
+                    <div v-for="(image, index) in additionalImages" :key="index" @click="selectImage(index)"
                         class="h-40 rounded-lg bg-cover bg-center bg-no-repeat cursor-pointer border-2 transition-all"
                         :class="selectedImage === index ? 'border-primary' : 'border-transparent hover:border-gray-300'"
                         :style="`background-image: url('${image}');`">
