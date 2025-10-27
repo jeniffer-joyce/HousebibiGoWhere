@@ -87,13 +87,13 @@
         >
           {{ sending ? 'Sending…' : 'Send Confirmation' }}
         </button>
-        <RouterLink
-          to="/buyer-account/profile"
+        <button
+          type="button"
+          @click="goBack"
           class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50
-                 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
-        >
+          dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">
           Cancel
-        </RouterLink>
+        </button>
       </div>
 
       <!-- Messages -->
@@ -155,7 +155,7 @@ function startCountdown() {
     countdown.value -= 1
     if (countdown.value <= 0) {
       clearInterval(timer)
-      router.push({ path: '/buyer-account/profile', query: { emailChangeSent: '1' } })
+      router.back()
     }
   }, 1000)
 }
@@ -200,7 +200,7 @@ async function sendLink() {
     }
 
     // IMPORTANT: send verification to NEW email and return to confirm route
-    const continueUrl = `${window.location.origin}/buyer-account/email-change-done`
+    const continueUrl = `${window.location.origin}/change-email/success/`
 
     await verifyBeforeUpdateEmail(auth.currentUser, newEmail.value, {
     url: continueUrl,
@@ -225,4 +225,9 @@ async function sendLink() {
     sending.value = false
   }
 }
+
+function goBack() {
+  router.back()
+}
+
 </script>
