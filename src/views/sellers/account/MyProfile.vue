@@ -17,10 +17,10 @@
               :style="{ backgroundImage: `url('${photoPreview || business.profilePic || '/avatar.png'}')` }"
             />
             <h3 class="mt-4 text-base font-semibold text-slate-900 dark:text-white">
-              {{ user.displayName || '—' }}
+              {{ fields.displayName || '—' }}
             </h3>
             <p class="text-sm text-slate-500 dark:text-slate-400 break-all">
-              {{ user.email || '—' }}
+              {{ fields.email || '—' }}
             </p>
 
             <input
@@ -42,7 +42,7 @@
             </button>
 
             <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">
-              Seller since {{ memberSince }}
+              Seller since {{ createdAtDisplay }}
             </p>
           </div>
         </div>
@@ -71,7 +71,7 @@
             <div>
               <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 pl-3">Username</label>
               <input
-                v-model.trim="form.username"
+                v-model.trim="fields.username"
                 :disabled="!isEditing"
                 type="text"
                 placeholder="yourname"
@@ -85,7 +85,7 @@
             <div>
               <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 pl-3">Display Name</label>
               <input
-                v-model.trim="form.displayName"
+                v-model.trim="fields.displayName"
                 :disabled="!isEditing"
                 type="text"
                 placeholder="Your Name"
@@ -94,31 +94,42 @@
                        disabled:opacity-70 disabled:cursor-not-allowed"
               />
             </div>
-
-            <!-- Email -->
+            
+            <!-- Email (read-only; link hidden for Google accounts) -->
             <div>
               <div class="flex items-center justify-between mb-1">
-                <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 pl-3">Email Address</label>
+                <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 pl-3">
+                  Email Address
+                </label>
 
+                <!-- show link only if NOT Google -->
                 <button
+                  v-if="!isGoogle"
                   type="button"
                   :disabled="!isEditing"
                   class="text-xs font-semibold"
                   :class="isEditing
                     ? 'text-primary hover:underline'
                     : 'text-slate-400 dark:text-slate-500 cursor-not-allowed pointer-events-none'"
-                  @click="onChangeEmail">
+                  @click="onChangeEmail"
+                >
                   Change email
                 </button>
+
+                <!-- show a small note if Google-linked -->
+                <span v-else class="text-xs text-slate-400 dark:text-slate-500 italic select-none">
+                  Linked with Google
+                </span>
               </div>
+
+              <!-- Always display the actual email; never editable -->
               <input
-                v-model.trim="form.email"
+                v-model.trim="fields.email"
                 disabled
                 type="email"
-                placeholder="name@example.com"
                 class="w-full h-11 rounded-lg border border-slate-300/40 dark:border-slate-700
-                       bg-background-light dark:bg-background-dark px-3 text-sm
-                       opacity-70 cursor-not-allowed"
+                      bg-background-light dark:bg-background-dark px-3 text-sm
+                      opacity-70 cursor-not-allowed"
               />
             </div>
 
@@ -126,7 +137,7 @@
             <div>
               <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 pl-3">Phone Number</label>
               <input
-                v-model.trim="form.phone"
+                v-model.trim="fields.phone"
                 :disabled="!isEditing"
                 type="tel"
                 placeholder="e.g. 91234567"
@@ -138,12 +149,12 @@
 
             <!-- Gender + Birthday -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <!-- Gender (icon INSIDE same wrapper) -->
+              <!-- Gender -->
               <div class="relative">
                 <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 pl-3">Gender</label>
                 <div class="relative">
                   <select
-                    v-model="form.gender"
+                    v-model="fields.gender"
                     :disabled="!isEditing"
                     class="w-full h-11 rounded-lg border border-slate-300/40 dark:border-slate-700
                            bg-background-light dark:bg-background-dark px-3 pr-12 text-sm
@@ -161,12 +172,12 @@
                 </div>
               </div>
 
-              <!-- Birthday (icon INSIDE same wrapper) -->
+              <!-- Birthday -->
               <div class="relative">
                 <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 pl-3">Birthday</label>
                 <div class="relative">
                   <input
-                    v-model="form.birthday"
+                    v-model="fields.birthday"
                     :disabled="!isEditing"
                     type="date"
                     class="input-date w-full h-11 rounded-lg border border-slate-300/40 dark:border-slate-700
@@ -186,16 +197,15 @@
             <div v-if="isEditing" class="pt-2 flex items-center justify-end gap-3">
               <button
                 type="button"
-                @click="cancelEdit"
+                @click="toggleEdit"
                 class="h-10 px-4 rounded-lg text-sm font-semibold border border-slate-300/50 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">
                 Discard
               </button>
               <button
                 type="button"
                 @click="saveProfile"
-                class="h-10 px-4 rounded-lg text-sm font-bold text-white bg-primary hover:bg-primary/90"
-                :disabled="saving">
-                {{ saving ? 'Saving…' : 'Save Changes' }}
+                class="h-10 px-4 rounded-lg text-sm font-bold text-white bg-primary hover:bg-primary/90">
+                Save Changes
               </button>
             </div>
           </div>
@@ -206,82 +216,67 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchSellerComposite, updateSellerProfile, authReady } from '@/firebase/services/sellers/seller_crud.js'
+import { authReady, fetchSellerComposite } from '@/firebase/services/sellers/seller_crud.js'
+import { auth } from '@/firebase/firebase_config'
 
 const router = useRouter()
-
-const user = reactive({})
-const business = reactive({})
-const form = reactive({})
-
 const isEditing = ref(false)
-const saving = ref(false)
-const fileInput = ref(null)
-const photoPreview = ref('')
-
-const memberSince = 'October 2025'
-
-function toggleEdit () { isEditing.value = !isEditing.value }
-function triggerPick () { if (isEditing.value) fileInput.value?.click() }
-
-function onPickPhoto (e) {
-  const f = e.target.files?.[0]
-  if (!f) return
-  const reader = new FileReader()
-  reader.onload = () => { photoPreview.value = String(reader.result || '') }
-  reader.readAsDataURL(f)
-}
-
-function cancelEdit () {
-  isEditing.value = false
-  Object.assign(form, user)
-  photoPreview.value = ''
-}
-
-/* Soft refresh of data so page shows latest after save */
-async function reloadData () {
-  const { user: u, business: b } = await fetchSellerComposite()
-  Object.assign(user, u || {})
-  Object.assign(business, b || {})
-  Object.assign(form, u || {})
-}
-
-async function saveProfile () {
-  if (saving.value) return
-  saving.value = true
-  try {
-    const profilePicDataUrl = photoPreview.value || null
-    await updateSellerProfile({ ...form, profilePicDataUrl })
-    // Refresh form + header card with freshly saved values (no hard reload)
-    await reloadData()
-    isEditing.value = false
-    photoPreview.value = ''
-  } finally {
-    saving.value = false
-  }
-}
-
-function onChangeEmail () {
-  if (!isEditing.value) return
-  router.push('/buyer-account/change-email')
-}
+const fields = ref({
+  username: '',
+  displayName: '',
+  email: '',
+  phone: '',
+  gender: '',
+  birthday: '',
+  avatar: ''
+})
+const business = ref({})
+const providerId = ref('password')
 
 onMounted(async () => {
   await authReady()
-  await reloadData()
-})
-</script>
+  const user = auth.currentUser
+  if (user && user.providerData?.length) {
+    providerId.value = user.providerData[0]?.providerId || 'password'
+  }
 
-<style scoped>
-/* Hide the default WebKit date picker icon so only our overlay icon is visible */
-.input-date::-webkit-calendar-picker-indicator {
-  opacity: 0;
-  position: absolute;
-  right: 0.75rem;
-  width: 1.25rem;
-  height: 1.25rem;
-  cursor: pointer;
+  const { user: userDoc, business: bizDoc } = await fetchSellerComposite()
+  if (userDoc) {
+    fields.value = {
+      username: userDoc.username || '',
+      displayName: userDoc.displayName || '',
+      email: userDoc.email || '',
+      phone: userDoc.phone || '',
+      gender: userDoc.gender || '',
+      birthday: userDoc.birthday || '',
+      avatar: bizDoc?.profilePic || '/avatar.png'
+    }
+  }
+  if (bizDoc) business.value = bizDoc
+})
+
+const isGoogle = computed(() => providerId.value === 'google.com')
+
+const createdAtDisplay = computed(() => {
+  const v = business.value?.createdAt
+  try {
+    const d = v?.toDate ? v.toDate() : new Date(v)
+    if (!d || isNaN(d)) return '—'
+    return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+  } catch { return '—' }
+})
+
+function toggleEdit() { isEditing.value = !isEditing.value }
+
+async function saveProfile() {
+  isEditing.value = false
+  location.reload()
 }
-</style>
+
+function onChangeEmail() {
+  if (!isEditing.value || isGoogle.value) return
+  router.push('/change-email')
+}
+</script>
