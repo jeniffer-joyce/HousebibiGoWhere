@@ -6,37 +6,35 @@
         </div>
 
         <!-- Content -->
-        <div v-else class=" ">
+        <div v-else>
             <!-- ===================== Profile Card ===================== -->
             <div
-                class=" max-w-5xl mx-auto flex flex-col items-center text-center p-6 bg-creamy-white dark:bg-gray-800/50 rounded-xl shadow-sm">
+                class="max-w-5xl mx-auto flex flex-col items-center text-center p-6 bg-creamy-white dark:bg-gray-800/50 rounded-xl shadow-sm">
                 <div class="relative mb-4">
                     <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-32"
-                        :style="{ backgroundImage: `url('${business.profilePic}')` }"></div>
+                        :style="{ backgroundImage: `url('${business?.profilePic || defaultProfilePic}')` }" />
                 </div>
 
                 <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
                     <span class="inline-flex items-center gap-2">
-                        {{ business.name }}
-                        <span v-if="business.verified" class="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full
+                        {{ business?.name || 'Shop' }}
+                        <span v-if="business?.verified" class="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full
                      bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 align-middle"
                             title="Verified UEN - A trusted, registered business">
                             <span class="material-symbols-outlined text-base leading-none">verified</span>
                             Verified
-
                         </span>
                     </span>
                 </h1>
 
                 <p class="mt-2 text-gray-600 dark:text-gray-400">
-                    {{ business.description || 'No description.' }}
+                    {{ business?.description || 'No description.' }}
                 </p>
 
                 <p class="mt-2 text-gray-600 dark:text-gray-400">
                     <span class="material-symbols-outlined text-lg text-red-500">location_on</span>
-                    Located @ {{ business.address || '—' }}
+                    Located @ {{ business?.address || '—' }}
                 </p>
-
 
                 <div class="flex flex-wrap items-center justify-center gap-2 mt-2 text-gray-500 dark:text-gray-400">
                     <span class="material-symbols-outlined text-lg text-yellow-500">star</span>
@@ -46,25 +44,21 @@
                     <span class="text-gray-400 dark:text-gray-600">·</span>
                     <span>{{ followersCount }} Followers</span>
                 </div>
-                <button
-                    class="mt-4 flex items-center justify-center rounded-lg h-10 px-6 bg-primary text-white text-sm font-bold shadow-sm hover:bg-opacity-90 transition-colors">Follow</button>
+                <!-- Action Buttons -->
+                <div class="mt-4 flex items-center gap-3">
+                    <button
+                        class="flex items-center justify-center rounded-lg h-10 px-6 bg-primary text-white text-sm font-bold shadow-sm hover:bg-opacity-90 transition-colors">
+                        Follow
+                    </button>
+
+                    <MessageButton :seller-id="uid" :seller-name="business?.name || 'Shop'" variant="secondary"
+                        size="md" />
+                </div>
             </div>
-            <!-- Mobile Sidebar Toggle (hamburger)
-            <div class="sm:hidden flex justify-between items-center gap-8 mt-8 px-4 py-2">
-                <button @click="sidebarOpen = !sidebarOpen" class="text-primary focus:outline-none">
-                    <span class="material-symbols-outlined text-2xl">
-                        {{ sidebarOpen ? 'close' : 'menu' }}
-                    </span>
-                </button>
-                <h2 class="text-base font-semibold text-background-dark dark:text-background-light">
-                    Menu
-                </h2>
-            </div> -->
+
             <!-- Mobile Horizontal Menu -->
-            <nav
-                class="sm:hidden sticky z-40 dark:bg-gray-800/80 backdrop-blur-md border-y border-gray-200 dark:border-gray-700 flex justify-center gap-6 py-2 text-sm font-medium text-background-dark dark:text-background-light
-                 transition-transform duration-300 ease-in-out"
-                :class="showTopNav ? 'top-16 mt-10' : 'top-0 mt-0'">
+            <nav class="sm:hidden sticky z-40 dark:bg-gray-800/80 backdrop-blur-md border-y border-gray-200 dark:border-gray-700 flex justify-center gap-6 py-2 text-sm font-medium text-background-dark dark:text-background-light
+                 transition-transform duration-300 ease-in-out" :class="showTopNav ? 'top-16 mt-10' : 'top-0 mt-0'">
                 <button v-for="section in ['about', 'products', 'reviews']" :key="section"
                     @click="scrollToSection(section)" :class="[
                         activeSection === section
@@ -189,20 +183,17 @@
                                     <div class="flex justify-between items-center mt-auto pt-2">
                                         <p
                                             class="text-md font-bold text-background-dark/70 dark:text-background-light/70">
-                                            {{ Array.isArray(product.price) ?
-                                                `$${Math.min(...product.price)}-$${Math.max(...product.price)}` :
-                                                `$${product.price}` }}
+                                            {{ Array.isArray(product.price)
+                                                ? `$${Math.min(...product.price)}-$${Math.max(...product.price)}`
+                                                : `$${product.price}` }}
                                         </p>
                                         <p class="text-xs text-background-dark/50 dark:text-background-light/50">
                                             {{ product.totalSales }} sold
                                         </p>
                                     </div>
                                 </div>
-
-
                             </RouterLink>
                         </TransitionGroup>
-
 
                         <div v-else class="text-center py-8 text-background-dark/70 dark:text-background-light/70">
                             <p v-if="!showAll && topProducts.length === 0">No products sold yet</p>
@@ -220,102 +211,103 @@
                             </button>
                         </div>
                     </section>
-                    <section id="reviews" class="mt-12">
-                        <h2 class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">Customer
-                            Reviews
+
+                    <!-- ==================== REVIEWS ==================== -->
+                    <section class="mt-12" id="reviews">
+                        <h2 class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">
+                            Customer Reviews
                         </h2>
-                        <div class="space-y-8">
-                            <div
-                                class="flex flex-col gap-3 p-4 rounded-lg bg-white dark:bg-background-dark/50 shadow-sm">
-                                <div class="flex items-center gap-3">
-                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-                                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDDXSJSZps974dSmZos44bQ4fkVJvtVwiH3d7TXHIdpmz3GwZlK5Ntcd1NJUcd-6g8bZUiLD4FGP3Ja7r8X6IsNfzOC5XwSlD8dTS321IodUu8SSmC11Tq1cQeJzFXpCYuVrirtXgVOFcibUQPIXcF3hWDvx9TuHppAF5yqeA1RxWVPfk37kj-r25aJA2rksTLnAN3FPKU7WhoUuGS1vS19-C6IXVkli9flviCrfkgBLGJeFcgIi6Cs-jamK7CGv9BsGEFvtoldckBo");'>
-                                    </div>
+
+                        <!-- Empty state -->
+                        <div v-if="reviewsFlat.length === 0"
+                            class="rounded-xl border border-slate-200 dark:border-slate-700 p-10 text-center text-slate-600 dark:text-slate-400">
+                            No reviews yet.
+                        </div>
+
+                        <!-- Review items -->
+                        <div v-else class="space-y-6">
+                            <div v-for="r in reviewsFlat" :key="r.key"
+                                class="p-8 bg-white dark:bg-background-dark/50 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+                                <div class="flex items-start gap-4">
+                                    <!-- Avatar -->
+                                    <img :src="avatarUrl(r)" class="h-14 w-14 rounded-full object-cover flex-shrink-0"
+                                        :alt="displayName(r)" />
+
+                                    <!-- Content -->
                                     <div class="flex-1">
-                                        <p
-                                            class="text-sm font-semibold text-background-dark dark:text-background-light">
-                                            Sophia
-                                        </p>
-                                        <p class="text-xs text-background-dark/60 dark:text-background-light/60">2 weeks
-                                            ago
-                                        </p>
+                                        <!-- Buyer info + time -->
+                                        <div class="flex flex-wrap justify-between items-start gap-3">
+                                            <div>
+                                                <p class="text-base font-semibold text-slate-900 dark:text-white">
+                                                    {{ displayName(r) }}
+                                                </p>
+                                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                                    {{ formatTime(r.createdAt) }}
+                                                </p>
+                                            </div>
+
+                                            <!-- Seller / Delivery ratings -->
+                                            <div class="flex items-center gap-4">
+                                                <div class="flex items-center gap-1">
+                                                    <span
+                                                        class="text-xs font-medium text-slate-600 dark:text-slate-300">Seller</span>
+                                                    <template v-for="n in 5" :key="'ss-'+r.key+n">
+                                                        <span class="material-symbols-outlined text-lg"
+                                                            :class="n <= r.sellerService ? 'text-blue-500' : 'text-slate-300'">star</span>
+                                                    </template>
+                                                </div>
+                                                <div class="flex items-center gap-1">
+                                                    <span
+                                                        class="text-xs font-medium text-slate-600 dark:text-slate-300">Delivery</span>
+                                                    <template v-for="n in 5" :key="'dv-'+r.key+n">
+                                                        <span class="material-symbols-outlined text-lg"
+                                                            :class="n <= r.delivery ? 'text-blue-500' : 'text-slate-300'">star</span>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Product -->
+                                        <div class="mt-5 flex items-start gap-4">
+                                            <img :src="r.productImage || defaultProductThumb"
+                                                class="h-16 w-16 rounded-lg object-cover" alt="product image" />
+
+                                            <div class="flex-1">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <p class="font-semibold text-slate-900 dark:text-white">
+                                                        {{ r.productName || 'Product' }}
+                                                    </p>
+                                                    <span v-if="r.size"
+                                                        class="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                                                        Size: {{ r.size }}
+                                                    </span>
+                                                </div>
+
+                                                <!-- Item rating -->
+                                                <div class="mt-1 flex items-center gap-1">
+                                                    <template v-for="n in 5" :key="'it-'+r.key+n">
+                                                        <span class="material-symbols-outlined text-lg"
+                                                            :class="n <= r.rating ? 'text-blue-500' : 'text-slate-300'">star</span>
+                                                    </template>
+                                                    <span class="text-xs text-slate-500">{{ r.rating }}/5</span>
+                                                </div>
+
+                                                <!-- Review text -->
+                                                <p
+                                                    class="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                                                    {{ r.text }}
+                                                </p>
+
+                                                <!-- Photos -->
+                                                <div v-if="r.images?.length" class="mt-4 flex flex-wrap gap-3">
+                                                    <img v-for="(img, i) in r.images" :key="i" :src="img"
+                                                        class="h-24 w-24 rounded-lg object-cover border border-slate-200 dark:border-slate-700"
+                                                        alt="review photo" />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="flex gap-0.5 text-primary">
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                </div>
-                                <p class="text-sm text-background-dark/80 dark:text-background-light/80">
-                                    Absolutely love the throw blanket I purchased! It's so soft and cozy, perfect for
-                                    chilly
-                                    evenings. The quality is excellent, and the craftsmanship is evident. Highly
-                                    recommend!
-                                </p>
-                            </div>
-                            <div
-                                class="flex flex-col gap-3 p-4 rounded-lg bg-white dark:bg-background-dark/50 shadow-sm">
-                                <div class="flex items-center gap-3">
-                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-                                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA8OR5kpRLPMky4F6t0lMZm_G4o3WNgP5M2uxKWJOXHUyFAaPDwUeDLt4Ccv0wKiDKya4MeGm_74lmKLI9NvPiLZKzWnba2oD1o1ZL_Afqsi5i7W-5lGuBScMWHOwS0EDvBKl2irDcYgCRkkN-a1TGVYlBP-JL_jYT_IPwayaoPvWhuKn3U-j4Yh_e2ocWCZHpuotpk7cFjIEXfpbKKcSCiFtyCvYN3LN-qp8ASWis8dCVAk4NDpEE7O7Fnm_BtGuz5d2b01ljaIOFn");'>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p
-                                            class="text-sm font-semibold text-background-dark dark:text-background-light">
-                                            Ethan
-                                        </p>
-                                        <p class="text-xs text-background-dark/60 dark:text-background-light/60">1 month
-                                            ago
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex gap-0.5">
-                                    <span class="material-symbols-outlined text-base text-primary">star</span>
-                                    <span class="material-symbols-outlined text-base text-primary">star</span>
-                                    <span class="material-symbols-outlined text-base text-primary">star</span>
-                                    <span class="material-symbols-outlined text-base text-primary">star</span>
-                                    <span
-                                        class="material-symbols-outlined text-base text-background-dark/30 dark:text-background-light/30">star</span>
-                                </div>
-                                <p class="text-sm text-background-dark/80 dark:text-background-light/80">
-                                    The scented candles are lovely, but the scent could be a bit stronger. Overall, a
-                                    good
-                                    product
-                                    for the price.
-                                </p>
-                            </div>
-                            <div
-                                class="flex flex-col gap-3 p-4 rounded-lg bg-white dark:bg-background-dark/50 shadow-sm">
-                                <div class="flex items-center gap-3">
-                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-                                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBDXu2pguYR7AezNQUFVJpWpYk048Zh5-5JBnNGcZCQgEmSuYW52uOeSm82u56G4oOAjXKNN0XyVrb_dmTVv-w0yIvE2VUl4bYITx0EatHHHgB8jlZbwSHNARNDW2cpxByTgLKB7BKkA-4iuKoV0c10lexiYhiYN72V5QkvdLqwHZiaNpZdUp7imVopNqsMxX5hcom67-6qB-PZt2TXrqxu1iD-FG2AqaEFzLAvZbyYNyWZAQxfpHci5DgfeAox8aFxS9N72PSw_4FJ");'>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p
-                                            class="text-sm font-semibold text-background-dark dark:text-background-light">
-                                            Olivia
-                                        </p>
-                                        <p class="text-xs text-background-dark/60 dark:text-background-light/60">2
-                                            months
-                                            ago
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex gap-0.5 text-primary">
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                </div>
-                                <p class="text-sm text-background-dark/80 dark:text-background-light/80">
-                                    The artisan soap set is a fantastic gift! The soaps smell amazing and are
-                                    beautifully
-                                    packaged.
-                                    The recipient was thrilled. Will definitely order again.
-                                </p>
                             </div>
                         </div>
                     </section>
@@ -326,17 +318,15 @@
 </template>
 
 <style scoped>
-/* Fade + scale transition for the product cards */
+/* existing transitions */
 .fade-enter-active {
     transition: all 0.5s ease;
     transition-delay: calc(var(--delay) * 0.05s);
-    /* Stagger by 100ms per item */
 }
 
 .fade-leave-active {
     transition: all 0.3s ease;
     transition-delay: calc(var(--delay) * 0.025s);
-    /* Faster stagger on leave */
 }
 
 .fade-enter-from {
@@ -349,7 +339,6 @@
     transform: scale(0.95);
 }
 
-/* Smooth move transition for reordering */
 .fade-move {
     transition: transform 0.5s ease;
 }
@@ -362,11 +351,14 @@ html {
 <script setup>
 import { getBusinesses } from '@/firebase/services/home/business.js';
 import { onMounted, onUnmounted, ref, computed } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, RouterLink } from "vue-router";
 import Loading from '@/components/status/Loading.vue';
+import MessageButton from '@/components/messageButton.vue'
 import defaultProfilePic from '@/assets/defaultBusinessLogo.png';
 import { getSellerProductsSortedBySales } from '@/composables/productUtils.js';
 import { uiState } from '@/store/ui.js';
+import { db } from '@/firebase/firebase_config'
+import { collection, doc, getDoc, onSnapshot, query, where, orderBy } from 'firebase/firestore'
 
 const showTopNav = uiState.showTopNav;
 
@@ -444,14 +436,181 @@ const displayRating = computed(() => {
     const n = Number(business.value?.rating)
     return Number.isFinite(n) ? n.toFixed(1) : '0.0'
 })
-
-// NEW: Followers / Following counters (safe defaults)
 const followersCount = computed(() => Number(business.value?.followers ?? 0))
 const followingCount = computed(() => Number(business.value?.following ?? 0))
 
-function toggleFavorite(id) {
-    // alert(id);
+
+/* ==================== REVIEWS ==================== */
+/*
+ reviews doc:
+ {
+   orderId, buyerId, sellerId, createdAt, sellerService, delivery,
+   items: [{ productId, size?, rating, text, images[], anonymous:0|1 }]
+ }
+ We flatten each item -> one UI card, but keep sellerService/delivery & createdAt from parent.
+*/
+const reviewsFlat = ref([])
+
+/* caches to avoid refetch spam */
+const buyersCache = new Map()   // buyerId -> {displayName, photoURL}
+const productsCache = new Map() // productId -> {name, imageUrl}
+
+async function fetchBuyer(uid) {
+    if (!uid) return null
+    if (buyersCache.has(uid)) return buyersCache.get(uid)
+    // Try users, then profiles
+    let snap = await getDoc(doc(db, 'users', uid)).catch(() => null)
+    let data = snap?.exists() ? snap.data() : null
+    if (!data) {
+        snap = await getDoc(doc(db, 'profiles', uid)).catch(() => null)
+        data = snap?.exists() ? snap.data() : null
+    }
+    const user = {
+        displayName: data?.displayName || data?.name || 'User',
+        photoURL: data?.photoURL || data?.avatar || ''
+    }
+    buyersCache.set(uid, user)
+    return user
 }
+
+async function fetchProduct(productId) {
+    if (!productId) return null
+    if (productsCache.has(productId)) return productsCache.get(productId)
+    const snap = await getDoc(doc(db, 'products', productId)).catch(() => null)
+    const data = snap?.exists() ? snap.data() : null
+    const prod = {
+        name: data?.name || data?.item_name || 'Product',
+        imageUrl: data?.imageUrl || data?.img_url || ''
+    }
+    productsCache.set(productId, prod)
+    return prod
+}
+
+function maskName(name) {
+    if (!name) return 'Anonymous'
+    const n = name.trim()
+    if (n.length <= 2) return n[0] + '*'
+    return `${n[0]}${'*'.repeat(Math.max(1, n.length - 2))}${n[n.length - 1]}`
+}
+
+function displayName(r) {
+    if (Number(r.anonymous) === 1) return maskName(r.buyerName || 'User')
+    return r.buyerName || 'User'
+}
+
+function avatarUrl(r) {
+    if (Number(r.anonymous) === 1) {
+        // show generic avatar for anonymous
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent('Anonymous')}&background=64748b&color=fff&size=64`
+    }
+    if (r.buyerPhoto) return r.buyerPhoto
+    const name = r.buyerName || 'User'
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10b981&color=fff&size=64`
+}
+
+function formatTime(ts) {
+    if (!ts) return ''
+    const d = ts.toDate ? ts.toDate() : new Date(ts)
+    return d.toLocaleString('en-SG', {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    })
+}
+
+/* ==================== INIT ==================== */
+onMounted(async () => {
+    // Load business
+    const businesses = await getBusinesses()
+    business.value = businesses.find(b => b.uid === uid) || null
+
+    // Load top sellers
+    try {
+        allProducts.value = await getSellerProductsSortedBySales(uid)
+    } catch (e) {
+        console.error('Error loading products:', e)
+    }
+
+    // Live reviews for this seller
+    const q = query(
+        collection(db, 'reviews'),
+        where('sellerId', '==', uid),
+        orderBy('createdAt', 'desc')
+    )
+    onSnapshot(q, async (snap) => {
+        const temp = []
+        const tasks = []
+
+        snap.forEach(docSnap => {
+            const rev = { id: docSnap.id, ...docSnap.data() }
+            const createdAt = rev.createdAt
+            const sellerService = Number(rev.sellerService || 0)
+            const delivery = Number(rev.delivery || 0)
+            const buyerId = rev.buyerId
+
+            if (Array.isArray(rev.items)) {
+                for (let i = 0; i < rev.items.length; i++) {
+                    const it = rev.items[i] || {}
+                    const key = `${docSnap.id}-${i}`
+
+                    // placeholders; fill below
+                    const row = {
+                        key,
+                        createdAt,
+                        sellerService,
+                        delivery,
+
+                        buyerId,
+                        buyerName: null,
+                        buyerPhoto: null,
+
+                        productId: it.productId,
+                        productName: null,
+                        productImage: null,
+
+                        size: it.size || null,
+                        rating: Number(it.rating || 0),
+                        text: it.text || '',
+                        images: Array.isArray(it.images) ? it.images : [],
+                        anonymous: Number(it.anonymous ?? 0)
+                    }
+
+                    temp.push(row)
+
+                    // fetch buyer + product details (cached)
+                    tasks.push(
+                        (async () => {
+                            const user = await fetchBuyer(buyerId)
+                            if (user) {
+                                row.buyerName = user.displayName
+                                row.buyerPhoto = user.photoURL || null
+                            }
+                            const prod = await fetchProduct(it.productId)
+                            if (prod) {
+                                row.productName = prod.name
+                                row.productImage = prod.imageUrl
+                            }
+                        })()
+                    )
+                }
+            }
+        })
+
+        await Promise.all(tasks)
+        reviewsFlat.value = temp
+    }, (err) => {
+        console.error('reviews onSnapshot error:', err)
+    })
+
+    loading.value = false
+    window.addEventListener('scroll', handleScroll)
+})
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleScroll)
+})
+
+/* misc */
+function toggleFavorite(id) { /* your follow/fav impl */ }
 // SEARCH + SORT 
 const searchTerm = ref('')
 const showSort = ref(false)

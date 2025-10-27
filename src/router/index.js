@@ -43,8 +43,10 @@ import PaymentsTab from '../views/buyers/account/PaymentsTab.vue'
 import NotificationsTab from '../views/buyers/account/NotificationsTab.vue'
 import ChangePasswordTab from '../views/buyers/account/ChangePasswordTab.vue'
 import PrivacySettingsTab from '../views/buyers/account/PrivacySettingsTab.vue'
-import EmailChangeDone from '../firebase/auth/EmailChangeDone.vue'
 
+// For both seller and buyer roles
+import ChangeEmail from '../views/ChangeEmail.vue'
+import EmailChangeDone from '../firebase/auth/EmailChangeDone.vue'
 
 
 import { db } from '@/firebase/firebase_config'
@@ -143,12 +145,12 @@ const routes = [
     ]
   },
   {
-    path: '/buyer-account/email-change-done',
+    path: '/email-change/success/',
     component: EmailChangeDone,
   },
   {
-    path: '/buyer-account/change-email',
-    component: () => import('../views/buyers/ChangeEmail.vue'),
+    path: '/change-email/',
+    component: ChangeEmail,
   },
   {
     path: '/buyer-favourites/',

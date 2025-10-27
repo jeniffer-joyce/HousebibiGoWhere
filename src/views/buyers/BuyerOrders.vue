@@ -182,8 +182,24 @@
                 </template>
 
                 <template v-else-if="statusOf(o) === 'completed'">
-                  <button @click="rateOrder(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Rate</button>
                   <button
+                    v-if="!hasReview(o)"
+                    @click="rateOrder(o)"
+                    class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                  >
+                    Rate
+                  </button>
+                  <button
+                    v-else
+                    @click="viewRatings(o)"
+                    class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                  >
+                    View Rating
+                  </button>
+
+                  <!-- ⬇️ Only show this if NOT reviewed -->
+                  <button
+                    v-if="!hasReview(o)"
                     @click="openReturnModal(o)"
                     class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
                   >
@@ -273,6 +289,22 @@
       @close="showReturnDetails=false; orderForReturnDetails=null"
       @open-order="openOrderFromRefund"
     />
+    <RateOrderModal
+      v-if="showRateModal"
+      :visible="true"
+      :order="orderForRating"
+      :mode="editMode"
+      :existing-reviews="editExistingReviews"
+      @submitted="handleReviewSubmitted"
+      @close="closeRateModal"
+    />
+    <ReviewDetailsModal
+      v-if="showReviewDetails"
+      :visible="true"
+      :order="orderForReviewDetails"
+      @close="showReviewDetails=false; orderForReviewDetails=null"
+      @edit="editReviewsForOrder"
+    />
   </div>
 </template>
 
@@ -292,6 +324,9 @@ import OrderDetailsModal from '@/components/orders/OrderDetailsModal.vue'
 import ReturnRequestModal from '@/components/orders/ReturnRequestModal.vue'
 import ReturnRequestDetailsModal from '@/components/orders/ReturnRequestDetailsModal.vue'
 
+import RateOrderModal from '@/components/orders/RateOrderModal.vue'
+import ReviewDetailsModal from '@/components/orders/ReviewDetailsModal.vue'
+
 /* UI states */
 const banner = ref({ show:false, msg:'' })
 const isSidebarCollapsed = ref(false)
@@ -307,6 +342,13 @@ const orderForReturn = ref(null)
 const showReturnDetails = ref(false)
 const orderForReturnDetails = ref(null)
 const orders = ref([])
+const showRateModal = ref(false)
+const orderForRating = ref(null)
+const reviewedOrders = ref(new Set())           
+const showReviewDetails = ref(false)            
+const orderForReviewDetails = ref(null)         
+const editExistingReviews = ref([])             
+const editMode = ref('create')                  
 
 /* Tabs */
 const tabs = [
@@ -383,23 +425,43 @@ let unsub = null
 onMounted(() => {
   const stop = auth.onAuthStateChanged(async (u) => {
     if (!u) { loading.value = false; return }
-    const q = fsQuery(
-      collection(db, 'orders'),
-      where('uid', '==', u.uid),
-      orderBy('createdAt', 'desc')
-    )
+
+    // live orders (unchanged)
+    const q = fsQuery(collection(db, 'orders'), where('uid', '==', u.uid), orderBy('createdAt', 'desc'))
     unsub?.()
-    unsub = onSnapshot(
-      q,
+    unsub = onSnapshot(q, (snap) => {
+      orders.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      loading.value = false
+    }, (err) => { console.error('orders onSnapshot error:', err); loading.value = false })
+
+    onSnapshot(
+      fsQuery(collection(db, 'reviews'), where('buyerId', '==', u.uid)),
       (snap) => {
-        orders.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-        loading.value = false
+        const s = new Set()
+        snap.forEach(d => {
+          const orderId = d.data().orderId
+          if (orderId) s.add(orderId)
+        })
+        reviewedOrders.value = s
       },
-      (err) => { console.error('orders onSnapshot error:', err); loading.value = false }
+      (err) => console.error('reviews onSnapshot error:', err)
     )
   })
   onBeforeUnmount(() => { stop(); unsub?.() })
 })
+
+const hasReview = (o) => reviewedOrders.value.has(o.orderId)
+function viewRatings(o) {
+  orderForReviewDetails.value = o
+  showReviewDetails.value = true
+}
+async function editReviewsForOrder(order, existing) {
+  showReviewDetails.value = false
+  orderForRating.value = order
+  editExistingReviews.value = existing || []
+  editMode.value = 'edit'
+  showRateModal.value = true
+}
 
 /* Utils */
 function formatDate(ts) {
@@ -438,17 +500,23 @@ function markReceived(o) {
     statusLog: arrayUnion({ status: 'completed', by: 'buyer', time: Timestamp.now() })
   })
 }
-function rateOrder(o) { /* open rating UI */ }
-
-function openReturnModal(o) {
-  orderForReturn.value = o
-  showReturnModal.value = true
+function rateOrder(o) {
+  orderForRating.value = o
+  showRateModal.value = true
 }
-function handleReturnSubmitted() {
-  // Close the modal and show banner message (no alert)
-  showReturnModal.value = false
-  orderForReturn.value = null
-  banner.value = { show: true, msg: 'Return/Refund request submitted successfully.' }
+
+// close helper
+function closeRateModal() {
+  showRateModal.value = false
+  orderForRating.value = null
+  editExistingReviews.value = []
+  editMode.value = 'create'
+}
+
+// when the modal emits "submitted"
+function handleReviewSubmitted() {
+  closeRateModal()
+  banner.value = { show: true, msg: 'Thanks! Your review has been submitted.' }
   setTimeout(() => { banner.value.show = false }, 3500)
 }
 
@@ -504,6 +572,11 @@ async function contactSeller(o) {
     console.error('contactSeller failed:', err)
   }
 }
+function openRateModal(o) {
+  orderForRating.value = o
+  showRateModal.value = true
+}
+
 </script>
 
 <style scoped>

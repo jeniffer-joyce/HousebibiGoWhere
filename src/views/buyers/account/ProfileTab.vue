@@ -87,7 +87,7 @@
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email Address</label>
               <RouterLink
                 v-if="!isGoogle"
-                to="/buyer-account/change-email"
+                to="/change-email"
                 class="text-sm text-primary hover:underline"
               >
                 Change email
