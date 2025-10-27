@@ -1,4 +1,4 @@
-<!-- BusinessHomepage.vue -->
+<!-- src/views/sellers/BusinessHomepage.vue -->
 <template>
   <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Loading -->
@@ -49,18 +49,17 @@
         </div>
 
         <RouterLink
-        :to="{ name: 'edit-profile', params: { username: seller.username } }"
-        class="mt-6 flex items-center justify-center gap-2 h-10 px-6 bg-primary/10 dark:bg-primary/20 text-primary font-bold text-sm rounded-lg hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors">
+          :to="{ name: 'edit-profile', params: { username: seller.username } }"
+          class="mt-6 flex items-center justify-center gap-2 h-10 px-6 bg-primary/10 dark:bg-primary/20 text-primary font-bold text-sm rounded-lg hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors">
           <span class="material-symbols-outlined text-lg">settings</span>
           <span>Edit Profile Page</span>
         </RouterLink>
-
       </div>
 
-      <!-- ===================== Control Bar: Search + Sort ===================== -->
+      <!-- ===================== Control Bar ===================== -->
       <section class="mt-8">
         <div class="mb-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-          <!-- Search (LEFT) -->
+          <!-- Search -->
           <div class="relative max-w-md w-full md:w-80">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
             <input
@@ -78,7 +77,7 @@
             </button>
           </div>
 
-          <!-- Sorting (RIGHT) -->
+          <!-- Sort -->
           <div class="relative sort-menu-root self-start md:self-auto">
             <button
               @click="toggleSortMenu"
@@ -89,12 +88,10 @@
               <span class="material-symbols-outlined text-base transition-transform" :class="showSort ? 'rotate-180' : ''">expand_more</span>
             </button>
 
-            <!-- Sort Menu -->
             <div
               v-show="showSort"
               class="absolute right-0 mt-2 w-60 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg overflow-hidden z-10">
               <div class="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Sort by</div>
-
               <button
                 v-for="opt in sortOptions"
                 :key="opt.value"
@@ -107,75 +104,57 @@
           </div>
         </div>
 
-        <!-- ===================== Product Grid (sorted + paginated 8 per page) ===================== -->
+        <!-- ===================== Product Grid ===================== -->
         <div
           v-if="pagedProducts.length"
           class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
-          id="product_grid"
-        >
-          <!-- Single card -->
+          id="product_grid">
           <div
             v-for="(p, idx) in pagedProducts"
             :key="p.id || idx"
-            class="group relative flex flex-col overflow-hidden rounded-lg bg-creamy-white dark:bg-gray-800/50 h-full"
-          >
-            <!-- Image + stock badge + hover overlay -->
+            class="group relative flex flex-col overflow-hidden rounded-lg bg-creamy-white dark:bg-gray-800/50 h-full">
             <div class="relative">
-              <!-- Thumbnail -->
               <div
                 class="aspect-square w-full bg-cover bg-center"
-                :style="{ backgroundImage: `url('${p.thumbnail || '/avatar.png'}')` }"
-              ></div>
+                :style="bgStyle(p)"></div>
 
-              <!-- Stock badge -->
               <span
                 class="absolute top-2 left-2 rounded-full px-2.5 py-1 text-xs font-semibold shadow"
-                :class="stockClass(p)"
-              >
+                :class="stockClass(p)">
                 {{ stockLabel(p) }}
               </span>
 
-              <!-- Hover overlay -->
+              <!-- Edit Overlay -->
               <div
                 class="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition
-                       group-hover:bg-black/30 group-hover:opacity-100"
-              >
+                       group-hover:bg-black/30 group-hover:opacity-100">
                 <button
                   @click="onEdit(p)"
                   class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold
-                         bg-white text-gray-900 shadow hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
-                >
+                         bg-white text-gray-900 shadow hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800">
                   <span class="material-symbols-outlined text-base">settings</span>
                   Edit Product
                 </button>
               </div>
             </div>
 
-            <!-- Card body -->
             <div class="p-4 flex flex-col grow">
               <div>
                 <h3 class="font-medium text-gray-900 dark:text-white line-clamp-2 min-h-[3rem] break-words">
                   {{ p.item_name || 'Untitled Product' }}
                 </h3>
-
-                <!-- Price or Price Range -->
-                <p class="mt-1 text-sm text-primary font-semibold">
-                  {{ priceDisplay(p) }}
-                </p>
+                <p class="mt-1 text-sm text-primary font-semibold">{{ priceDisplay(p) }}</p>
               </div>
 
-              <!-- Variants / Sizes -->
               <div v-if="hasSizes(p)" class="mt-3 flex flex-wrap gap-1.5">
                 <span
                   v-for="(s, i) in p.size"
                   :key="i"
                   class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs"
-                  :class="sizeChipClass(p, i)"
-                >
+                  :class="sizeChipClass(p, i)">
                   {{ s }}
                 </span>
               </div>
-
               <div class="mt-auto"></div>
             </div>
           </div>
@@ -188,35 +167,28 @@
           </h3>
         </div>
 
-        <!-- Pagination controls (Back / Next + Page X of Y) -->
+        <!-- Pagination -->
         <div v-if="pagesTotal > 1" class="mt-6 flex items-center justify-center gap-4">
           <button
             class="px-4 py-2 rounded border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             :disabled="page === 1"
-            @click="page--"
-            title="Previous page"
-          >
+            @click="page--">
             ‹ Back
           </button>
-          <span class="text-sm text-gray-600 dark:text-gray-300">
-            Page {{ page }} of {{ pagesTotal }}
-          </span>
+          <span class="text-sm text-gray-600 dark:text-gray-300">Page {{ page }} of {{ pagesTotal }}</span>
           <button
             class="px-4 py-2 rounded border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             :disabled="page === pagesTotal"
-            @click="page++"
-            title="Next page"
-          >
+            @click="page++">
             Next ›
           </button>
         </div>
 
-        <!-- Add Product button -->
+        <!-- Add Product -->
         <div class="mt-8 flex justify-center">
           <button
             @click="onAddProduct"
-            class="flex items-center justify-center gap-2 h-12 px-8 bg-accent text-white font-bold text-sm rounded-lg shadow-lg hover:bg-vibrant-coral/90 transition-all transform hover:scale-105"
-          >
+            class="flex items-center justify-center gap-2 h-12 px-8 bg-accent text-white font-bold text-sm rounded-lg shadow-lg hover:bg-vibrant-coral/90 transition-all transform hover:scale-105">
             <span class="material-symbols-outlined">add_circle</span>
             <span>Add New Product</span>
           </button>
@@ -224,11 +196,13 @@
       </section>
     </div>
 
-    <!-- Add Product Modal -->
+    <!-- 🧩 Add/Edit Product Modal -->
     <AddProductModal
       :show="showAddModal"
-      @close="showAddModal = false"
+      :editProduct="editProduct"
+      @close="() => { showAddModal = false; editProduct = null }"
       @save="handleAddProduct"
+      @deleted="(id) => { products = products.filter(p => p.id !== id) }"
     />
   </main>
 </template>
@@ -239,13 +213,8 @@ import { user } from '@/store/user.js'
 import Loading from '@/components/status/Loading.vue'
 import AddProductModal from '@/components/modals/AddProductModal.vue'
 import { useToast } from '@/composables/useToast'
-import { auth } from '@/firebase/firebase_config'
-
-// ✅ new imports for auto-refresh
 import { authReady, fetchSellerComposite } from '@/firebase/services/sellers/seller_crud'
-
-// existing product functions
-import { getSellerProducts, createProduct } from '@/firebase/services/sellers/seller_product.js'
+import { getSellerProducts, createProduct, getMyProduct, updateMyProduct } from '@/firebase/services/sellers/seller_product.js'
 
 const { success, error: toastError } = useToast()
 
@@ -254,8 +223,10 @@ const seller = ref({})
 const products = ref([])
 const searchTerm = ref('')
 const showAddModal = ref(false)
+const editProduct = ref(null)
+const saving = ref(false)
 
-// sorting + pagination
+// Sorting + pagination setup
 const showSort = ref(false)
 const sortMode = ref('none')
 const pageSize = 8
@@ -279,14 +250,7 @@ async function loadSellerData() {
     loading.value = true
     await authReady()
     const { business } = await fetchSellerComposite()
-    if (business) {
-      seller.value = business
-      console.log('✅ Seller data loaded:', business)
-    } else {
-      console.warn('⚠️ No business document found for user.')
-    }
-
-    // also load seller products
+    if (business) seller.value = business
     products.value = await getSellerProducts()
   } catch (e) {
     console.error('❌ Failed to load seller data:', e)
@@ -295,19 +259,9 @@ async function loadSellerData() {
   }
 }
 
-// load when component mounts
 onMounted(loadSellerData)
-
-// reload when page re-activates (like switching tabs)
-onActivated(() => {
-  console.log('📄 BusinessHomepage re-activated — refreshing data.')
-  loadSellerData()
-})
-
-// reload when user avatar or profile changes
-watch(() => user.avatar, (newVal, oldVal) => {
-  if (newVal !== oldVal) loadSellerData()
-}, { deep: true })
+onActivated(loadSellerData)
+watch(() => user.avatar, loadSellerData, { deep: true })
 
 /* ==========================================================
    📈 RATING + FOLLOWERS
@@ -340,21 +294,9 @@ const filteredProducts = computed(() => {
   )
 })
 
-function toDate(val) {
-  if (!val) return 0
-  const d = new Date(val)
-  return isNaN(d.getTime()) ? 0 : d.getTime()
-}
-function minPrice(p) {
-  const arr = Array.isArray(p.price) ? p.price : [p.price ?? 0]
-  const nums = arr.map(Number).filter(n => !isNaN(n))
-  return nums.length ? Math.min(...nums) : 0
-}
-function maxPrice(p) {
-  const arr = Array.isArray(p.price) ? p.price : [p.price ?? 0]
-  const nums = arr.map(Number).filter(n => !isNaN(n))
-  return nums.length ? Math.max(...nums) : 0
-}
+function toDate(val) { const d = new Date(val); return isNaN(d.getTime()) ? 0 : d.getTime() }
+function minPrice(p) { return Math.min(...(Array.isArray(p.price) ? p.price : [p.price || 0])) }
+function maxPrice(p) { return Math.max(...(Array.isArray(p.price) ? p.price : [p.price || 0])) }
 
 const sortedProducts = computed(() => {
   const arr = [...filteredProducts.value]
@@ -370,63 +312,104 @@ const sortedProducts = computed(() => {
 })
 
 watch([searchTerm, sortMode], () => page.value = 1)
-
 const pagesTotal = computed(() => Math.max(1, Math.ceil(sortedProducts.value.length / pageSize)))
-const pagedProducts = computed(() => {
-  const start = (page.value - 1) * pageSize
-  return sortedProducts.value.slice(start, start + pageSize)
-})
+const pagedProducts = computed(() => sortedProducts.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 
 /* ==========================================================
    🛒 PRODUCT FUNCTIONS
    ========================================================== */
-function onAddProduct() { showAddModal.value = true }
+function onAddProduct() {
+  editProduct.value = null
+  showAddModal.value = true
+}
 
+async function onEdit(p) {
+  try {
+    const fullData = await getMyProduct(p.id)
+    editProduct.value = fullData
+    showAddModal.value = true
+  } catch (err) {
+    console.error('❌ Failed to fetch product for editing:', err)
+    toastError('Unable to load product details.')
+  }
+}
+
+/* Normalize & push updates so images show immediately in grid */
 async function handleAddProduct(productData) {
   try {
-    const productDataWithCategory = {
-      ...productData,
-      category: seller.value.category || 'uncategorized'
+    saving.value = true
+
+    if (editProduct.value) {
+      // --- UPDATE
+      await updateMyProduct(editProduct.value.id, productData)
+
+      // Normalize local cache
+      const images = [productData.img_url, ...(productData.additional_images || [])].filter(Boolean)
+      const thumbnail = images[0] || ''
+
+      const idx = products.value.findIndex(p => p.id === editProduct.value.id)
+      if (idx !== -1) {
+        products.value[idx] = {
+          ...products.value[idx],
+          ...productData,
+          images,
+          thumbnail,
+          img_url: thumbnail,               // legacy
+        }
+      }
+
+      success('✅ Product updated successfully!')
+    } else {
+      // --- CREATE
+      const dataToCreate = {
+        ...productData,
+        category: seller.value.category || 'uncategorized'
+      }
+      const newId = await createProduct(dataToCreate)
+
+      // Normalize local cache
+      const images = [dataToCreate.img_url, ...(dataToCreate.additional_images || [])].filter(Boolean)
+      const thumbnail = images[0] || ''
+
+      products.value.push({
+        id: newId,
+        item_name: dataToCreate.item_name,
+        description: dataToCreate.description,
+        category: dataToCreate.category,
+        images,
+        thumbnail,
+        img_url: thumbnail,                 // legacy
+        price: Array.isArray(dataToCreate.price) ? dataToCreate.price : [dataToCreate.price],
+        quantity: Array.isArray(dataToCreate.quantity) ? dataToCreate.quantity : [dataToCreate.quantity],
+        size: Array.isArray(dataToCreate.size) ? dataToCreate.size : (dataToCreate.size ? [dataToCreate.size] : []),
+        availability: dataToCreate.availability ?? true,
+        createdAt: new Date().toISOString(),
+      })
+
+      success('✅ Product added successfully!')
     }
 
-    const newId = await createProduct(productDataWithCategory)
-
-    products.value.push({
-      id: newId,
-      item_name: productData.item_name,
-      category: seller.value.category || 'uncategorized',
-      description: productData.description,
-      thumbnail: productData.img_url,
-      price: Array.isArray(productData.price) ? productData.price : [productData.price],
-      quantity: Array.isArray(productData.quantity) ? productData.quantity : [productData.quantity],
-      size: Array.isArray(productData.size) ? productData.size : (productData.size ? [productData.size] : []),
-      availability: productData.availability,
-      createdAt: productData.createdAt || new Date().toISOString(),
-      sellerId: productData.sellerId,
-      sellerName: productData.sellerName
-    })
-
+    editProduct.value = null
     showAddModal.value = false
-    success('✅ Product added successfully!')
   } catch (error) {
-    console.error('❌ Error adding product:', error)
-    toastError('Failed to add product. Please try again.')
+    console.error('❌ Error saving product:', error)
+    toastError('Failed to save product. Please try again.')
+  } finally {
+    saving.value = false
   }
 }
 
 /* ==========================================================
    🧩 UI HELPERS
    ========================================================== */
-function onEdit(p) { console.log('Edit product clicked:', p.id) }
+function bgStyle(p) {
+  const src = p?.thumbnail || (Array.isArray(p?.images) && p.images[0]) || '/avatar.png'
+  return { backgroundImage: `url('${src}')` }
+}
 
 function hasSizes(p) { return Array.isArray(p.size) && p.size.length > 0 }
-
-function totalQuantity(p) {
-  if (Array.isArray(p.quantity)) return p.quantity.reduce((sum, n) => sum + (Number(n) || 0), 0)
-  return Number(p.quantity) || 0
-}
-function fmt2(n) { const num = Number(n); return isNaN(num) ? '0.00' : num.toFixed(2) }
-
+function totalQuantity(p) { return Array.isArray(p.quantity) ? p.quantity.reduce((s, n) => s + (+n || 0), 0) : +p.quantity || 0 }
+function fmt2(n) { return (Number.isFinite(+n) ? (+n).toFixed(2) : '0.00') }
 function priceDisplay(p) {
   const arr = Array.isArray(p.price) ? p.price : [p.price]
   const nums = arr.map(Number).filter(n => !isNaN(n))
@@ -434,23 +417,15 @@ function priceDisplay(p) {
   if (nums.length === 1) return `$${fmt2(nums[0])}`
   return `$${fmt2(Math.min(...nums))} - $${fmt2(Math.max(...nums))}`
 }
-
-function stockLabel(p) {
-  const qty = totalQuantity(p)
-  if (qty <= 0) return 'Out of Stock'
-  if (qty <= 10) return 'Low Stock'
-  return 'In Stock'
-}
+function stockLabel(p) { const q = totalQuantity(p); return q <= 0 ? 'Out of Stock' : q <= 10 ? 'Low Stock' : 'In Stock' }
 function stockClass(p) {
-  const qty = totalQuantity(p)
-  if (qty <= 0) return 'bg-red-600 text-white'
-  if (qty <= 10) return 'bg-amber-500 text-white'
-  return 'bg-emerald-600 text-white'
+  const q = totalQuantity(p)
+  return q <= 0 ? 'bg-red-600 text-white' : q <= 10 ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
 }
 function sizeChipClass(p, i) {
   const q = Array.isArray(p.quantity) ? Number(p.quantity[i]) || 0 : 0
   return q <= 0
-    ? 'border-gray-300 dark:border-gray-700 text-gray-400 opacity-60 cursor-not-allowed'
+    ? 'border-gray-300 dark:border-gray-700 text-gray-400 opacity-60'
     : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200'
 }
 </script>
