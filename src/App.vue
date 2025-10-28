@@ -3,7 +3,11 @@
     <div class="flex min-h-screen w-full flex-col">
       <template v-if="!user.loading">
         <SellersNavbar v-if="user.role === 'seller'" />
-        <Navbar v-else />
+        <Navbar
+          v-else
+          :is-buyer-side-bar="user.role === 'buyer' && $route.path.startsWith('/buyer-')"
+          :is-sidebar-collapsed="isSidebarCollapsed"
+        />
 
         <router-view />
         <ToastNotification
@@ -38,6 +42,8 @@ import ToastNotification from '@/components/ToastNotification.vue'
 const { toastState, close } = useToast()
 
 const showOnboarding = ref(false)
+
+const isSidebarCollapsed = ref(false)
 
 // Watch for new seller signups that need onboarding
 watch(() => user.needsOnboarding, (needs) => {
