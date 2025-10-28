@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { user } from '@/store/user.js'
 import { auth } from '@/firebase/firebase_config'
 import { signOut } from 'firebase/auth'
@@ -15,6 +15,7 @@ import { uiState } from '@/store/ui.js'
 const { success, error: toastError } = useToast()
 
 const router = useRouter()
+const route = useRoute()
 
 /* 🔽 NEW: reactive name shown in the navbar */
 const displayName = ref('')
@@ -98,6 +99,7 @@ onMounted(() => {
 
 router.afterEach(() => {
   showProfileDropdown.value = false
+  showMobileNav.value = false
 })
 
 /* Mobile nav */
@@ -147,6 +149,37 @@ function handleScrollForNavbar() {
     ticking = true
   }
 }
+
+const props = defineProps({
+  isBuyerSideBar: Boolean,
+  isSidebarCollapsed: Boolean
+})
+
+const isSidebarCollapsed = computed(() => uiState.isSidebarCollapsed.value)
+
+const dropdownStyle = computed(() => {
+  if (!props.isBuyerSideBar) {
+    return { left: '0', width: '100%' }
+  }
+
+  const collapsed = uiState.isSidebarCollapsed.value
+  const leftOffset = collapsed ? '5rem' : '16rem'
+  const widthCalc = collapsed ? 'calc(100% - 5rem)' : 'calc(100% - 16rem)'
+
+  // Add reactive dependencies to force recompute
+  const _ = route.path
+  const __ = showMobileNav.value
+
+  return { left: leftOffset, width: widthCalc }
+})
+
+watch(showMobileNav, (isOpen) => {
+  const isMobile = window.innerWidth < 880
+  if (isOpen && isMobile) {
+    // Optional: force collapsed state to false for consistent width
+    uiState.isSidebarCollapsed.value = false
+  }
+})
 
 onMounted(() => {
   window.addEventListener('scroll', handleScrollForNavbar, { passive: true })
@@ -344,8 +377,12 @@ onUnmounted(() => {
     enter-from-class="transform -translate-y-2 opacity-0" enter-to-class="transform translate-y-0 opacity-100"
     leave-active-class="transition duration-100 ease-in" leave-from-class="transform translate-y-0 opacity-100"
     leave-to-class="transform -translate-y-2 opacity-0">
-    <div v-if="showMobileNav"
-      class="fixed left-0 right-0 top-[64px] z-40 block [@media(min-width:880px)]:hidden border-t border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark shadow-lg">
+    <div
+      v-if="showMobileNav"
+      :key="uiState.isSidebarCollapsed"
+      class="fixed top-[64px] z-50 block [@media(min-width:880px)]:hidden border-t border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark shadow-lg transition-all duration-300"
+      :style="dropdownStyle"
+    >
       <nav class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8 block [@media(min-width:880px)]:hidden">
         <div class="flex flex-col gap-2">
 
