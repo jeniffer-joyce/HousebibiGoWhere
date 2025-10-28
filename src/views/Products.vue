@@ -1,12 +1,25 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useProducts } from '@/composables/useProducts.js'
+import { db } from '@/firebase/firebase_config.js'
+import { collection, getDocs, query, orderBy } from 'firebase/firestore'
+import { user } from '@/store/user.js' // Import user store
+import ToastNotification from '@/components/ToastNotification.vue' // Import toast
 
 // Fetch products from Firestore
 const { products, loading, error } = useProducts()
 
+
+// Toast notification state
+const showToast = ref(false)
+const toastConfig = reactive({
+  type: 'warning',
+  title: 'Login Required',
+  message: 'Please log in or sign up to add items to your wishlist'
+})
 // Filters data
 const filters = ref({
+  category: [], // dynamically populated from button_categories
   price: ['Under $20', '$20 - $50', '$50 - $100', 'Over $100'],
   seller: [], // dynamically populated
   rating: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
@@ -14,6 +27,7 @@ const filters = ref({
 
 // Track selected filter option
 const selectedFilters = reactive({
+  category: null,
   price: null,
   seller: null,
   rating: null,
@@ -30,6 +44,22 @@ const selectedFilterArray = computed(() => {
   return Object.entries(selectedFilters).filter(([key, val]) => val)
 })
 
+// Handle wishlist button click
+function handleWishlistClick(product) {
+  if (!user.isLoggedIn) {
+    // Show toast notification
+    showToast.value = true
+  } else {
+    // TODO: Add to wishlist logic for logged-in users
+    console.log('Adding to wishlist:', product)
+    // You can implement actual wishlist functionality here later
+  }
+}
+
+// Close toast notification
+function closeToast() {
+  showToast.value = false
+}
 // Toggle dropdown open/close
 function toggleDropdown(key) {
   openFilter.value = openFilter.value === key ? null : key
@@ -59,7 +89,34 @@ function handleClickOutside(event) {
   }
 }
 
-onMounted(() => document.addEventListener('click', handleClickOutside))
+// Load categories from button_categories collection
+// Store category data with both name and slug
+const categoryList = ref([])
+
+async function loadCategories() {
+  try {
+    const categoriesRef = collection(db, 'button_categories')
+    const categoriesQuery = query(categoriesRef, orderBy('order', 'asc'))
+    const snapshot = await getDocs(categoriesQuery)
+    
+    // Store full category objects
+    categoryList.value = snapshot.docs.map(doc => ({
+      name: doc.data().name,
+      slug: doc.data().slug
+    }))
+    
+    // Display names in dropdown
+    filters.value.category = categoryList.value.map(cat => cat.name)
+  } catch (error) {
+    console.error('Error loading categories:', error)
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  loadCategories()
+})
+
 onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 
 // Normalize products to handle array/single price
@@ -104,6 +161,13 @@ const displayedProducts = computed(() => {
     const min = Math.min(...prices)
     const max = Math.max(...prices)
 
+    const matchesCategory = !selectedFilters.category || (() => {
+  // Find the category object by name
+    const selectedCat = categoryList.value.find(cat => cat.name === selectedFilters.category)
+    // Match product's category (slug) with selected category's slug
+    return selectedCat && product.category === selectedCat.slug
+  })()
+
     const matchesPrice =
       !selectedFilters.price ||
       (selectedFilters.price === 'Under $20' && max < 20) ||
@@ -117,7 +181,7 @@ const displayedProducts = computed(() => {
     const matchesRating =
       !selectedFilters.rating || Math.floor(product.rating || 0) === Number(selectedFilters.rating[0])
 
-    return matchesPrice && matchesSeller && matchesRating
+    return matchesCategory && matchesPrice && matchesSeller && matchesRating
   })
 
   // Apply sorting
@@ -145,14 +209,14 @@ const displayedProducts = computed(() => {
   <div class="flex items-center gap-2 text-sm text-subtle-light dark:text-subtle-dark mb-6">
     <RouterLink to="/" class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary">Home</RouterLink>
     <span class="material-symbols-outlined text-base">chevron_right</span>
-    <span class="font-medium text-foreground-light dark:text-foreground-dark">Crafts</span>
+    <span class="font-medium text-foreground-light dark:text-foreground-dark">Products</span>
   </div>
 
   <div class="flex flex-col lg:flex-row gap-8">
     <!-- Sidebar filters -->
     <aside class="w-full lg:w-1/4">
       <div class="sticky top-28">
-        <h2 class="text-2xl font-bold mb-6">Crafts</h2>
+        <h2 class="text-2xl font-bold mb-6">Products</h2>
         <div class="space-y-6">
           <div>
             <h3 class="font-bold mb-3 flex justify-between items-center">
@@ -226,19 +290,20 @@ const displayedProducts = computed(() => {
             <div class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
                  :style="{ backgroundImage: `url(${item.img_url})` }"></div>
                   <button
-                  class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
-                  <svg
-                    :class="'h-6 w-6'"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </button>
+                    @click.stop="handleWishlistClick(item)"
+                    class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                    <svg
+                      :class="'h-6 w-6'"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </button>
           </div>
           <div class="pt-3">
             <h3 class="font-bold text-base">{{ item.item_name }}</h3>
@@ -267,5 +332,14 @@ const displayedProducts = computed(() => {
       </div>
     </div>
   </div>
+    <!-- Toast Notification -->
+  <ToastNotification
+    :show="showToast"
+    :type="toastConfig.type"
+    :title="toastConfig.title"
+    :message="toastConfig.message"
+    :duration="4000"
+    @close="closeToast"
+  />
 </main>
 </template>
