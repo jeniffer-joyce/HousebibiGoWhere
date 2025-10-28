@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { uiState } from '@/store/ui.js'
 
 const router = useRouter();
 const route = useRoute();
@@ -28,6 +29,7 @@ function isActive(path) {
 
 function toggleSidebar() {
   isCollapsed.value = !isCollapsed.value;
+  uiState.isSidebarCollapsed.value = !uiState.isSidebarCollapsed.value
 }
 
 const emit = defineEmits(['sidebar-toggle']);
