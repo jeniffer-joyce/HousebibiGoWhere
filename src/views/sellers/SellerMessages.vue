@@ -108,7 +108,7 @@
                 {{ activeBuyerName }}
               </h2>
               <p class="text-xs text-slate-500 dark:text-slate-400">
-                {{ activeBuyerData?.email || 'Customer' }}
+                {{ activeBuyerEmail || 'Customer' }}
               </p>
             </div>
           </div>
@@ -173,24 +173,69 @@
 
         <!-- Message Input -->
         <div class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4">
-          <form @submit.prevent="handleSendMessage" class="flex items-end gap-3">
+          <!-- Selected Files Preview -->
+          <div v-if="selectedFiles.length > 0" class="mb-3 flex flex-wrap gap-2">
+            <div
+              v-for="(file, index) in selectedFiles"
+              :key="index"
+              class="relative flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-lg px-3 py-2 pr-8">
+              <span class="text-xl">{{ getFileIcon(file) }}</span>
+              <div class="flex flex-col min-w-0">
+                <span class="text-xs font-medium text-slate-900 dark:text-white truncate max-w-[150px]">
+                  {{ file.name }}
+                </span>
+                <span class="text-xs text-slate-500 dark:text-slate-400">
+                  {{ formatFileSize(file.size) }}
+                </span>
+              </div>
+              <button
+                @click="removeFile(index)"
+                type="button"
+                class="absolute right-1 top-1 p-1 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 rounded">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <form @submit.prevent="selectedFiles.length > 0 ? sendMessageWithFiles() : handleSendMessage()" class="flex items-end gap-3">
+            <!-- Hidden file input -->
+            <input
+              ref="fileInput"
+              type="file"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.txt"
+              @change="handleFileSelect"
+              class="hidden" />
+            
+            <!-- Paperclip button -->
+            <button 
+              type="button"
+              @click="openFilePicker"
+              class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              title="Attach files or images">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+              </svg>
+            </button>
             <textarea
               v-model="newMessage"
-              @keydown.enter.exact.prevent="handleSendMessage"
+              @keydown.enter.exact.prevent="selectedFiles.length > 0 ? sendMessageWithFiles() : handleSendMessage()"
               placeholder="Type your message..."
               rows="1"
               :disabled="sending"
               class="flex-1 px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
             <button
               type="submit"
-              :disabled="!newMessage.trim() || sending"
+              :disabled="(!newMessage.trim() && selectedFiles.length === 0) || sending || uploadingFiles"
               :class="[
                 'p-3 rounded-lg transition-colors',
-                newMessage.trim() && !sending
+                (newMessage.trim() || selectedFiles.length > 0) && !sending && !uploadingFiles
                   ? 'bg-primary text-white hover:bg-primary/90' 
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500'
               ]">
-              <svg v-if="!sending" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg v-if="!sending && !uploadingFiles" class="h-6 w-6 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
               </svg>
               <svg v-else class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -209,133 +254,184 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
           </svg>
           <h3 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">No conversation selected</h3>
-          <p class="text-slate-600 dark:text-slate-400">Choose a conversation to start messaging your customers</p>
+          <p class="text-slate-600 dark:text-slate-400">Choose a conversation to start messaging</p>
         </div>
       </div>
     </div>
+
+    <!-- Toast Notification -->
+    <ToastNotification
+      :show="showToast"
+      :type="toastType"
+      :title="toastTitle"
+      :message="toastMessage"
+      @close="closeToast" />
+
+    <!-- Confirmation Modal -->
+    <ConfirmationModal
+      :show="showConfirmModal"
+      :type="confirmModalType"
+      :title="confirmModalTitle"
+      :message="confirmModalMessage"
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      @confirm="handleConfirm"
+      @cancel="handleCancel" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
-import { useMessages } from '../../composables/useMessages';
-import { getDoc, doc } from 'firebase/firestore';
-import { db } from '../../firebase/firebase_config';
-import { getAuth } from 'firebase/auth';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { auth, db } from '@/firebase/firebase_config';
+import { doc, getDoc } from 'firebase/firestore';
+import { useMessages } from '@/composables/useMessages';
+import ToastNotification from '@/components/ToastNotification.vue';
+import ConfirmationModal from '@/components/modals/ConfirmationModal.vue';
 
-// Get current user's UID from Firebase Auth
-const auth = getAuth();
-const currentUser = auth.currentUser;
-
-// Current business ID (this is the logged-in seller's business UID)
-const currentBusinessId = ref(null);
-const businessName = ref('');
-const businessData = ref(null);
+// Component state
 const searchQuery = ref('');
+const currentBusinessId = ref(null);
 const newMessage = ref('');
 const sending = ref(false);
 const messagesList = ref(null);
-
-// Store buyer data for active conversation
-const activeBuyerData = ref(null);
 const buyersCache = ref({});
+const activeBuyerData = ref(null);
 
-// Fetch business data for current user
-const fetchBusinessData = async () => {
-  if (!currentUser) {
-    console.error('No user logged in');
-    return;
+// File upload state
+const fileInput = ref(null);
+const selectedFiles = ref([]);
+const uploadingFiles = ref(false);
+
+// Toast state
+const showToast = ref(false);
+const toastType = ref('success');
+const toastTitle = ref('');
+const toastMessage = ref('');
+
+// Confirmation modal state
+const showConfirmModal = ref(false);
+const confirmModalTitle = ref('');
+const confirmModalMessage = ref('');
+const confirmModalType = ref('warning');
+const pendingAction = ref(null);
+
+// Show toast notification
+function showToastNotification(type, title, message) {
+  toastType.value = type;
+  toastTitle.value = title;
+  toastMessage.value = message;
+  showToast.value = true;
+}
+
+// Close toast
+function closeToast() {
+  showToast.value = false;
+}
+
+// Show confirmation modal
+function showConfirmation(title, message, type, action) {
+  confirmModalTitle.value = title;
+  confirmModalMessage.value = message;
+  confirmModalType.value = type;
+  pendingAction.value = action;
+  showConfirmModal.value = true;
+}
+
+// Handle confirmation
+function handleConfirm() {
+  showConfirmModal.value = false;
+  if (pendingAction.value) {
+    pendingAction.value();
+    pendingAction.value = null;
   }
+}
 
+// Handle cancel
+function handleCancel() {
+  showConfirmModal.value = false;
+  pendingAction.value = null;
+}
+
+// Fetch business data from Firebase
+const fetchBusinessData = async () => {
   try {
-    // Set the current business ID to the authenticated user's UID
-    currentBusinessId.value = currentUser.uid;
-    
-    // Fetch business document
-    const businessDoc = await getDoc(doc(db, 'businesses', currentUser.uid));
-    
+    const user = auth.currentUser;
+    if (!user) {
+      showToastNotification('error', 'Authentication Error', 'No user is currently logged in');
+      return;
+    }
+
+    const businessDoc = await getDoc(doc(db, 'businesses', user.uid));
     if (businessDoc.exists()) {
-      businessData.value = businessDoc.data();
-      businessName.value = businessData.value.name || businessData.value.businessName || 'Your Business';
-      console.log('Business data loaded:', businessName.value);
+      currentBusinessId.value = user.uid;
     } else {
-      console.error('Business document not found for UID:', currentUser.uid);
-      businessName.value = 'Business';
+      showToastNotification('error', 'Business Not Found', 'Business profile not found');
     }
   } catch (error) {
     console.error('Error fetching business data:', error);
-    businessName.value = 'Business';
+    showToastNotification('error', 'Error Loading Business', 'Failed to load business data');
   }
 };
 
-// Fetch buyer/user data from users collection
+// Fetch buyer data
 const fetchBuyerData = async (buyerId) => {
-  if (!buyerId) return null;
-  
-  // Check cache first
   if (buyersCache.value[buyerId]) {
     return buyersCache.value[buyerId];
   }
 
   try {
+    // Fetch from users collection (buyers are users with role="buyer")
     const userDoc = await getDoc(doc(db, 'users', buyerId));
     
     if (userDoc.exists()) {
-      const userData = userDoc.data();
-      const buyerData = {
-        id: buyerId,
-        displayName: userData.displayName || userData.name || null,
-        name: userData.name || userData.displayName || null,
-        email: userData.email || null,
-        photoURL: userData.photoURL || userData.avatar || null,
-        avatar: userData.avatar || userData.photoURL || null,
-        type: 'buyer'
+      const data = userDoc.data();
+      const buyerInfo = {
+        displayName: data.displayName || data.username || data.email?.split('@')[0] || 'Customer',
+        email: data.email || '',
+        photoURL: data.photoURL || null,
+        username: data.username || '',
+        role: data.role || ''
       };
-      
-      // Cache the data
-      buyersCache.value[buyerId] = buyerData;
-      console.log('Buyer data fetched:', buyerData);
-      return buyerData;
-    } else {
-      console.warn('User document not found for ID:', buyerId);
-      return {
-        id: buyerId,
-        displayName: 'Customer',
-        name: 'Customer',
-        email: null,
-        photoURL: null,
-        avatar: null,
-        type: 'buyer'
-      };
+      buyersCache.value[buyerId] = buyerInfo;
+      console.log('Buyer data loaded:', buyerInfo);
+      return buyerInfo;
     }
+    
+    console.warn('Buyer data not found for ID:', buyerId);
   } catch (error) {
     console.error('Error fetching buyer data:', error);
-    return {
-      id: buyerId,
-      displayName: 'Customer',
-      name: 'Customer',
-      email: null,
-      photoURL: null,
-      avatar: null,
-      type: 'buyer'
-    };
   }
+  return null;
 };
 
 // Get buyer name from conversation
 const getBuyerName = (conversation) => {
-  if (!conversation) return 'Customer';
-  
-  const buyerId = conversation.otherUserId;
-  const cachedBuyer = buyersCache.value[buyerId];
-  
-  if (cachedBuyer) {
-    return cachedBuyer.displayName || cachedBuyer.name || cachedBuyer.email || 'Customer';
+  // First check the cache
+  const buyerData = buyersCache.value[conversation.otherUserId];
+  if (buyerData?.displayName) {
+    return buyerData.displayName;
   }
   
-  // Fallback to otherUser if available (from useMessages composable)
-  if (conversation.otherUser) {
-    return conversation.otherUser.name || 'Customer';
+  // Then check conversation.otherUser with correct field names
+  if (conversation.otherUser?.displayName) {
+    return conversation.otherUser.displayName;
+  }
+  
+  if (conversation.otherUser?.username) {
+    return conversation.otherUser.username;
+  }
+  
+  if (conversation.otherUser?.name) {
+    return conversation.otherUser.name;
+  }
+  
+  // Check for email and use first part
+  if (conversation.otherUser?.email) {
+    return conversation.otherUser.email.split('@')[0];
+  }
+  
+  if (buyerData?.email) {
+    return buyerData.email.split('@')[0];
   }
   
   return 'Customer';
@@ -343,26 +439,44 @@ const getBuyerName = (conversation) => {
 
 // Get buyer avatar from conversation
 const getBuyerAvatar = (conversation) => {
-  if (!conversation) return getDefaultAvatar('Customer');
-  
-  const buyerId = conversation.otherUserId;
-  const cachedBuyer = buyersCache.value[buyerId];
-  
-  if (cachedBuyer?.photoURL) {
-    return cachedBuyer.photoURL;
+  // First check the cache
+  const buyerData = buyersCache.value[conversation.otherUserId];
+  if (buyerData?.photoURL) {
+    return buyerData.photoURL;
   }
   
-  if (cachedBuyer?.avatar) {
-    return cachedBuyer.avatar;
+  // Check conversation.otherUser with correct field names
+  if (conversation.otherUser?.photoURL) {
+    return conversation.otherUser.photoURL;
   }
   
-  // Fallback to otherUser if available
   if (conversation.otherUser?.avatar) {
     return conversation.otherUser.avatar;
   }
   
+  if (conversation.otherUser?.profilePic) {
+    return conversation.otherUser.profilePic;
+  }
+  
+  // Generate default avatar with buyer name
   const name = getBuyerName(conversation);
   return getDefaultAvatar(name);
+};
+
+// Get buyer email from conversation
+const getBuyerEmail = (conversation) => {
+  // First check the cache
+  const buyerData = buyersCache.value[conversation.otherUserId];
+  if (buyerData?.email) {
+    return buyerData.email;
+  }
+  
+  // Then check conversation.otherUser
+  if (conversation.otherUser?.email) {
+    return conversation.otherUser.email;
+  }
+  
+  return '';
 };
 
 // Get default avatar URL
@@ -425,12 +539,19 @@ const activeBuyerAvatar = computed(() => {
   return getBuyerAvatar(activeConversation.value);
 });
 
+const activeBuyerEmail = computed(() => {
+  if (!activeConversation.value) return '';
+  return getBuyerEmail(activeConversation.value);
+});
+
 // Watch for active conversation changes to fetch buyer data
 watch(activeConversationId, async (newId) => {
   if (newId) {
     const conv = conversations.value.find(c => c.id === newId);
     if (conv && conv.otherUserId) {
+      console.log('Loading buyer data for conversation:', newId, 'Buyer ID:', conv.otherUserId);
       activeBuyerData.value = await fetchBuyerData(conv.otherUserId);
+      console.log('Active buyer data:', activeBuyerData.value);
     }
   } else {
     activeBuyerData.value = null;
@@ -508,7 +629,7 @@ const selectConversation = (conversationId) => {
 
 // Send message
 const handleSendMessage = async () => {
-  if (!newMessage.value.trim() || sending.value) return;
+  if (!newMessage.value.trim() && selectedFiles.value.length === 0) return;
   
   try {
     sending.value = true;
@@ -518,11 +639,102 @@ const handleSendMessage = async () => {
     scrollToBottom();
   } catch (err) {
     console.error('Error sending message:', err);
-    alert('Failed to send message. Please try again.');
+    showToastNotification('error', 'Failed to Send', 'Failed to send message. Please try again.');
   } finally {
     sending.value = false;
   }
 };
+
+// Handle file selection
+function handleFileSelect(event) {
+  const files = Array.from(event.target.files);
+  if (files.length === 0) return;
+  
+  // Validate file size (max 10MB per file)
+  const maxSize = 10 * 1024 * 1024;
+  const oversizedFiles = files.filter(file => file.size > maxSize);
+  
+  if (oversizedFiles.length > 0) {
+    showToastNotification('error', 'File Too Large', 'Each file must be less than 10MB');
+    return;
+  }
+  
+  // Validate file types
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  const invalidFiles = files.filter(file => !allowedTypes.includes(file.type));
+  
+  if (invalidFiles.length > 0) {
+    showToastNotification('error', 'Invalid File Type', 'Only images, PDFs, and documents are allowed');
+    return;
+  }
+  
+  // Add files to selected files
+  selectedFiles.value = [...selectedFiles.value, ...files];
+  
+  // Reset file input
+  if (fileInput.value) {
+    fileInput.value.value = '';
+  }
+}
+
+// Remove selected file
+function removeFile(index) {
+  selectedFiles.value.splice(index, 1);
+}
+
+// Open file picker
+function openFilePicker() {
+  fileInput.value?.click();
+}
+
+// Get file icon based on type
+function getFileIcon(file) {
+  if (file.type.startsWith('image/')) return '🖼️';
+  if (file.type === 'application/pdf') return '📄';
+  if (file.type.includes('document')) return '📝';
+  return '📎';
+}
+
+// Format file size
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// Send message with files
+async function sendMessageWithFiles() {
+  if (!newMessage.value.trim() && selectedFiles.value.length === 0) return;
+  
+  try {
+    sending.value = true;
+    uploadingFiles.value = true;
+    
+    // For now, just send the text message
+    // TODO: Implement actual file upload to Firebase Storage
+    if (newMessage.value.trim()) {
+      await sendNewMessage(newMessage.value);
+    }
+    
+    // Show success for files (placeholder until actual upload is implemented)
+    if (selectedFiles.value.length > 0) {
+      showToastNotification('info', 'Files Selected', `${selectedFiles.value.length} file(s) selected. File upload will be implemented with Firebase Storage.`);
+    }
+    
+    newMessage.value = '';
+    selectedFiles.value = [];
+    await nextTick();
+    scrollToBottom();
+  } catch (err) {
+    console.error('Error sending message:', err);
+    showToastNotification('error', 'Failed to Send', 'Failed to send message. Please try again.');
+  } finally {
+    sending.value = false;
+    uploadingFiles.value = false;
+  }
+}
 
 // Scroll to bottom
 const scrollToBottom = () => {

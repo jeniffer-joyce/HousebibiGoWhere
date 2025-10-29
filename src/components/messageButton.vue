@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { auth } from '../firebase/firebase_config';
 import { getOrCreateConversation } from '../firebase/messageService';
+import ToastNotification from './ToastNotification.vue';
 
 const props = defineProps({
   sellerId: {
@@ -28,6 +29,12 @@ const props = defineProps({
 const router = useRouter();
 const loading = ref(false);
 
+// Toast state
+const showToast = ref(false);
+const toastType = ref('success');
+const toastTitle = ref('');
+const toastMessage = ref('');
+
 const currentUserId = computed(() => auth.currentUser?.uid);
 
 const buttonClasses = computed(() => {
@@ -48,22 +55,37 @@ const buttonClasses = computed(() => {
   return `${base} ${sizes[props.size]} ${variants[props.variant]}`;
 });
 
+// Show toast notification
+function showToastNotification(type, title, message) {
+  toastType.value = type;
+  toastTitle.value = title;
+  toastMessage.value = message;
+  showToast.value = true;
+}
+
+// Close toast
+function closeToast() {
+  showToast.value = false;
+}
+
 async function handleMessageClick() {
   if (!currentUserId.value) {
-    alert('Please login to send messages');
-    router.push('/login');
+    showToastNotification('warning', 'Authentication Required', 'Please login to send messages');
+    setTimeout(() => {
+      router.push('/login');
+    }, 1500);
     return;
   }
   
   if (!props.sellerId) {
-    alert('Invalid seller ID');
+    showToastNotification('error', 'Invalid Seller', 'Seller ID is missing or invalid');
     console.error('Seller ID is missing:', props.sellerId);
     return;
   }
   
   // Prevent messaging yourself
   if (currentUserId.value === props.sellerId) {
-    alert('You cannot message yourself');
+    showToastNotification('warning', 'Action Not Allowed', 'You cannot message yourself');
     return;
   }
   
@@ -102,7 +124,7 @@ async function handleMessageClick() {
       sellerId: props.sellerId,
       currentUserId: currentUserId.value
     });
-    alert(`Failed to open conversation: ${error.message}`);
+    showToastNotification('error', 'Failed to Open Conversation', error.message || 'An unexpected error occurred');
   } finally {
     loading.value = false;
   }
@@ -110,40 +132,50 @@ async function handleMessageClick() {
 </script>
 
 <template>
-  <button
-    :class="buttonClasses"
-    :disabled="loading || !sellerId"
-    @click="handleMessageClick"
-    type="button">
-    <!-- Loading Spinner -->
-    <svg 
-      v-if="loading" 
-      class="animate-spin h-5 w-5" 
-      xmlns="http://www.w3.org/2000/svg" 
-      fill="none" 
-      viewBox="0 0 24 24">
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-    
-    <!-- Message Icon -->
-    <svg 
-      v-else
-      class="h-5 w-5" 
-      fill="none" 
-      stroke="currentColor" 
-      viewBox="0 0 24 24">
-      <path 
-        stroke-linecap="round" 
-        stroke-linejoin="round" 
-        stroke-width="2" 
-        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
-      </path>
-    </svg>
-    
-    <!-- Button Text (only for non-icon variants) -->
-    <span v-if="variant !== 'icon'">
-      {{ loading ? 'Loading...' : 'Message' }}
-    </span>
-  </button>
+  <div>
+    <button
+      :class="buttonClasses"
+      :disabled="loading || !sellerId"
+      @click="handleMessageClick"
+      type="button">
+      <!-- Loading Spinner -->
+      <svg 
+        v-if="loading" 
+        class="animate-spin h-5 w-5" 
+        xmlns="http://www.w3.org/2000/svg" 
+        fill="none" 
+        viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      
+      <!-- Message Icon -->
+      <svg 
+        v-else
+        class="h-5 w-5" 
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24">
+        <path 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          stroke-width="2" 
+          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
+        </path>
+      </svg>
+      
+      <!-- Button Text (only for non-icon variants) -->
+      <span v-if="variant !== 'icon'">
+        {{ loading ? 'Loading...' : 'Message' }}
+      </span>
+    </button>
+
+    <!-- Toast Notification -->
+    <ToastNotification
+      :show="showToast"
+      :type="toastType"
+      :title="toastTitle"
+      :message="toastMessage"
+      @close="closeToast" />
+  </div>
 </template>
