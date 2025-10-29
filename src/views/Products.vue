@@ -1,6 +1,9 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useProducts } from '@/composables/useProducts.js'
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
+import { db, auth } from '@/firebase/firebase_config'
+import { user } from '@/store/user.js'
 
 // Fetch products from Firestore
 const { products, loading, error } = useProducts()
@@ -138,6 +141,45 @@ const displayedProducts = computed(() => {
 
   return list
 })
+
+// Favourites
+const favourites = ref(new Set()) // product IDs
+
+// Load user favourites on mount
+async function loadFavourites() {
+  if (!user.uid) return
+  const userRef = doc(db, 'users', user.uid)
+  const snap = await getDoc(userRef)
+  if (snap.exists()) {
+    const favs = snap.data().favourites || []
+    favourites.value = new Set(favs)
+  }
+}
+
+async function toggleFavourite(productId) {
+  if (!user.uid) {
+    alert('Please login to favourite products')
+    return
+  }
+
+  const userRef = doc(db, 'users', user.uid)
+
+  if (favourites.value.has(productId)) {
+    // Remove from favourites
+    favourites.value.delete(productId)
+    await updateDoc(userRef, {
+      favourites: arrayRemove(productId)
+    })
+  } else {
+    // Add to favourites
+    favourites.value.add(productId)
+    await updateDoc(userRef, {
+      favourites: arrayUnion(productId)
+    })
+  }
+}
+
+onMounted(loadFavourites)
 </script>
 
 <template>
@@ -226,19 +268,23 @@ const displayedProducts = computed(() => {
             <div class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
                  :style="{ backgroundImage: `url(${item.img_url})` }"></div>
                   <button
-                  class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
-                  <svg
-                    :class="'h-6 w-6'"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </button>
+                    @click="toggleFavourite(item.id)"
+                    class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <svg
+                      :class="['h-6 w-6 transition-colors', favourites.has(item.id) ? 'text-red-500 fill-current' : 'text-gray-400']"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      />
+                    </svg>
+                  </button>
           </div>
           <div class="pt-3">
             <h3 class="font-bold text-base">{{ item.item_name }}</h3>

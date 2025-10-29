@@ -12,7 +12,8 @@ export const user = reactive({
   role: "buyer", // default role
   loading: true,
   cart: [],
-  wishlist: [],
+  favourites: [],
+  favouriteBusinesses: [],
   needsOnboarding: false,  
   preferences: {
     theme: "dark",
@@ -96,7 +97,8 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     user.email = null
     user.role = "buyer"
     user.cart = []
-    user.wishlist = []
+    user.favourites = []
+    user.favouriteBusinesses = []
     user.preferences.categories = []
     user.preferences.hasSetPreferences = false
   }
