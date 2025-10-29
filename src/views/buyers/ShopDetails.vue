@@ -173,105 +173,133 @@
                         </button>
                     </section>
 
-                    <!-- ===================== Location Section (SIMPLE EMBED - NO GEOCODING) ===================== -->
-                    <section class="mt-10" id="location">
-                        <h2 class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">
-                            Location
-                        </h2>
-                        
-                        <!-- Address Display -->
-                        <div class="mb-4 flex items-start gap-2 text-background-dark/80 dark:text-background-light/80">
-                            <span class="material-symbols-outlined text-xl text-primary mt-0.5">location_on</span>
-                            <div>
-                                <p class="font-medium">{{ business.address || 'Address not available' }}</p>
-                            </div>
+                    <!-- ==================== REVIEWS ==================== -->
+                    <section class="mt-12" id="reviews">
+                      <h2 class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">
+                        Customer Reviews
+                      </h2>
+
+                      <!-- Toolbar: Product • Sort • Reset -->
+                      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                          <!-- Product (no 'All' option) -->
+                          <div class="flex items-center gap-2">
+                            <span class="text-sm text-slate-500 dark:text-slate-400">Product</span>
+                            <select
+                              v-model="rvFilter.productId"
+                              class="h-10 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 text-sm w-full sm:w-60"
+                            >
+                              <option disabled value="">Select a product…</option>
+                              <option v-for="p in productOptions" :key="p.productId" :value="p.productId">
+                                {{ p.productName }}
+                              </option>
+                            </select>
+                          </div>
                         </div>
 
-                        <!-- Google Map Embed -->
-                        <div v-if="business.address" class="w-full h-96 rounded-lg overflow-hidden shadow-md">
-                            <iframe
-                                :src="`https://www.google.com/maps/embed/v1/place?key=${googleMapsApiKey}&q=${encodeURIComponent(business.address)}&zoom=16`"
-                                width="100%"
-                                height="100%"
-                                style="border:0;"
-                                allowfullscreen=""
-                                loading="lazy"
-                                referrerpolicy="no-referrer-when-downgrade">
-                            </iframe>
-                        </div>
-                        <div v-else class="w-full h-96 rounded-lg overflow-hidden shadow-md bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                            <p class="text-background-dark/60 dark:text-background-light/60">Address not available</p>
-                        </div>
-                    </section>
+                        <div class="flex items-center gap-3">
+                          <!-- Sort -->
+                          <div class="flex items-center gap-2">
+                            <span class="text-sm text-slate-500 dark:text-slate-400">Sort</span>
+                            <select
+                              v-model="rvFilter.sort"
+                              class="h-10 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 text-sm w-44"
+                            >
+                              <option value="newest">Newest first</option>
+                              <option value="oldest">Oldest first</option>
+                              <option value="highest">Highest rating</option>
+                              <option value="lowest">Lowest rating</option>
+                              <option value="photos">Most photos</option>
+                            </select>
+                          </div>
 
-                    <section class="mt-10" id="reviews">
-                        <h2 class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">Reviews
-                        </h2>
-                        <div class="space-y-6">
-                            <div
-                                class="p-6 bg-creamy-white dark:bg-gray-800/50 rounded-lg shadow-sm space-y-3 border border-primary/10">
-                                <div class="flex items-start gap-3">
-                                    <div
-                                        class="size-12 rounded-full bg-center bg-no-repeat bg-cover bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white">
-                                        J
-                                    </div>
-                                    <div class="flex-1">
-                                        <p
-                                            class="text-sm font-semibold text-background-dark dark:text-background-light">
-                                            James
-                                        </p>
-                                        <p class="text-xs text-background-dark/60 dark:text-background-light/60">1
-                                            month ago
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex gap-0.5 text-primary">
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                </div>
-                                <p class="text-sm text-background-dark/80 dark:text-background-light/80">
-                                    Amazing quality handmade products! The attention to detail is incredible. I bought a
-                                    set
-                                    of coasters
-                                    and they look beautiful on my coffee table.
-                                </p>
-                            </div>
-                            <div
-                                class="p-6 bg-creamy-white dark:bg-gray-800/50 rounded-lg shadow-sm space-y-3 border border-primary/10">
-                                <div class="flex items-start gap-3">
-                                    <div
-                                        class="size-12 rounded-full bg-center bg-no-repeat bg-cover bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center font-bold text-white">
-                                        O
-                                    </div>
-                                    <div class="flex-1">
-                                        <p
-                                            class="text-sm font-semibold text-background-dark dark:text-background-light">
-                                            Olivia
-                                        </p>
-                                        <p class="text-xs text-background-dark/60 dark:text-background-light/60">2
-                                            months
-                                            ago
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex gap-0.5 text-primary">
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                    <span class="material-symbols-outlined text-base">star</span>
-                                </div>
-                                <p class="text-sm text-background-dark/80 dark:text-background-light/80">
-                                    The artisan soap set is a fantastic gift! The soaps smell amazing and are
-                                    beautifully
-                                    packaged.
-                                    The recipient was thrilled. Will definitely order again.
-                                </p>
-                            </div>
+                          <!-- Reset -->
+                          <button
+                            type="button"
+                            @click="resetReviewFilters"
+                            class="h-10 inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                            title="Clear filters"
+                          >
+                            <span class="material-symbols-outlined text-base">filter_alt_off</span>
+                            Reset
+                          </button>
                         </div>
+                      </div>
+
+                      <!-- Empty state -->
+                      <div v-if="filteredReviews.length === 0"
+                          class="rounded-xl border border-slate-200 dark:border-slate-700 p-10 text-center text-slate-600 dark:text-slate-400">
+                        No reviews match your filters.
+                      </div>
+
+                      <!-- Review items (unchanged structure) -->
+                      <div v-else class="space-y-6">
+                        <div v-for="r in filteredReviews" :key="r.key"
+                            class="p-8 bg-white dark:bg-background-dark/50 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+                          <div class="flex items-start gap-4">
+                            <!-- Avatar -->
+                            <img :src="avatarUrl(r)" class="h-14 w-14 rounded-full object-cover flex-shrink-0" :alt="displayName(r)" />
+
+                            <!-- Content -->
+                            <div class="flex-1">
+                              <div class="flex flex-wrap justify-between items-start gap-3">
+                                <div>
+                                  <p class="text-base font-semibold text-slate-900 dark:text-white">{{ displayName(r) }}</p>
+                                  <p class="text-xs text-slate-500 dark:text-slate-400">{{ formatTime(r.createdAt) }}</p>
+                                </div>
+
+                                <!-- Seller / Delivery ratings -->
+                                <div class="flex items-center gap-4">
+                                  <div class="flex items-center gap-1">
+                                    <span class="text-xs font-medium text-slate-600 dark:text-slate-300">Seller</span>
+                                    <template v-for="n in 5" :key="'ss-'+r.key+n">
+                                      <span class="material-symbols-outlined text-lg"
+                                            :class="n <= r.sellerService ? 'text-blue-500' : 'text-slate-300'">star</span>
+                                    </template>
+                                  </div>
+                                  <div class="flex items-center gap-1">
+                                    <span class="text-xs font-medium text-slate-600 dark:text-slate-300">Delivery</span>
+                                    <template v-for="n in 5" :key="'dv-'+r.key+n">
+                                      <span class="material-symbols-outlined text-lg"
+                                            :class="n <= r.delivery ? 'text-blue-500' : 'text-slate-300'">star</span>
+                                    </template>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <!-- Product -->
+                              <div class="mt-5 flex items-start gap-4">
+                                <img :src="r.productImage || defaultProductThumb" class="h-16 w-16 rounded-lg object-cover" alt="product image" />
+                                <div class="flex-1">
+                                  <div class="flex flex-wrap items-center gap-2">
+                                    <p class="font-semibold text-slate-900 dark:text-white">{{ r.productName || 'Product' }}</p>
+                                    <span v-if="r.size" class="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                                      Size: {{ r.size }}
+                                    </span>
+                                  </div>
+
+                                  <div class="mt-1 flex items-center gap-1">
+                                    <template v-for="n in 5" :key="'it-'+r.key+n">
+                                      <span class="material-symbols-outlined text-lg"
+                                            :class="n <= r.rating ? 'text-blue-500' : 'text-slate-300'">star</span>
+                                    </template>
+                                    <span class="text-xs text-slate-500">{{ r.rating }}/5</span>
+                                  </div>
+
+                                  <p class="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                                    {{ r.text }}
+                                  </p>
+
+                                  <div v-if="r.images?.length" class="mt-4 flex flex-wrap gap-3">
+                                    <img v-for="(img, i) in r.images" :key="i" :src="img"
+                                        class="h-24 w-24 rounded-lg object-cover border border-slate-200 dark:border-slate-700" alt="review photo" />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </section>
                 </div>
             </div>
@@ -315,8 +343,8 @@ html {
 
 <script setup>
 import { getBusinesses } from '@/firebase/services/home/business.js';
-import { onMounted, onUnmounted, ref, computed } from "vue";
-import { useRoute } from "vue-router";
+import { onMounted, onUnmounted, ref, computed, reactive } from "vue";
+import { useRoute, RouterLink } from "vue-router";
 import Loading from '@/components/status/Loading.vue';
 import MessageButton from '@/components/messageButton.vue';
 import defaultProfilePic from '@/assets/defaultBusinessLogo.png'
@@ -396,7 +424,265 @@ const displayRating = computed(() => {
 const followersCount = computed(() => Number(business.value?.followers ?? 0))
 const followingCount = computed(() => Number(business.value?.following ?? 0))
 
-function toggleFavorite(id) {
-    // alert(id);
+
+/* ==================== REVIEWS ==================== */
+/*
+ reviews doc:
+ {
+   orderId, buyerId, sellerId, createdAt, sellerService, delivery,
+   items: [{ productId, size?, rating, text, images[], anonymous:0|1 }]
+ }
+ We flatten each item -> one UI card, but keep sellerService/delivery & createdAt from parent.
+*/
+const reviewsFlat = ref([])
+
+/* caches to avoid refetch spam */
+const buyersCache = new Map()   // buyerId -> {displayName, photoURL}
+const productsCache = new Map() // productId -> {name, imageUrl}
+
+async function fetchBuyer(uid) {
+    if (!uid) return null
+    if (buyersCache.has(uid)) return buyersCache.get(uid)
+    // Try users, then profiles
+    let snap = await getDoc(doc(db, 'users', uid)).catch(() => null)
+    let data = snap?.exists() ? snap.data() : null
+    if (!data) {
+        snap = await getDoc(doc(db, 'profiles', uid)).catch(() => null)
+        data = snap?.exists() ? snap.data() : null
+    }
+    const user = {
+        displayName: data?.displayName || data?.name || 'User',
+        photoURL: data?.photoURL || data?.avatar || ''
+    }
+    buyersCache.set(uid, user)
+    return user
+}
+
+async function fetchProduct(productId) {
+    if (!productId) return null
+    if (productsCache.has(productId)) return productsCache.get(productId)
+    const snap = await getDoc(doc(db, 'products', productId)).catch(() => null)
+    const data = snap?.exists() ? snap.data() : null
+    const prod = {
+        name: data?.name || data?.item_name || 'Product',
+        imageUrl: data?.imageUrl || data?.img_url || ''
+    }
+    productsCache.set(productId, prod)
+    return prod
+}
+
+function maskName(name) {
+    if (!name) return 'Anonymous'
+    const n = name.trim()
+    if (n.length <= 2) return n[0] + '*'
+    return `${n[0]}${'*'.repeat(Math.max(1, n.length - 2))}${n[n.length - 1]}`
+}
+
+function displayName(r) {
+    if (Number(r.anonymous) === 1) return maskName(r.buyerName || 'User')
+    return r.buyerName || 'User'
+}
+
+function avatarUrl(r) {
+    if (Number(r.anonymous) === 1) {
+        // show generic avatar for anonymous
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent('Anonymous')}&background=64748b&color=fff&size=64`
+    }
+    if (r.buyerPhoto) return r.buyerPhoto
+    const name = r.buyerName || 'User'
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10b981&color=fff&size=64`
+}
+
+function formatTime(ts) {
+    if (!ts) return ''
+    const d = ts.toDate ? ts.toDate() : new Date(ts)
+    return d.toLocaleString('en-SG', {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    })
+}
+
+/* ==================== INIT ==================== */
+onMounted(async () => {
+    // Load business
+    const businesses = await getBusinesses()
+    business.value = businesses.find(b => b.uid === uid) || null
+
+    // Load top sellers
+    try {
+        allProducts.value = await getSellerProductsSortedBySales(uid)
+    } catch (e) {
+        console.error('Error loading products:', e)
+    }
+
+    // Live reviews for this seller
+    const q = query(
+        collection(db, 'reviews'),
+        where('sellerId', '==', uid),
+        orderBy('createdAt', 'desc')
+    )
+    onSnapshot(q, async (snap) => {
+        const temp = []
+        const tasks = []
+
+        snap.forEach(docSnap => {
+            const rev = { id: docSnap.id, ...docSnap.data() }
+            const createdAt = rev.createdAt
+            const sellerService = Number(rev.sellerService || 0)
+            const delivery = Number(rev.delivery || 0)
+            const buyerId = rev.buyerId
+
+            if (Array.isArray(rev.items)) {
+                for (let i = 0; i < rev.items.length; i++) {
+                    const it = rev.items[i] || {}
+                    const key = `${docSnap.id}-${i}`
+
+                    // placeholders; fill below
+                    const row = {
+                        key,
+                        createdAt,
+                        sellerService,
+                        delivery,
+
+                        buyerId,
+                        buyerName: null,
+                        buyerPhoto: null,
+
+                        productId: it.productId,
+                        productName: null,
+                        productImage: null,
+
+                        size: it.size || null,
+                        rating: Number(it.rating || 0),
+                        text: it.text || '',
+                        images: Array.isArray(it.images) ? it.images : [],
+                        anonymous: Number(it.anonymous ?? 0)
+                    }
+
+                    temp.push(row)
+
+                    // fetch buyer + product details (cached)
+                    tasks.push(
+                        (async () => {
+                            const user = await fetchBuyer(buyerId)
+                            if (user) {
+                                row.buyerName = user.displayName
+                                row.buyerPhoto = user.photoURL || null
+                            }
+                            const prod = await fetchProduct(it.productId)
+                            if (prod) {
+                                row.productName = prod.name
+                                row.productImage = prod.imageUrl
+                            }
+                        })()
+                    )
+                }
+            }
+        })
+
+        await Promise.all(tasks)
+        reviewsFlat.value = temp
+    }, (err) => {
+        console.error('reviews onSnapshot error:', err)
+    })
+
+    loading.value = false
+    window.addEventListener('scroll', handleScroll)
+})
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleScroll)
+})
+
+/* misc */
+function toggleFavorite(id) { /* your follow/fav impl */ }
+// SEARCH + SORT 
+const searchTerm = ref('')
+const showSort = ref(false)
+const sortMode = ref('none')
+
+const sortOptions = [
+    { value: 'none', label: 'Best Selling' },
+    { value: 'name_asc', label: 'A → Z' },
+    { value: 'name_desc', label: 'Z → A' },
+    { value: 'price_asc', label: 'Price: Low → High' },
+    { value: 'price_desc', label: 'Price: High → Low' },
+]
+
+const currentSortLabel = computed(() =>
+    sortOptions.find(o => o.value === sortMode.value)?.label || 'Best Selling'
+)
+
+function toggleSortMenu() { showSort.value = !showSort.value }
+function setSort(mode) { sortMode.value = mode; showSort.value = false }
+
+/* Filter + Sort logic only used when showAll is true */
+const filteredSortedProducts = computed(() => {
+    let filtered = allProducts.value.filter(p =>
+        p.name?.toLowerCase().includes(searchTerm.value.toLowerCase())
+    )
+
+    switch (sortMode.value) {
+        case 'name_asc': return filtered.sort((a, b) => a.name.localeCompare(b.name))
+        case 'name_desc': return filtered.sort((a, b) => b.name.localeCompare(a.name))
+        case 'price_asc': return filtered.sort((a, b) => getMinPrice(a) - getMinPrice(b))
+        case 'price_desc': return filtered.sort((a, b) => getMaxPrice(b) - getMaxPrice(a))
+        case 'sales_desc': return filtered.sort((a, b) => (b.totalSales || 0) - (a.totalSales || 0))
+        default: return filtered
+    }
+})
+
+function getMinPrice(p) {
+    const prices = Array.isArray(p.price) ? p.price : [p.price]
+    return Math.min(...prices.map(Number).filter(n => !isNaN(n)))
+}
+function getMaxPrice(p) {
+    const prices = Array.isArray(p.price) ? p.price : [p.price]
+    return Math.max(...prices.map(Number).filter(n => !isNaN(n)))
+}
+// ---------- Review Filters ----------
+const rvFilter = reactive({
+  productId: '',      // '' = no filter; otherwise a real productId
+  sort: 'newest'      // 'newest'|'oldest'|'highest'|'lowest'|'photos'
+})
+
+// Build product options from the loaded reviews (no "All")
+const productOptions = computed(() => {
+  const map = new Map()
+  reviewsFlat.value.forEach(r => {
+    if (!r.productId) return
+    if (!map.has(r.productId)) {
+      map.set(r.productId, { productId: r.productId, productName: r.productName || 'Product' })
+    }
+  })
+  return Array.from(map.values())
+})
+
+const filteredReviews = computed(() => {
+  let arr = reviewsFlat.value.slice()
+
+  // product-only filtering
+  if (rvFilter.productId) arr = arr.filter(r => r.productId === rvFilter.productId)
+
+  // sorting
+  arr.sort((a, b) => {
+    const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : +new Date(a.createdAt || 0)
+    const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : +new Date(b.createdAt || 0)
+    switch (rvFilter.sort) {
+      case 'newest':  return tb - ta
+      case 'oldest':  return ta - tb
+      case 'highest': return (b.rating ?? 0) - (a.rating ?? 0)
+      case 'lowest':  return (a.rating ?? 0) - (b.rating ?? 0)
+      case 'photos':  return (b.images?.length ?? 0) - (a.images?.length ?? 0) || (tb - ta)
+      default:        return tb - ta
+    }
+  })
+
+  return arr
+})
+
+function resetReviewFilters() {
+  rvFilter.productId = ''
+  rvFilter.sort = 'newest'
 }
 </script>
