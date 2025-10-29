@@ -17,16 +17,7 @@
 
           <!-- Tabs -->
           <div class="flex gap-2 px-6 pt-4">
-            <button
-              @click="activeTab = 'unsplash'"
-              :class="[
-                'px-4 py-2 rounded-lg font-medium transition-colors',
-                activeTab === 'unsplash'
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-              ]">
-              🎨 AI Images
-            </button>
+            
             <button
               @click="activeTab = 'upload'"
               :class="[
@@ -37,6 +28,18 @@
               ]">
               📤 Upload
             </button>
+
+            <button
+              @click="activeTab = 'unsplash'"
+              :class="[
+                'px-4 py-2 rounded-lg font-medium transition-colors',
+                activeTab === 'unsplash'
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+              ]">
+              🎨 Unsplash
+            </button>
+            
             <button
               @click="activeTab = 'url'"
               :class="[

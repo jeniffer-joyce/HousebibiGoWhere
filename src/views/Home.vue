@@ -5,8 +5,22 @@ import { useCategories } from '@/composables/home/useCategories';
 import { usePreferences } from '@/composables/signup/usePreferences';
 import { useSearch } from '@/composables/useSearch';
 import Loading from '@/components/status/Loading.vue'
-import { RouterLink } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 
+const router = useRouter();
+
+const topRatedBusiness = computed(() => {
+    if (businesses.value.length === 0) return null
+    
+    // Find business with highest rating
+    const sorted = [...businesses.value].sort((a, b) => {
+        const ratingA = a.rating || 0
+        const ratingB = b.rating || 0
+        return ratingB - ratingA
+    })
+    
+    return sorted[0]
+})
 const {
     loading,
     categories,
@@ -34,8 +48,12 @@ const categoryHeading = computed(() => {
 const searchQuery = ref('');
 const {
     isSearching,
-    searchSuggestions,
-    selectSuggestion } = useSearch(searchQuery, businesses, selectedCategories);
+    searchResults } = useSearch(searchQuery);
+
+// Handle business card click in search results
+function handleSearchBusinessClick(business) {
+    goToBusinessPage(business)
+}
 
 // Only show edit button if user is logged in
 const showEditPreferencesButton = computed(() => {
@@ -72,6 +90,26 @@ const canScroll = ref(false);
 const categoryScrollContainer = ref(null);
 const categoryScrollAmount = 200;
 const canScrollCategories = ref(false);
+
+
+// Navigate to business page
+function goToBusinessPage(business) {
+    if (!business) {
+        console.error('No business provided')
+        return
+    }
+    
+    // Try multiple possible UID fields
+    const businessUid = business.uid || business.id || business.userId
+    
+    if (!businessUid) {
+        console.error('Business has no UID:', business)
+        return
+    }
+    
+    console.log('Navigating to business:', businessUid)
+    router.push(`/shop-details/${businessUid}`)
+}
 
 // Check if content overflows horizontally
 function checkScrollable() {
@@ -182,24 +220,86 @@ function scrollCategoriesRight() {
             <div v-if="searchQuery.trim() && !loading"
                 class="rounded-xl border border-primary/20 bg-white dark:bg-slate-900 p-6 shadow-lg">
                 <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Search Results</h3>
+                
+                <!-- Loading State -->
                 <div v-if="isSearching" class="flex justify-center items-center py-8">
                     <Loading size="md" />
                 </div>
-                <div v-else-if="searchSuggestions.length === 0"
+                
+                <!-- No Results -->
+                <div v-else-if="searchResults.businesses.length === 0 && searchResults.products.length === 0"
                     class="text-center py-8 text-slate-500 dark:text-slate-400">
-                    No businesses found matching "{{ searchQuery }}". Try different keywords!
+                    No results found for "{{ searchQuery }}". Try different keywords!
                 </div>
-                <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <button v-for="business in searchSuggestions" :key="business.name"
-                        @click="selectSuggestion(business)"
-                        class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all text-left">
-                        <img :src="business.image" :alt="business.name" class="h-16 w-16 rounded-lg object-cover" />
-                        <div class="flex-1 min-w-0">
-                            <p class="font-semibold text-slate-800 dark:text-slate-200 truncate">{{ business.name }}</p>
-                            <p class="text-sm text-slate-500 dark:text-slate-400 truncate">{{ business.description ||
-                                'Click to view' }}</p>
+                
+                <!-- Results -->
+                <div v-else class="space-y-6">
+                    <!-- Businesses Section -->
+                    <div v-if="searchResults.businesses.length > 0">
+                        <h4 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-3">
+                            Businesses ({{ searchResults.businesses.length }})
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <button 
+                                v-for="business in searchResults.businesses" 
+                                :key="business.id"
+                                @click="handleSearchBusinessClick(business)"
+                                class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all text-left group">
+                                <img 
+                                    :src="business.image" 
+                                    :alt="business.name" 
+                                    class="h-16 w-16 rounded-lg object-cover group-hover:scale-105 transition-transform" />
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                        {{ business.name }}
+                                    </p>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400 truncate">
+                                        {{ business.bio || business.description || 'View business' }}
+                                    </p>
+                                    <!-- Rating -->
+                                    <div v-if="business.rating" class="flex items-center gap-1 mt-1">
+                                        <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                        </svg>
+                                        <span class="text-xs text-slate-600 dark:text-slate-400">{{ business.rating.toFixed(1) }}</span>
+                                    </div>
+                                </div>
+                            </button>
                         </div>
-                    </button>
+                    </div>
+
+                    <!-- Products Section -->
+                    <div v-if="searchResults.products.length > 0">
+                        <h4 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-3">
+                            Products ({{ searchResults.products.length }})
+                        </h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                            <div 
+                                v-for="product in searchResults.products" 
+                                :key="product.id"
+                                class="group">
+                                <div class="relative overflow-hidden rounded-lg bg-background-light dark:bg-background-dark">
+                                    <div 
+                                        class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
+                                        :style="{ backgroundImage: `url(${product.img_url})` }">
+                                    </div>
+                                </div>
+                                <div class="pt-2">
+                                    <h3 class="font-semibold text-sm line-clamp-2">{{ product.item_name }}</h3>
+                                    <p class="text-xs text-slate-600 dark:text-slate-400 truncate">{{ product.sellerName }}</p>
+                                    <p class="font-bold mt-1 text-sm">{{ product.priceDisplay }}</p>
+                                    <!-- Ratings -->
+                                    <div class="flex items-center mt-1">
+                                        <span v-for="n in 5" :key="n" class="text-yellow-500 text-xs">
+                                            <span v-if="n <= product.rating">★</span>
+                                            <span v-else class="text-gray-300 dark:text-gray-600">★</span>
+                                        </span>
+                                        <span class="ml-1 text-xs text-slate-500">{{ product.rating }}/5</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -390,18 +490,50 @@ function scrollCategoriesRight() {
                 <!-- Special Recommendation -->
                 <div>
                     <h3 class="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Special Recommendation</h3>
-                    <div class="@container overflow-hidden rounded-xl bg-white shadow-lg dark:bg-slate-900">
+                    
+                    <!-- Show loading state -->
+                    <div v-if="loading" class="@container overflow-hidden rounded-xl bg-white shadow-lg dark:bg-slate-900 p-12 text-center">
+                        <Loading size="md" />
+                    </div>
+                    
+                    <!-- Show "No businesses" state -->
+                    <div v-else-if="!topRatedBusiness" class="@container overflow-hidden rounded-xl bg-white shadow-lg dark:bg-slate-900 p-12 text-center">
+                        <p class="text-slate-500 dark:text-slate-400">No businesses available yet</p>
+                    </div>
+                    
+                    <!-- Show top-rated business -->
+                    <div v-else class="@container overflow-hidden rounded-xl bg-white shadow-lg dark:bg-slate-900">
                         <div class="flex flex-col @[50rem]:flex-row">
-                            <img alt="The Cozy Corner" class="h-64 w-full object-cover @[50rem]:h-auto @[50rem]:w-1/2"
-                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFRZNjbZkOjY-nw6l4nK6s-SBPbftnfdmu2nA6gyBQ1WQKSnxiY7aagZXYAF06NRs7uHncvFB7mMryoEayxMObeitafO5JfXfslNdViTa5XD7JDnHCWCe5LIzWESRahw21-nBtE5Iw20jNHe0iTlNgKOiqvpz0Tu4dYgMlb-20FUSPpej063dLJnNm4ufEkA7mIJLojJ6Hv9a2BdKMD9Y-8DftLijkGux_dP0zoRcvSI4SNH04WC3jIOkH_gbFIVs698CttmsMJbKO" />
+                            <img 
+                                :alt="topRatedBusiness.name" 
+                                class="h-64 w-full object-cover @[50rem]:h-auto @[50rem]:w-1/2"
+                                :src="topRatedBusiness.image || topRatedBusiness.profilePic || '/placeholder.png'" />
                             <div class="flex flex-col justify-center p-6 @[50rem]:w-1/2 @[50rem]:p-8">
-                                <h4 class="text-2xl font-bold text-slate-900 dark:text-white">The Cozy Corner</h4>
+                                <h4 class="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {{ topRatedBusiness.name }}
+                                </h4>
                                 <p class="mt-2 text-slate-600 dark:text-slate-400">
-                                    Discover unique handmade crafts and home decor items that add warmth and
-                                    personality to your space.
+                                    {{ topRatedBusiness.bio || topRatedBusiness.description || 'Discover amazing products and services from this top-rated business.' }}
                                 </p>
+                                
+                                <!-- Rating display -->
+                                <div v-if="topRatedBusiness.rating" class="mt-3 flex items-center gap-2">
+                                    <div class="flex items-center">
+                                        <svg v-for="n in 5" :key="n" 
+                                            class="w-5 h-5"
+                                            :class="n <= topRatedBusiness.rating ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600'"
+                                            fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                        {{ topRatedBusiness.rating.toFixed(1) }} / 5.0
+                                    </span>
+                                </div>
+                                
                                 <button
-                                    class="mt-6 w-full rounded-lg bg-primary px-6 py-3 text-base font-bold text-white shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-slate-900 sm:w-auto">
+                                    @click="goToBusinessPage(topRatedBusiness)"
+                                    class="mt-6 w-full rounded-lg bg-primary px-6 py-3 text-base font-bold text-white shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-slate-900 sm:w-auto transition-all hover:scale-105">
                                     Shop Now
                                 </button>
                             </div>
