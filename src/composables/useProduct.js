@@ -6,7 +6,7 @@ export function useProduct(productId) {
     const product = ref(null)
     const seller = ref(null)
     const loading = ref(true)
-    const selectedImage = ref(0)
+    // const selectedImage = ref(0)
     const error = ref(null)
 
     // Format price
@@ -117,12 +117,12 @@ export function useProduct(productId) {
         }
     }
 
-    // Change selected image
-    function selectImage(index) {
-        if (index >= 0 && index < productImages.value.length) {
-            selectedImage.value = index
-        }
-    }
+    // // Change selected image
+    // function selectImage(index) {
+    //     if (index >= 0 && index < productImages.value.length) {
+    //         selectedImage.value = index
+    //     }
+    // }
 
     return {
         // State
@@ -130,7 +130,7 @@ export function useProduct(productId) {
         seller,
         loading,
         error,
-        selectedImage,
+        // selectedImage,
 
         // Computed
         formattedPrice,
@@ -140,6 +140,6 @@ export function useProduct(productId) {
 
         // Methods
         loadProduct,
-        selectImage
+        // selectImage
     }
 }
