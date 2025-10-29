@@ -1,90 +1,16 @@
 <script setup>
-import { ref } from 'vue';
-import BuyerSideBar from '@/components/layout/BuyerSideBar.vue';
+import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
+import { useFavorites } from '@/composables/useFavorites.js'
 
-// Sidebar collapsed state
-const isSidebarCollapsed = ref(false);
+const {
+  isSidebarCollapsed,
+  favorites,
+  favoriteProducts,
+  handleSidebarToggle,
+  toggleFavorite,
+  toggleProductFavorite
+} = useFavorites()
 
-function handleSidebarToggle(collapsed) {
-    isSidebarCollapsed.value = collapsed;
-}
-
-// Mock data for favorite businesses
-const favorites = ref([
-    {
-        id: 1,
-        name: 'The Cozy Kitchen',
-        category: 'Food & Beverages',
-        description: 'Homemade meals with love and care',
-        rating: 4.8,
-        reviews: 124,
-        image: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400&h=300&fit=crop',
-        isFavorite: true
-    },
-    {
-        id: 2,
-        name: 'Crafty Corner',
-        category: 'Handmade Crafts',
-        description: 'Unique handcrafted items for your home',
-        rating: 4.9,
-        reviews: 89,
-        image: 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=400&h=300&fit=crop',
-        isFavorite: true
-    },
-    {
-        id: 3,
-        name: 'Fashion Finds',
-        category: 'Clothing & Accessories',
-        description: 'Stylish handcrafted clothing and accessories',
-        rating: 4.7,
-        reviews: 156,
-        image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400&h=300&fit=crop',
-        isFavorite: true
-    },
-    {
-        id: 4,
-        name: 'Sweet Delights',
-        category: 'Bakery',
-        description: 'Fresh baked goods daily',
-        rating: 4.9,
-        reviews: 203,
-        image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop',
-        isFavorite: true
-    },
-    {
-        id: 5,
-        name: 'Green Thumb Gardens',
-        category: 'Plants & Gardens',
-        description: 'Beautiful plants for your home',
-        rating: 4.6,
-        reviews: 78,
-        image: 'https://images.unsplash.com/photo-1466781783364-36c955e42a7f?w=400&h=300&fit=crop',
-        isFavorite: true
-    },
-    {
-        id: 6,
-        name: 'Artisan Pottery',
-        category: 'Home Decor',
-        description: 'Handcrafted ceramic pieces',
-        rating: 4.8,
-        reviews: 92,
-        image: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=400&h=300&fit=crop',
-        isFavorite: true
-    }
-]);
-
-function toggleFavorite(businessId) {
-    const business = favorites.value.find(b => b.id === businessId);
-    if (business) {
-        business.isFavorite = !business.isFavorite;
-        if (!business.isFavorite) {
-            // Remove from favorites after a short delay
-            setTimeout(() => {
-                favorites.value = favorites.value.filter(b => b.id !== businessId);
-            }, 300);
-        }
-    }
-}
 </script>
 
 <template>
@@ -121,6 +47,39 @@ function toggleFavorite(businessId) {
                     </button>
                     <!-- Profile -->
                     <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="Profile" class="h-10 w-10 rounded-full border-2 border-primary" />
+                </div>
+            </div>
+
+            <!-- 🔹 Favorited Products Section -->
+            <div v-if="favoriteProducts.length > 0" class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-4">Your Favorite Products</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    <div v-for="product in favoriteProducts" :key="product.id" class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
+                        <div class="relative">
+                            <img :src="product.img_url" :alt="product.item_name" class="w-full h-48 object-cover" />
+                            <button @click="toggleProductFavorite(product.id)" class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                                <svg :class="['h-6 w-6 transition-colors', product.isFavorite ? 'text-red-500 fill-current' : 'text-slate-400']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="p-5">
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">{{ product.item_name }}</h3>
+                            <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">{{ product.sellerName }}</p>
+                            <p class="font-bold">
+                            <!-- Show min-max prices -->
+                            {{
+                                (() => {
+                                    if (!product.sizes || !product.sizes.length) return '$0';
+                                    const prices = product.sizes.map(s => s.price);
+                                    const min = Math.min(...prices);
+                                    const max = Math.max(...prices);
+                                    return min === max ? `$${min}` : `$${min} - $${max}`;
+                                })()
+                            }}
+                        </p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
