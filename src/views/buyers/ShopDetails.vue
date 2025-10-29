@@ -427,7 +427,7 @@ html {
 
 <script setup>
 import { getBusinesses } from '@/firebase/services/home/business.js';
-import { onMounted, onUnmounted, ref, computed, reactive } from "vue";
+import { onMounted, onUnmounted, ref, computed, reactive, onBeforeUnmount } from "vue";
 import { useRoute } from "vue-router";
 import Loading from '@/components/status/Loading.vue';
 import MessageButton from '@/components/messageButton.vue';
@@ -483,6 +483,16 @@ const scrollToSection = (sectionId) => {
     });
   }
 };
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+  // Run once at load to highlight correct section if not at top
+  handleScroll()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
 
 onMounted(async () => {
   const businesses = await getBusinesses();
