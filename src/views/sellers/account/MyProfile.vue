@@ -17,10 +17,10 @@
               :style="{ backgroundImage: `url('${photoPreview || business.profilePic || '/avatar.png'}')` }"
             />
             <h3 class="mt-4 text-base font-semibold text-slate-900 dark:text-white">
-              {{ fields.displayName || '—' }}
+              {{ form.displayName || '—' }}
             </h3>
             <p class="text-sm text-slate-500 dark:text-slate-400 break-all">
-              {{ fields.email || '—' }}
+              {{ form.email || '—' }}
             </p>
 
             <input
@@ -42,7 +42,7 @@
             </button>
 
             <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">
-              Seller since {{ createdAtDisplay }}
+              Seller since {{ memberSince }}
             </p>
           </div>
         </div>
@@ -71,7 +71,7 @@
             <div>
               <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 pl-3">Username</label>
               <input
-                v-model.trim="fields.username"
+                v-model.trim="form.username"
                 :disabled="!isEditing"
                 type="text"
                 placeholder="yourname"
@@ -85,7 +85,7 @@
             <div>
               <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 pl-3">Display Name</label>
               <input
-                v-model.trim="fields.displayName"
+                v-model.trim="form.displayName"
                 :disabled="!isEditing"
                 type="text"
                 placeholder="Your Name"
@@ -95,36 +95,18 @@
               />
             </div>
             
-            <!-- Email (read-only; link hidden for Google accounts) -->
+            <!-- Email (always read-only) -->
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 pl-3">
                   Email Address
                 </label>
-
-                <!-- show link only if NOT Google -->
-                <button
-                  v-if="!isGoogle"
-                  type="button"
-                  :disabled="!isEditing"
-                  class="text-xs font-semibold"
-                  :class="isEditing
-                    ? 'text-primary hover:underline'
-                    : 'text-slate-400 dark:text-slate-500 cursor-not-allowed pointer-events-none'"
-                  @click="onChangeEmail"
-                >
-                  Change email
-                </button>
-
-                <!-- show a small note if Google-linked -->
-                <span v-else class="text-xs text-slate-400 dark:text-slate-500 italic select-none">
+                <span v-if="isGoogle" class="text-xs text-slate-400 dark:text-slate-500 italic select-none">
                   Linked with Google
                 </span>
               </div>
-
-              <!-- Always display the actual email; never editable -->
               <input
-                v-model.trim="fields.email"
+                v-model.trim="form.email"
                 disabled
                 type="email"
                 class="w-full h-11 rounded-lg border border-slate-300/40 dark:border-slate-700
@@ -137,7 +119,7 @@
             <div>
               <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 pl-3">Phone Number</label>
               <input
-                v-model.trim="fields.phone"
+                v-model.trim="form.phone"
                 :disabled="!isEditing"
                 type="tel"
                 placeholder="e.g. 91234567"
@@ -154,7 +136,7 @@
                 <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 pl-3">Gender</label>
                 <div class="relative">
                   <select
-                    v-model="fields.gender"
+                    v-model="form.gender"
                     :disabled="!isEditing"
                     class="w-full h-11 rounded-lg border border-slate-300/40 dark:border-slate-700
                            bg-background-light dark:bg-background-dark px-3 pr-12 text-sm
@@ -172,12 +154,12 @@
                 </div>
               </div>
 
-              <!-- Birthday -->
+              <!-- Birthday (hide native picker icon; keep your SVG) -->
               <div class="relative">
                 <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 pl-3">Birthday</label>
                 <div class="relative">
                   <input
-                    v-model="fields.birthday"
+                    v-model="form.birthday"
                     :disabled="!isEditing"
                     type="date"
                     class="input-date w-full h-11 rounded-lg border border-slate-300/40 dark:border-slate-700
@@ -197,15 +179,16 @@
             <div v-if="isEditing" class="pt-2 flex items-center justify-end gap-3">
               <button
                 type="button"
-                @click="toggleEdit"
+                @click="cancelEdit"
                 class="h-10 px-4 rounded-lg text-sm font-semibold border border-slate-300/50 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">
                 Discard
               </button>
               <button
                 type="button"
                 @click="saveProfile"
-                class="h-10 px-4 rounded-lg text-sm font-bold text-white bg-primary hover:bg-primary/90">
-                Save Changes
+                class="h-10 px-4 rounded-lg text-sm font-bold text-white bg-primary hover:bg-primary/90"
+                :disabled="saving">
+                {{ saving ? 'Saving…' : 'Save Changes' }}
               </button>
             </div>
           </div>
@@ -218,48 +201,44 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { authReady, fetchSellerComposite } from '@/firebase/services/sellers/seller_crud.js'
+import { authReady, fetchSellerComposite, updateSellerProfile } from '@/firebase/services/sellers/seller_crud.js'
 import { auth } from '@/firebase/firebase_config'
 
 const router = useRouter()
+
+/* UI state */
 const isEditing = ref(false)
-const fields = ref({
+const saving = ref(false)
+const fileInput = ref(null)
+const photoPreview = ref('')
+
+/* Data models */
+const form = ref({
   username: '',
   displayName: '',
   email: '',
   phone: '',
   gender: '',
   birthday: '',
-  avatar: ''
 })
 const business = ref({})
 const providerId = ref('password')
 
+/* Load current user + business */
 onMounted(async () => {
   await authReady()
-  const user = auth.currentUser
-  if (user && user.providerData?.length) {
-    providerId.value = user.providerData[0]?.providerId || 'password'
+  const u = auth.currentUser
+  if (u && u.providerData?.length) {
+    providerId.value = u.providerData[0]?.providerId || 'password'
   }
-
   const { user: userDoc, business: bizDoc } = await fetchSellerComposite()
-  if (userDoc) {
-    fields.value = {
-      username: userDoc.username || '',
-      displayName: userDoc.displayName || '',
-      email: userDoc.email || '',
-      phone: userDoc.phone || '',
-      gender: userDoc.gender || '',
-      birthday: userDoc.birthday || '',
-      avatar: bizDoc?.profilePic || '/avatar.png'
-    }
-  }
+  if (userDoc) Object.assign(form.value, userDoc)
   if (bizDoc) business.value = bizDoc
 })
 
+/* Computed helpers */
 const isGoogle = computed(() => providerId.value === 'google.com')
-
-const createdAtDisplay = computed(() => {
+const memberSince = computed(() => {
   const v = business.value?.createdAt
   try {
     const d = v?.toDate ? v.toDate() : new Date(v)
@@ -268,15 +247,47 @@ const createdAtDisplay = computed(() => {
   } catch { return '—' }
 })
 
+/* Edit controls */
 function toggleEdit() { isEditing.value = !isEditing.value }
+function cancelEdit() { isEditing.value = false }
 
+/* Save without reload (re-fetch after update) */
 async function saveProfile() {
-  isEditing.value = false
-  location.reload()
+  try {
+    saving.value = true
+    await updateSellerProfile(form.value)
+    const { user: updatedUser, business: updatedBiz } = await fetchSellerComposite()
+    if (updatedUser) Object.assign(form.value, updatedUser)
+    if (updatedBiz) business.value = updatedBiz
+    isEditing.value = false
+  } catch (e) {
+    console.error('❌ saveProfile error:', e)
+  } finally {
+    saving.value = false
+  }
 }
 
-function onChangeEmail() {
-  if (!isEditing.value || isGoogle.value) return
-  router.push('/change-email')
+/* Avatar picker (preview only — persist flow stays in your existing backend) */
+function triggerPick() {
+  if (!isEditing.value) return
+  fileInput.value?.click()
+}
+function onPickPhoto(e) {
+  const f = e.target.files?.[0]
+  if (!f) return
+  const reader = new FileReader()
+  reader.onload = () => { photoPreview.value = String(reader.result || '') }
+  reader.readAsDataURL(f)
 }
 </script>
+
+<style scoped>
+/* Hide the native calendar icon so only your SVG shows */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+}
+input[type="date"]::-moz-calendar-picker-indicator {
+  display: none;
+}
+</style>
