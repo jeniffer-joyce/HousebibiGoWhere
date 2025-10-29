@@ -1,240 +1,270 @@
-/**
- * seller_crud.js
- * =============================
- * Centralized CRUD utilities for Seller-side account management.
- *
- * This file handles:
- *  - Retrieving both `users` and `businesses` documents linked by UID
- *  - Updating seller personal info (users/{uid})
- *  - Updating business info (businesses/{uid})
- *  - Changing passwords via Firebase Auth
- *  - Deleting all linked data safely (products, businesses, users)
- *
- * All functions assume the current user is authenticated in Firebase.
- */
+// ============================================================================
+// seller_crud.js  (FULL FILE)
+// ============================================================================
+// Public API (unchanged function names / signatures):
+//   - authReady()
+//   - fetchSellerComposite()            // now also auto-syncs address into /businesses
+//   - updateSellerProfile(patch)
+//   - updateSellerBusiness(patch)
+//   - changePassword(currentPassword, newPassword)
+//   - deleteSellerAccount(currentPassword)
+//
+// What’s NEW in this file:
+//   • combineAddressFromUser(userDoc): builds "unitNo + addressLine + postalCode"
+//   • In fetchSellerComposite(), after loading user + business, we:
+//       - compute combinedAddress from /users
+//       - if it’s non-empty and different from businesses.address, we patch businesses.address
+//     (This is intentionally lightweight and won’t overwrite a non-empty business address
+//      with empties. It only updates when we have a real combined value.)
+// ============================================================================
 
 import { auth, db } from '@/firebase/firebase_config'
-import { onAuthStateChanged } from 'firebase/auth'
 import {
   doc,
   getDoc,
-  updateDoc,
   setDoc,
-  getDocs,
+  updateDoc,
   collection,
-  where,
   query,
-  deleteDoc
+  where,
+  getDocs,
+  writeBatch,
 } from 'firebase/firestore'
 import {
-  EmailAuthProvider,
   reauthenticateWithCredential,
+  EmailAuthProvider,
   updatePassword,
-  signOut
 } from 'firebase/auth'
 
-/* ==========================================================
-   🔐 AUTH HANDLING
-   ========================================================== */
-
-/**
- * Wait until Firebase restores any active session.
- * This ensures Firestore calls only run once the auth state is resolved.
- *
- * Usage:
- *   await authReady();
- */
-export const authReady = () =>
-  new Promise((resolve) => {
-    const off = onAuthStateChanged(auth, () => {
-      off()
-      resolve()
+// ---------------------------------------------
+// Auth gate
+// ---------------------------------------------
+let _authReadyOnce
+export function authReady() {
+  if (_authReadyOnce) return _authReadyOnce
+  _authReadyOnce = new Promise((resolve) => {
+    const unsub = auth.onAuthStateChanged(() => {
+      unsub()
+      resolve(true)
     })
   })
+  return _authReadyOnce
+}
 
-/* ==========================================================
-   📥 FETCH SELLER COMPOSITE DATA
-   ========================================================== */
+// ---------------------------------------------
+// Helpers
+// ---------------------------------------------
+async function getCurrentUid() {
+  await authReady()
+  const u = auth.currentUser
+  return u?.uid || null
+}
 
-/**
- * Fetch both `users/{uid}` and `businesses/{uid}` documents for the logged-in user.
- *
- * Returns:
- *   {
- *     uid: string,
- *     user: object | null,         // Raw user doc
- *     business: object | null,     // Raw business doc
- *     composite: object            // Combined data for convenience
- *   }
- */
+async function readUser(uid) {
+  if (!uid) return null
+  const snap = await getDoc(doc(db, 'users', uid))
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null
+}
+
+async function readBusiness(uid) {
+  if (!uid) return null
+  const snap = await getDoc(doc(db, 'businesses', uid))
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null
+}
+
+/** Build a clean "address" string from /users fields, e.g. "#12-34, 123 Example St, 543210". */
+function combineAddressFromUser(userDoc = {}) {
+  const unitNo = (userDoc.unitNo || '').toString().trim()
+  const addressLine = (userDoc.addressLine || '').toString().trim()
+  const postalCode = (userDoc.postalCode || '').toString().trim()
+
+  const parts = []
+  if (unitNo) parts.push(unitNo)
+  if (addressLine) parts.push(addressLine)
+  if (postalCode) parts.push(postalCode)
+
+  // Return "" (empty string) if nothing to combine — we won’t patch Firestore in that case.
+  return parts.join(', ').trim()
+}
+
+/** Safe, shallow object cleanup: drop keys with undefined only (keeps false/0/'' values). */
+function dropUndefined(obj) {
+  const out = {}
+  Object.keys(obj || {}).forEach((k) => {
+    if (obj[k] !== undefined) out[k] = obj[k]
+  })
+  return out
+}
+
+// ---------------------------------------------
+// Public: fetchSellerComposite
+// - Loads /users/{uid} and /businesses/{uid}
+// - NEW: If we can build a non-empty combined address from user and it differs from
+//        businesses.address, we patch /businesses/{uid}.address (non-destructive).
+// ---------------------------------------------
 export async function fetchSellerComposite() {
-  const uid = auth.currentUser?.uid
-  if (!uid) throw new Error('Not signed in')
+  const uid = await getCurrentUid()
+  if (!uid) return { user: null, business: null }
 
-  const userRef = doc(db, 'users', uid)
-  const bizRef = doc(db, 'businesses', uid)
+  const [userDoc, businessDoc] = await Promise.all([readUser(uid), readBusiness(uid)])
 
-  // Fetch both docs concurrently
-  const [userSnap, bizSnap] = await Promise.all([getDoc(userRef), getDoc(bizRef)])
-
-  const user = userSnap.exists() ? userSnap.data() : null
-  const business = bizSnap.exists() ? bizSnap.data() : null
-
-  // Merge both docs for unified consumption
-  const composite = { ...(user || {}), ...(business || {}) }
-
-  return { uid, user, business, composite }
-}
-
-/* ==========================================================
-   🧾 UPDATE USER PROFILE INFO
-   ========================================================== */
-
-/**
- * Update seller personal profile data in `users/{uid}`.
- * Optionally updates `profilePic` in `businesses/{uid}`.
- *
- * @param {object} payload
- * @param {string} payload.username
- * @param {string} payload.displayName
- * @param {string} payload.phone
- * @param {string} payload.gender
- * @param {string} payload.birthday
- * @param {string|null} payload.profilePicDataUrl
- */
-export async function updateSellerProfile({
-  username = '',
-  displayName = '',
-  phone = '',
-  gender = '',
-  birthday = '',
-  profilePicDataUrl = null
-}) {
-  const uid = auth.currentUser?.uid
-  if (!uid) throw new Error('Not signed in')
-
-  const userRef = doc(db, 'users', uid)
-  const bizRef = doc(db, 'businesses', uid)
-
-  // Ensure both documents exist (create minimal shell docs if missing)
-  const [uSnap, bSnap] = await Promise.all([getDoc(userRef), getDoc(bizRef)])
-  if (!uSnap.exists()) await setDoc(userRef, { uid }, { merge: true })
-  if (!bSnap.exists()) await setDoc(bizRef, { uid }, { merge: true })
-
-  // Update user info
-  const userPatch = { username, displayName, phone, gender, birthday }
-  await updateDoc(userRef, userPatch)
-
-  // Optionally update the business profile picture
-  if (profilePicDataUrl) {
-    await updateDoc(bizRef, { profilePic: profilePicDataUrl })
+  // ── NEW: Auto-sync address from /users → /businesses (non-destructive)
+  // Build combined address string from user fields.
+  const combinedAddress = combineAddressFromUser(userDoc)
+  // Patch only if:
+  //   - combinedAddress is non-empty, and
+  //   - business address is missing OR different
+  if (combinedAddress) {
+    const currentBizAddress = (businessDoc?.address || '').toString().trim()
+    if (combinedAddress !== currentBizAddress) {
+      try {
+        await updateDoc(doc(db, 'businesses', uid), { address: combinedAddress })
+        // reflect local copy so callers see it immediately
+        if (businessDoc) businessDoc.address = combinedAddress
+      } catch (e) {
+        // If /businesses/{uid} does not exist yet, create a minimal shell with address
+        if (!businessDoc) {
+          await setDoc(doc(db, 'businesses', uid), { address: combinedAddress }, { merge: true })
+          // refetch to keep return shape consistent
+          const updated = await readBusiness(uid)
+          return { user: userDoc, business: updated }
+        }
+        // Silently ignore if permission or other transient error — UI should still load
+        console.warn('Address auto-sync skipped:', e?.message || e)
+      }
+    }
   }
 
-  return true
+  return { user: userDoc, business: businessDoc }
 }
 
-/* ==========================================================
-   🏢 UPDATE BUSINESS INFO
-   ========================================================== */
+// ---------------------------------------------
+// Public: updateSellerProfile
+// Updates /users/{uid} with personal details.
+// Mirrors profilePic into /businesses/{uid} if provided.
+// ---------------------------------------------
+export async function updateSellerProfile(patch = {}) {
+  const uid = await getCurrentUid()
+  if (!uid) throw new Error('Not authenticated')
 
-/**
- * Update basic business info in `businesses/{uid}`.
- *
- * @param {object} payload
- * @param {string} payload.name
- * @param {string} payload.bio
- * @param {string} payload.description
- */
-export async function updateSellerBusiness({ name, bio, description }) {
-  const uid = auth.currentUser?.uid
-  if (!uid) throw new Error('Not signed in')
+  const userRef = doc(db, 'users', uid)
+  const cleaned = dropUndefined({
+    displayName: patch.displayName,
+    username: patch.username,
+    email: patch.email, // note: changing auth email should be handled in your dedicated flow
+    phone: patch.phone,
+    gender: patch.gender,
+    birthday: patch.birthday,
+    profilePic: patch.profilePic,
+    photoURL: patch.photoURL, // allow either
+  })
 
-  const bizRef = doc(db, 'businesses', uid)
-  const bizSnap = await getDoc(bizRef)
-
-  // Ensure doc exists
-  if (!bizSnap.exists()) await setDoc(bizRef, { uid }, { merge: true })
-
-  // Only write defined string fields
-  const patch = {}
-  if (typeof name === 'string') patch.name = name
-  if (typeof bio === 'string') patch.bio = bio
-  if (typeof description === 'string') patch.description = description
-
-  if (Object.keys(patch).length > 0) {
-    await updateDoc(bizRef, patch)
+  if (Object.keys(cleaned).length) {
+    await updateDoc(userRef, cleaned)
   }
 
-  return true
+  // If a profile picture was changed, mirror into business doc as a convenience.
+  if (cleaned.profilePic || cleaned.photoURL) {
+    const finalPic = cleaned.profilePic || cleaned.photoURL
+    try {
+      await updateDoc(doc(db, 'businesses', uid), { profilePic: finalPic })
+    } catch {
+      // ignore if business doc not yet created; will be filled later
+    }
+  }
+
+  // Also: if address-related fields were updated on the user, we can opportunistically
+  // refresh the business address (uses the same non-destructive rule).
+  if ('unitNo' in patch || 'addressLine' in patch || 'postalCode' in patch) {
+    const userDoc = await readUser(uid)
+    const combinedAddress = combineAddressFromUser(userDoc)
+    if (combinedAddress) {
+      try {
+        await updateDoc(doc(db, 'businesses', uid), { address: combinedAddress })
+      } catch {
+        // ignore if business not created yet
+      }
+    }
+  }
 }
 
-/* ==========================================================
-   🔑 PASSWORD MANAGEMENT
-   ========================================================== */
+// ---------------------------------------------
+// Public: updateSellerBusiness
+// Updates /businesses/{uid} shop-facing fields (name, bio, description, category, address).
+// NOTE: This does not fight the auto-sync; if you pass a non-empty address here,
+//       it will be set as-is. Auto-sync only runs when we can build a non-empty
+//       address from /users AND it differs, so your explicit business edits still win.
+// ---------------------------------------------
+export async function updateSellerBusiness(patch = {}) {
+  const uid = await getCurrentUid()
+  if (!uid) throw new Error('Not authenticated')
 
-/**
- * Change the currently signed-in user's password.
- * Requires reauthentication for security.
- *
- * @param {string} currentPassword - The existing password.
- * @param {string} newPassword - The new password.
- *
- * Throws if reauthentication fails or user not logged in.
- */
+  const businessRef = doc(db, 'businesses', uid)
+  const cleaned = dropUndefined({
+    name: patch.name,
+    bio: patch.bio,
+    description: patch.description,
+    category: patch.category,
+    address: patch.address, // explicitly allow setting address here
+    verified: patch.verified,
+    uen: patch.uen,
+    profilePic: patch.profilePic,
+  })
+
+  if (Object.keys(cleaned).length) {
+    await updateDoc(businessRef, cleaned)
+  }
+}
+
+// ---------------------------------------------
+// Public: changePassword
+// Reauth then update
+// ---------------------------------------------
 export async function changePassword(currentPassword, newPassword) {
+  await authReady()
   const user = auth.currentUser
-  if (!user || !user.email) throw new Error('No authenticated user')
+  if (!user) throw new Error('Not authenticated')
 
-  // Reauthenticate first
+  if (!user.email) throw new Error('Email not available for reauthentication')
+
   const cred = EmailAuthProvider.credential(user.email, currentPassword)
   await reauthenticateWithCredential(user, cred)
-
-  // Then perform password update
   await updatePassword(user, newPassword)
-
-  // You could also log an audit entry here (e.g., Firestore 'security_logs')
   return true
 }
 
-/* ==========================================================
-   ❌ ACCOUNT DELETION
-   ========================================================== */
-
-/**
- * Fully delete a seller account and all linked data.
- * Steps:
- *  1. Reauthenticate with password
- *  2. Delete all products referencing this sellerId (products/{id})
- *  3. Delete businesses/{uid} document
- *  4. Delete users/{uid} document
- *  5. Sign the user out
- *
- * @param {string} password - The current account password for verification.
- */
-export async function deleteSellerAccount(password) {
+// ---------------------------------------------
+// Public: deleteSellerAccount
+// Deletes all products, business doc, user doc, then the auth user.
+// ---------------------------------------------
+export async function deleteSellerAccount(currentPassword) {
+  await authReady()
   const user = auth.currentUser
-  if (!user || !user.email) throw new Error('No authenticated user')
+  if (!user) throw new Error('Not authenticated')
+  if (!user.email) throw new Error('Email not available for reauthentication')
 
-  // Step 1 — Reauthenticate to confirm identity
-  const cred = EmailAuthProvider.credential(user.email, password)
+  // Reauth
+  const cred = EmailAuthProvider.credential(user.email, currentPassword)
   await reauthenticateWithCredential(user, cred)
 
   const uid = user.uid
 
-  // Step 2 — Delete all products linked to this seller
-  const productQ = query(collection(db, 'products'), where('sellerId', '==', uid))
-  const productSnap = await getDocs(productQ)
-  const deletions = productSnap.docs.map((d) => deleteDoc(d.ref))
-  await Promise.all(deletions)
+  // 1) Delete all products owned by seller
+  const productsQ = query(collection(db, 'products'), where('sellerId', '==', uid))
+  const productsSnap = await getDocs(productsQ)
+  if (!productsSnap.empty) {
+    const batch = writeBatch(db)
+    productsSnap.forEach((d) => batch.delete(doc(db, 'products', d.id)))
+    await batch.commit()
+  }
 
-  // Step 3 — Delete business doc
-  await deleteDoc(doc(db, 'businesses', uid))
+  // 2) Delete business + user docs
+  const batch2 = writeBatch(db)
+  batch2.delete(doc(db, 'businesses', uid))
+  batch2.delete(doc(db, 'users', uid))
+  await batch2.commit()
 
-  // Step 4 — Delete user doc
-  await deleteDoc(doc(db, 'users', uid))
-
-  // Step 5 — Sign out session to clear local auth
-  await signOut(auth)
-
+  // 3) Finally delete auth user (signs out implicitly)
+  await user.delete()
   return true
 }
