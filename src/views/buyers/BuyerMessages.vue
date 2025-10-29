@@ -3,6 +3,8 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { auth } from '@/firebase/firebase_config'
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
+import ToastNotification from '@/components/ToastNotification.vue'
+import ConfirmationModal from '@/components/modals/ConfirmationModal.vue'
 import { useMessages } from '@/composables/useMessages'
 import { doc, getDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/firebase/firebase_config'
@@ -12,6 +14,56 @@ const isSidebarCollapsed = ref(false)
 
 function handleSidebarToggle(collapsed) {
     isSidebarCollapsed.value = collapsed
+}
+
+// Toast state
+const showToast = ref(false)
+const toastType = ref('success')
+const toastTitle = ref('')
+const toastMessage = ref('')
+
+// Confirmation modal state
+const showConfirmModal = ref(false)
+const confirmModalTitle = ref('')
+const confirmModalMessage = ref('')
+const confirmModalType = ref('warning')
+const pendingAction = ref(null)
+
+// Show toast notification
+function showToastNotification(type, title, message) {
+    toastType.value = type
+    toastTitle.value = title
+    toastMessage.value = message
+    showToast.value = true
+}
+
+// Close toast
+function closeToast() {
+    showToast.value = false
+}
+
+// Show confirmation modal
+function showConfirmation(title, message, type, action) {
+    confirmModalTitle.value = title
+    confirmModalMessage.value = message
+    confirmModalType.value = type
+    pendingAction.value = action
+    showConfirmModal.value = true
+}
+
+// Handle confirmation
+function handleConfirm() {
+    showConfirmModal.value = false
+    if (pendingAction.value) {
+        pendingAction.value()
+        pendingAction.value = null
+    }
+}
+
+// Handle cancel
+function handleCancel() {
+    showConfirmModal.value = false
+    pendingAction.value = null
 }
 
 // Get current user ID
@@ -61,27 +113,35 @@ const route = useRoute()
 const router = useRouter()
 const showOptionsMenu = ref(false)
 
+// File upload state
+const fileInput = ref(null)
+const selectedFiles = ref([])
+const uploadingFiles = ref(false)
+
 // Delete conversation
 async function deleteConversation(conversationId) {
-    if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
-        return
-    }
-    
-    try {
-        const conversationRef = doc(db, 'conversations', conversationId)
-        await deleteDoc(conversationRef)
-        
-        // Close the conversation if it's currently active
-        if (activeConversationId.value === conversationId) {
-            activeConversationId.value = null
+    showConfirmation(
+        'Delete Conversation',
+        'Are you sure you want to delete this conversation? This action cannot be undone.',
+        'danger',
+        async () => {
+            try {
+                const conversationRef = doc(db, 'conversations', conversationId)
+                await deleteDoc(conversationRef)
+                
+                // Close the conversation if it's currently active
+                if (activeConversationId.value === conversationId) {
+                    activeConversationId.value = null
+                }
+                
+                showOptionsMenu.value = false
+                showToastNotification('success', 'Conversation Deleted', 'The conversation has been deleted successfully')
+            } catch (error) {
+                console.error('Error deleting conversation:', error)
+                showToastNotification('error', 'Delete Failed', 'Failed to delete conversation. Please try again.')
+            }
         }
-        
-        showOptionsMenu.value = false
-        alert('Conversation deleted successfully')
-    } catch (error) {
-        console.error('Error deleting conversation:', error)
-        alert('Failed to delete conversation. Please try again.')
-    }
+    )
 }
 
 // Navigate to shop details
@@ -131,7 +191,7 @@ async function getBusinessDetails(userId) {
 
 // Send message
 async function sendMessage() {
-    if (!newMessage.value.trim()) return
+    if (!newMessage.value.trim() && selectedFiles.value.length === 0) return
     
     try {
         await sendNewMessage(newMessage.value)
@@ -140,7 +200,96 @@ async function sendMessage() {
         scrollToBottom()
     } catch (err) {
         console.error('Error sending message:', err)
-        alert('Failed to send message. Please try again.')
+        showToastNotification('error', 'Failed to Send', 'Failed to send message. Please try again.')
+    }
+}
+
+// Handle file selection
+function handleFileSelect(event) {
+    const files = Array.from(event.target.files)
+    if (files.length === 0) return
+    
+    // Validate file size (max 10MB per file)
+    const maxSize = 10 * 1024 * 1024
+    const oversizedFiles = files.filter(file => file.size > maxSize)
+    
+    if (oversizedFiles.length > 0) {
+        showToastNotification('error', 'File Too Large', 'Each file must be less than 10MB')
+        return
+    }
+    
+    // Validate file types
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    const invalidFiles = files.filter(file => !allowedTypes.includes(file.type))
+    
+    if (invalidFiles.length > 0) {
+        showToastNotification('error', 'Invalid File Type', 'Only images, PDFs, and documents are allowed')
+        return
+    }
+    
+    // Add files to selected files
+    selectedFiles.value = [...selectedFiles.value, ...files]
+    
+    // Reset file input
+    if (fileInput.value) {
+        fileInput.value.value = ''
+    }
+}
+
+// Remove selected file
+function removeFile(index) {
+    selectedFiles.value.splice(index, 1)
+}
+
+// Open file picker
+function openFilePicker() {
+    fileInput.value?.click()
+}
+
+// Get file icon based on type
+function getFileIcon(file) {
+    if (file.type.startsWith('image/')) return '🖼️'
+    if (file.type === 'application/pdf') return '📄'
+    if (file.type.includes('document')) return '📝'
+    return '📎'
+}
+
+// Format file size
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+// Send message with files
+async function sendMessageWithFiles() {
+    if (!newMessage.value.trim() && selectedFiles.value.length === 0) return
+    
+    try {
+        uploadingFiles.value = true
+        
+        // For now, just send the text message
+        // TODO: Implement actual file upload to Firebase Storage
+        if (newMessage.value.trim()) {
+            await sendNewMessage(newMessage.value)
+        }
+        
+        // Show success for files (placeholder until actual upload is implemented)
+        if (selectedFiles.value.length > 0) {
+            showToastNotification('info', 'Files Selected', `${selectedFiles.value.length} file(s) selected. File upload will be implemented with Firebase Storage.`)
+        }
+        
+        newMessage.value = ''
+        selectedFiles.value = []
+        await nextTick()
+        scrollToBottom()
+    } catch (err) {
+        console.error('Error sending message:', err)
+        showToastNotification('error', 'Failed to Send', 'Failed to send message. Please try again.')
+    } finally {
+        uploadingFiles.value = false
     }
 }
 
@@ -310,7 +459,10 @@ function handleClickOutside(event) {
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                 </svg>
                                 <p class="text-slate-600 dark:text-slate-400">
-                                    {{ searchQuery ? 'No conversations found' : 'No conversations yet' }}
+                                    {{ searchQuery ? 'No conversations found' : 'No messages yet' }}
+                                </p>
+                                <p v-if="!searchQuery" class="text-slate-500 dark:text-slate-500 text-sm mt-1">
+                                    Start browsing shops to message sellers
                                 </p>
                             </div>
                         </div>
@@ -325,26 +477,15 @@ function handleClickOutside(event) {
                                     activeConversationId === conversation.id ? 'bg-slate-100 dark:bg-slate-700 border-l-4 border-l-primary' : ''
                                 ]">
                                 <div class="flex items-start gap-3">
-                                    <div class="relative">
-                                        <img 
-                                            :src="getAvatarUrl(conversation.otherUserId)" 
-                                            :alt="getDisplayName(conversation.otherUserId)" 
-                                            class="w-12 h-12 rounded-full object-cover" />
-                                        <span v-if="conversation.unreadCount > 0" 
-                                            class="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center">
-                                            {{ conversation.unreadCount }}
-                                        </span>
-                                    </div>
+                                    <img 
+                                        :src="getAvatarUrl(conversation.otherUserId)" 
+                                        :alt="getDisplayName(conversation.otherUserId)" 
+                                        class="w-12 h-12 rounded-full object-cover" />
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-start justify-between mb-1">
-                                            <div class="flex-1 min-w-0">
-                                                <h3 class="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                                                    {{ getDisplayName(conversation.otherUserId) }}
-                                                </h3>
-                                                <p class="text-xs text-slate-500 dark:text-slate-400">
-                                                    Business
-                                                </p>
-                                            </div>
+                                            <h3 class="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                                {{ getDisplayName(conversation.otherUserId) }}
+                                            </h3>
                                             <span class="text-xs text-slate-500 dark:text-slate-400 ml-2 flex-shrink-0">
                                                 {{ formatMessageTime(conversation.lastMessageTime) }}
                                             </span>
@@ -354,7 +495,7 @@ function handleClickOutside(event) {
                                                 {{ conversation.lastMessage || 'No messages yet' }}
                                             </p>
                                             <span v-if="conversation.unreadCount > 0" 
-                                                class="flex-shrink-0 ml-2 bg-primary text-white text-xs font-bold rounded-full h-5 min-w-[20px] px-1.5 flex items-center justify-center">
+                                                class="ml-2 px-2 py-0.5 bg-primary text-white text-xs font-bold rounded-full flex-shrink-0">
                                                 {{ conversation.unreadCount }}
                                             </span>
                                         </div>
@@ -366,7 +507,7 @@ function handleClickOutside(event) {
                 </div>
 
                 <!-- Chat Area -->
-                <div v-if="activeConversation" class="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900">
+                <div v-if="activeConversationId" class="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900">
                     <!-- Chat Header -->
                     <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4">
                         <div class="flex items-center justify-between">
@@ -379,9 +520,7 @@ function handleClickOutside(event) {
                                     <h2 class="text-base font-semibold text-slate-900 dark:text-white">
                                         {{ getDisplayName(activeConversation.otherUserId) }}
                                     </h2>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">
-                                        Business
-                                    </p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Business</p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
@@ -483,31 +622,73 @@ function handleClickOutside(event) {
 
                     <!-- Message Input -->
                     <div class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4">
-                        <form @submit.prevent="sendMessage" class="flex items-end gap-3">
+                        <!-- Selected Files Preview -->
+                        <div v-if="selectedFiles.length > 0" class="mb-3 flex flex-wrap gap-2">
+                            <div
+                                v-for="(file, index) in selectedFiles"
+                                :key="index"
+                                class="relative flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-lg px-3 py-2 pr-8">
+                                <span class="text-xl">{{ getFileIcon(file) }}</span>
+                                <div class="flex flex-col min-w-0">
+                                    <span class="text-xs font-medium text-slate-900 dark:text-white truncate max-w-[150px]">
+                                        {{ file.name }}
+                                    </span>
+                                    <span class="text-xs text-slate-500 dark:text-slate-400">
+                                        {{ formatFileSize(file.size) }}
+                                    </span>
+                                </div>
+                                <button
+                                    @click="removeFile(index)"
+                                    type="button"
+                                    class="absolute right-1 top-1 p-1 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 rounded">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <form @submit.prevent="selectedFiles.length > 0 ? sendMessageWithFiles() : sendMessage()" class="flex items-end gap-3">
+                            <!-- Hidden file input -->
+                            <input
+                                ref="fileInput"
+                                type="file"
+                                multiple
+                                accept="image/*,.pdf,.doc,.docx,.txt"
+                                @change="handleFileSelect"
+                                class="hidden" />
+                            
+                            <!-- Paperclip button -->
                             <button 
                                 type="button"
-                                class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg">
+                                @click="openFilePicker"
+                                class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                title="Attach files or images">
                                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
                                 </svg>
                             </button>
                             <textarea
                                 v-model="newMessage"
-                                @keydown.enter.exact.prevent="sendMessage"
+                                @keydown.enter.exact.prevent="selectedFiles.length > 0 ? sendMessageWithFiles() : sendMessage()"
                                 placeholder="Type your message..."
                                 rows="1"
                                 class="flex-1 px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
                             <button
                                 type="submit"
-                                :disabled="!newMessage.trim()"
+                                :disabled="(!newMessage.trim() && selectedFiles.length === 0) || uploadingFiles"
                                 :class="[
                                     'p-3 rounded-lg transition-colors',
-                                    newMessage.trim() 
+                                    (newMessage.trim() || selectedFiles.length > 0) && !uploadingFiles
                                         ? 'bg-primary text-white hover:bg-primary/90' 
                                         : 'bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500'
                                 ]">
-                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg v-if="!uploadingFiles" class="h-6 w-6 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                </svg>
+                                <svg v-else class="h-6 w-6 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                 </svg>
                             </button>
                         </form>
@@ -526,10 +707,24 @@ function handleClickOutside(event) {
                 </div>
         </main>
 
-        <!-- Error Toast -->
-        <div v-if="error" class="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-            {{ error }}
-        </div>
+        <!-- Toast Notification -->
+        <ToastNotification
+            :show="showToast"
+            :type="toastType"
+            :title="toastTitle"
+            :message="toastMessage"
+            @close="closeToast" />
+
+        <!-- Confirmation Modal -->
+        <ConfirmationModal
+            :show="showConfirmModal"
+            :type="confirmModalType"
+            :title="confirmModalTitle"
+            :message="confirmModalMessage"
+            confirm-text="Delete"
+            cancel-text="Cancel"
+            @confirm="handleConfirm"
+            @cancel="handleCancel" />
     </div>
 </template>
 
