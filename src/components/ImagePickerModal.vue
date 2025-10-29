@@ -142,7 +142,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'select'])
 
-const activeTab = ref('unsplash')
+const activeTab = ref('upload')
 const imageUrl = ref('')
 const fileInput = ref(null)
 const uploading = ref(false)
