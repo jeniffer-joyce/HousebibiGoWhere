@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-gray-50 dark:bg-slate-950 overflow-x-hidden">
     <!-- Hero Section with uploaded image -->
     <section class="relative w-full min-h-[60vh] sm:min-h-[80vh] bg-cover bg-center"
-    style="background-image: url('/src/assets/home_business.png');">
+    style="background-image: url('/home_business.png');">
       <!-- Lighter overlay to show the image better -->
       <div class="absolute inset-0 bg-black/40"></div>
       
