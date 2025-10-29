@@ -6,14 +6,22 @@ export function useProduct(productId) {
     const product = ref(null)
     const seller = ref(null)
     const loading = ref(true)
-    const selectedImage = ref(0)
+    // const selectedImage = ref(0)
     const error = ref(null)
 
     // Format price
     const formattedPrice = computed(() => {
-        if (!product.value?.price) return '$0.00'
-        return `$${parseFloat(product.value.price).toFixed(2)}`
-    })
+        // If there's no price or the price array is empty, return an array with one default price
+        if (!product.value?.price || product.value.price.length === 0) return ['$0.00'];
+
+        // If price is an array, format each value and return as an array
+        if (Array.isArray(product.value.price)) {
+            return product.value.price.map(p => `$${parseFloat(p).toFixed(2)}`);
+        }
+
+        // Otherwise, format as a single price in an array
+        return [`$${parseFloat(product.value.price).toFixed(2)}`];
+    });
 
     // Get product images array
     const productImages = computed(() => {
@@ -32,6 +40,17 @@ export function useProduct(productId) {
         return []
     })
 
+    const stock = computed(() => {
+        if (!product.value) return []
+
+        // If product has images array, use it
+        if (product.value.quantity && Array.isArray(product.value.quantity)) {
+            return product.value.quantity
+        }
+
+        return []
+    })
+
     // Get main display image
     const mainImage = computed(() => {
         const images = productImages.value
@@ -39,27 +58,34 @@ export function useProduct(productId) {
         return images[selectedImage.value] || images[0]
     })
 
-    // Availability status
-    const stockStatus = computed(() => {
-        if (!product.value) return { text: 'Loading...', color: 'text-gray-500' }
 
-        if (product.value.availability === 'in_stock' && product.value.quantity > 0) {
-            return {
-                text: `In stock (${product.value.quantity} available)`,
-                color: 'text-green-600'
-            }
-        } else if (product.value.quantity === 0 || product.value.availability === 'out_of_stock') {
-            return {
-                text: 'Out of stock',
-                color: 'text-red-600'
-            }
-        } else {
-            return {
-                text: 'Limited availability',
-                color: 'text-yellow-600'
-            }
-        }
-    })
+
+    // // Availability status
+    // const stockStatus = computed(() => {
+    //     if (!product.value) return { text: 'Loading...', color: 'text-gray-500' }
+
+    //     // const totalQuantity = Array.isArray(product.value.quantity) ? product.value.quantity.reduce((s, n) => s + (+n || 0), 0) : +product.value.quantity || 0
+
+    //     if (totalQuantity <= 0) {
+    //         return {
+
+    //             text: 'Out of stock',
+    //             color: 'text-red-600'
+    //         }
+    //     } else if (totalQuantity <= 10) {
+    //         return {
+
+    //             text: 'Limited availability',
+    //             color: 'text-yellow-600'
+    //         }
+    //     } else {
+    //         return {
+    //             text: `In stock (${totalQuantity} available)`,
+    //             color: 'text-green-600'
+    //         }
+    //     }
+
+    // })
 
     // Load product data
     async function loadProduct() {
@@ -91,12 +117,12 @@ export function useProduct(productId) {
         }
     }
 
-    // Change selected image
-    function selectImage(index) {
-        if (index >= 0 && index < productImages.value.length) {
-            selectedImage.value = index
-        }
-    }
+    // // Change selected image
+    // function selectImage(index) {
+    //     if (index >= 0 && index < productImages.value.length) {
+    //         selectedImage.value = index
+    //     }
+    // }
 
     return {
         // State
@@ -104,16 +130,16 @@ export function useProduct(productId) {
         seller,
         loading,
         error,
-        selectedImage,
+        // selectedImage,
 
         // Computed
         formattedPrice,
         productImages,
         mainImage,
-        stockStatus,
+        stock,
 
         // Methods
         loadProduct,
-        selectImage
+        // selectImage
     }
 }

@@ -32,6 +32,7 @@ import BuyerOrders from "../views/buyers/BuyerOrders.vue";
 import BuyerAccount from "../views/buyers/BuyerAccount.vue";
 import BuyerFavourites from "../views/buyers/Favourites.vue";
 import BuyerMessages from "../views/buyers/BuyerMessages.vue";
+import Cart from "../views/buyers/Cart.vue";
 import CompleteProfile from '../views/CompleteProfile.vue';
 
 import ProductDetails from '../views/buyers/ProductDetails.vue'
@@ -175,7 +176,12 @@ const routes = [
     component: ProductDetails,
     name: "ProductDetails",
     props: true
+  },
+  {
+    path: '/cart',
+    component: Cart,
   }
+
 
 ]
 
