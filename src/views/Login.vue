@@ -115,9 +115,13 @@
 
         <!-- Forgot password -->
         <div class="flex items-center justify-end -mt-2">
-          <a class="text-sm font-medium text-primary hover:text-primary/80" href="#">
+          <button
+            type="button"
+            @click="showForgotPasswordModal = true"
+            class="text-sm font-medium text-primary hover:text-primary/80"
+          >
             Forgot your password?
-          </a>
+          </button>
         </div>
 
         <!-- reCAPTCHA -->
@@ -153,12 +157,20 @@
         </router-link>
       </p>
     </div>
+
+    <!-- Forgot Password Modal -->
+    <ForgotPasswordModal
+      :show="showForgotPasswordModal"
+      @close="showForgotPasswordModal = false"
+    />
   </main>
 </template>
+
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import ForgotPasswordModal from '@/components/modals/ForgotPasswordModal.vue'
 import { loginWithIdentifier } from '../firebase/auth/authService'
 import {
   loginWithGooglePopup,
@@ -182,6 +194,7 @@ const showPassword = ref(false)
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 const captchaToken = ref('')
 const captchaError = ref(false)
+const showForgotPasswordModal = ref(false)
 let widgetId = null
 let expireTimer
 

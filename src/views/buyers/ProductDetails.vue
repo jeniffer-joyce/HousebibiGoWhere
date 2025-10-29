@@ -1,8 +1,11 @@
 <script setup>
-import { onMounted, computed, ref, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProduct } from '@/composables/useProduct'
 import MessageButton from '@/components/messageButton.vue'
+import { db } from "@/firebase/firebase_config"
+import { collection, query, where, orderBy, onSnapshot, getDoc, doc } from "firebase/firestore"
+
 import { useImageZoom } from '@/composables/useImageZoom'
 
 const route = useRoute()
@@ -27,7 +30,6 @@ const {
 // Load product on mount
 onMounted(() => {
     loadProduct()
-
 })
 
 const {
@@ -113,6 +115,189 @@ watch([userQuantity, selectedQuantity], () => {
         }
     }
 })
+
+/* ====== PRODUCT REVIEWS (UI + Data) ====== */
+// Get productId & make sure your composable already loaded product/seller
+
+const productIdParam = computed(() => route.params.id)
+
+// ─── Review state ──────────────────────────────────────────────────────────────
+const prRaw = ref([])          // flattened raw rows for this product
+const prFilter = reactive({
+    sort: 'newest',              // 'newest' | 'oldest' | 'highest' | 'lowest'
+    size: 'all',                 // 'all' or e.g. 'M'
+})
+
+let prUnsub = null
+
+// cache for buyer details
+const prBuyers = new Map()   // buyerId -> {displayName, photoURL}
+
+// cache for product details (name) in case you want to show it (optional)
+const prProducts = new Map() // productId -> {name}
+
+// Fetch a buyer's display info
+async function prFetchBuyer(uid) {
+    if (!uid) return { displayName: 'User', photoURL: '' }
+    if (prBuyers.has(uid)) return prBuyers.get(uid)
+    // try users, then profiles
+    let snap = await getDoc(doc(db, 'users', uid)).catch(() => null)
+    let data = snap?.exists() ? snap.data() : null
+    if (!data) {
+        snap = await getDoc(doc(db, 'profiles', uid)).catch(() => null)
+        data = snap?.exists() ? snap.data() : null
+    }
+    const user = {
+        displayName: data?.displayName || data?.name || 'User',
+        photoURL: data?.photoURL || data?.avatar || ''
+    }
+    prBuyers.set(uid, user)
+    return user
+}
+
+// optional: product name lookup (if needed)
+async function prFetchProductName(pid) {
+    if (!pid) return 'Product'
+    if (prProducts.has(pid)) return prProducts.get(pid).name
+    const snap = await getDoc(doc(db, 'products', pid)).catch(() => null)
+    const data = snap?.exists() ? snap.data() : null
+    const name = data?.name || data?.item_name || 'Product'
+    prProducts.set(pid, { name })
+    return name
+}
+
+// Listen for this product's reviews (via sellerId; filter items by productId)
+watch(
+    productIdParam,
+    async (pid, _, onCleanup) => {
+        if (prUnsub) { prUnsub(); prUnsub = null }
+        prRaw.value = []
+
+        // We don't know sellerId here without your product record; query all & filter is OK.
+        // If you have sellerId available (e.g., computed from your composable), prefer:
+        // const sellerId = product.value?.seller_id
+        // const qRef = query(collection(db, 'reviews'), where('sellerId','==', sellerId), orderBy('createdAt','desc'))
+
+        const qRef = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'))
+
+        prUnsub = onSnapshot(qRef, async (snap) => {
+            const rows = []
+            const jobs = []
+
+            snap.forEach(docSnap => {
+                const rev = { id: docSnap.id, ...docSnap.data() }
+                if (!Array.isArray(rev.items)) return
+
+                rev.items.forEach((it, idx) => {
+                    if (String(it.productId) !== String(pid)) return
+
+                    const row = {
+                        key: `${docSnap.id}-${idx}`,
+                        createdAt: rev.createdAt,
+                        buyerId: rev.buyerId,
+                        productId: it.productId,
+                        productName: null,
+                        size: it.size || null,
+                        rating: Number(it.rating || 0),
+                        text: it.text || '',
+                        images: Array.isArray(it.images) ? it.images : [],
+                        anonymous: Number(it.anonymous ?? 0),
+
+                        // resolved later:
+                        buyerName: null,
+                        buyerPhoto: null,
+                    }
+                    rows.push(row)
+
+                    jobs.push(
+                        (async () => {
+                            const user = await prFetchBuyer(rev.buyerId)
+                            row.buyerName = user.displayName
+                            row.buyerPhoto = user.photoURL || null
+                            row.productName = await prFetchProductName(it.productId)
+                        })()
+                    )
+                })
+            })
+
+            await Promise.all(jobs)
+            prRaw.value = rows
+        }, (err) => console.error('product reviews onSnapshot error:', err))
+
+        onCleanup?.(() => { prUnsub && prUnsub() })
+    },
+    { immediate: true }
+)
+
+// Helpers
+function prMaskName(name) {
+    const n = (name || 'User').trim()
+    if (n.length <= 2) return n[0] + '*'
+    return `${n[0]}${'*'.repeat(Math.max(1, n.length - 2))}${n[n.length - 1]}`
+}
+function prDisplayName(r) {
+    return Number(r.anonymous) === 1 ? prMaskName(r.buyerName || 'User') : (r.buyerName || 'User')
+}
+function prAvatar(r) {
+    if (Number(r.anonymous) === 1) {
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent('Anonymous')}&background=64748b&color=fff&size=64`
+    }
+    if (r.buyerPhoto) return r.buyerPhoto
+    const nm = r.buyerName || 'User'
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(nm)}&background=10b981&color=fff&size=64`
+}
+function prFormatTime(ts) {
+    if (!ts) return ''
+    const d = ts.toDate ? ts.toDate() : new Date(ts)
+    return d.toLocaleString('en-SG', {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    })
+}
+
+// Sizes present in reviews
+const prAllSizes = computed(() => {
+    const set = new Set()
+    prRaw.value.forEach(r => { if (r.size) set.add(r.size) })
+    return Array.from(set)
+})
+
+// Filter + sort
+const prVisibleReviews = computed(() => {
+    let arr = prRaw.value
+
+    if (prFilter.size !== 'all') {
+        arr = arr.filter(r => (r.size || '') === prFilter.size)
+    }
+
+    switch (prFilter.sort) {
+        case 'oldest':
+            arr = [...arr].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0))
+            break
+        case 'highest':
+            arr = [...arr].sort((a, b) => b.rating - a.rating || (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+            break
+        case 'lowest':
+            arr = [...arr].sort((a, b) => a.rating - b.rating || (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+            break
+        default: // newest
+            arr = [...arr].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    }
+
+    return arr
+})
+
+function resetPrFilters() {
+    prFilter.sort = 'newest'
+    prFilter.size = 'all'
+}
+
+// Lightbox
+const prLightbox = reactive({ open: false, url: '' })
+function openPrLightbox(url) { prLightbox.url = url; prLightbox.open = true }
+function closePrLightbox() { prLightbox.open = false; prLightbox.url = '' }
+
+onBeforeUnmount(() => { prUnsub && prUnsub() })
 </script>
 
 <template>
@@ -264,89 +449,109 @@ watch([userQuantity, selectedQuantity], () => {
                     </div>
                 </div>
 
-                <!-- Customer Reviews Section (Below the grid, full width) -->
-                <div class="mt-16">
-                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Customer Reviews</h2>
+                <!-- =================== CUSTOMER REVIEWS (Product) =================== -->
+                <section class="mt-10" id="product-reviews">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Customer Reviews</h2>
 
-                    <div
-                        class="mt-4 flex flex-col md:flex-row items-start md:items-center gap-8 rounded-lg bg-white p-6 shadow-sm dark:bg-background-dark">
-                        <div class="flex flex-col items-center">
-                            <p class="text-5xl font-bold text-primary">4.8</p>
-                            <div class="mt-1 flex items-center">
-                                <span class="material-symbols-outlined text-yellow-500">star</span>
-                                <span class="material-symbols-outlined text-yellow-500">star</span>
-                                <span class="material-symbols-outlined text-yellow-500">star</span>
-                                <span class="material-symbols-outlined text-yellow-500">star</span>
-                                <span class="material-symbols-outlined text-yellow-500">star_half</span>
-                            </div>
-                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Based on 125 reviews</p>
-                        </div>
+                        <!-- Toolbar (right) -->
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Sort</span>
 
-                        <div class="w-full flex-1">
-                            <div class="flex items-center gap-2">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">5</span>
-                                <div class="h-2 w-full flex-1 rounded-full bg-gray-200 dark:bg-gray-700">
-                                    <div class="h-2 rounded-full bg-primary" style="width: 70%;"></div>
-                                </div>
-                                <span class="text-sm text-gray-600 dark:text-gray-400">70%</span>
+                            <!-- Sort -->
+                            <div class="relative">
+                                <select v-model="prFilter.sort"
+                                    class="h-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900
+                                px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none">
+                                    <option value="newest">Newest first</option>
+                                    <option value="oldest">Oldest first</option>
+                                    <option value="highest">Highest rating</option>
+                                    <option value="lowest">Lowest rating</option>
+                                </select>
+                                <span
+                                    class="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">expand_more</span>
                             </div>
-                            <div class="mt-1 flex items-center gap-2">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">4</span>
-                                <div class="h-2 w-full flex-1 rounded-full bg-gray-200 dark:bg-gray-700">
-                                    <div class="h-2 rounded-full bg-primary" style="width: 20%;"></div>
-                                </div>
-                                <span class="text-sm text-gray-600 dark:text-gray-400">20%</span>
+
+                            <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Size</span>
+
+                            <!-- Size -->
+                            <div class="relative">
+                                <select v-model="prFilter.size"
+                                    class="h-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900
+                                px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none">
+                                    <option value="all">All</option>
+                                    <option v-for="s in prAllSizes" :key="s" :value="s">{{ s }}</option>
+                                </select>
+                                <span
+                                    class="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">expand_more</span>
                             </div>
-                            <div class="mt-1 flex items-center gap-2">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">3</span>
-                                <div class="h-2 w-full flex-1 rounded-full bg-gray-200 dark:bg-gray-700">
-                                    <div class="h-2 rounded-full bg-primary" style="width: 5%;"></div>
-                                </div>
-                                <span class="text-sm text-gray-600 dark:text-gray-400">5%</span>
-                            </div>
-                            <div class="mt-1 flex items-center gap-2">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">2</span>
-                                <div class="h-2 w-full flex-1 rounded-full bg-gray-200 dark:bg-gray-700">
-                                    <div class="h-2 rounded-full bg-primary" style="width: 3%;"></div>
-                                </div>
-                                <span class="text-sm text-gray-600 dark:text-gray-400">3%</span>
-                            </div>
-                            <div class="mt-1 flex items-center gap-2">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">1</span>
-                                <div class="h-2 w-full flex-1 rounded-full bg-gray-200 dark:bg-gray-700">
-                                    <div class="h-2 rounded-full bg-primary" style="width: 2%;"></div>
-                                </div>
-                                <span class="text-sm text-gray-600 dark:text-gray-400">2%</span>
-                            </div>
+
+                            <button @click="resetPrFilters" class="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 dark:border-gray-700
+                            bg-white dark:bg-gray-900 text-sm hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <span class="material-symbols-outlined text-base">filter_alt_off</span>
+                                Reset
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Sample Reviews -->
-                    <div class="mt-6 space-y-6">
-                        <div class="flex gap-4 rounded-lg bg-white p-4 shadow-sm dark:bg-background-dark">
-                            <div class="h-12 w-12 flex-shrink-0 rounded-full bg-cover bg-center"
-                                style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDpniYb7D3tMLnCI7ITT5j59BgcmXpGQ6-mH7eN48M5sdTooruX4x0I53gNp42lDWA6liEyDDU_hbuLI7XoUQC4fzoh4kGW5eV7LAmeLLti4vUXLMFvfMRkA0IB4s-T77MPJankY5jUoN6LmKgzVV9M5S1wGS3K9nq2FbrqGIk-iIbsGheYVHVm4JTVZF-nMXTq73G8Z8mJmUFVoAHu2xoDflgkBACFrxjtszIAuvmns1VTcKs5qubbgcqngMnJAcaXSbHzjEKXMgj0");'>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <h4 class="font-semibold text-gray-800 dark:text-white">Sophia Carter</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">2 weeks ago</p>
-                                </div>
-                                <div class="mt-1 flex items-center">
-                                    <span class="material-symbols-outlined text-yellow-500">star</span>
-                                    <span class="material-symbols-outlined text-yellow-500">star</span>
-                                    <span class="material-symbols-outlined text-yellow-500">star</span>
-                                    <span class="material-symbols-outlined text-yellow-500">star</span>
-                                    <span class="material-symbols-outlined text-yellow-500">star</span>
-                                </div>
-                                <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                                    Absolutely love this product! The craftsmanship is superb, and it feels great. It's
-                                    become my favorite.
+                    <!-- Empty state -->
+                    <div v-if="prVisibleReviews.length === 0"
+                        class="mt-6 rounded-xl border border-slate-200 dark:border-slate-700 p-10 text-center text-slate-600 dark:text-slate-400">
+                        No reviews yet.
+                    </div>
+
+                    <!-- Reviews -->
+                    <div v-for="r in prVisibleReviews" :key="r.key"
+                        class="p-6 mb-2 mt-5 bg-white dark:bg-background-dark/50 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+                        <!-- Header: Avatar + Username + Timestamp -->
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center gap-3">
+                                <img :src="prAvatar(r)" class="h-12 w-12 rounded-full object-cover flex-shrink-0"
+                                    :alt="prDisplayName(r)" />
+                                <p class="font-semibold text-gray-900 dark:text-white">
+                                    {{ prDisplayName(r) }}
                                 </p>
                             </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                {{ prFormatTime(r.createdAt) }}
+                            </p>
+                        </div>
+
+                        <!-- Size + Star Rating Row -->
+                        <div class="mt-3 flex flex-wrap items-center justify-between pl-15 gap-2">
+                            <div v-if="r.size" class="flex items-center">
+                                <span
+                                    class="inline-block rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+                                    Size: {{ r.size }}
+                                </span>
+                            </div>
+
+                            <!-- Rating -->
+                            <div class="flex items-center gap-1 ml-auto">
+                                <template v-for="n in 5" :key="'star-'+r.key+n">
+                                    <span class="material-symbols-outlined text-lg"
+                                        :class="n <= r.rating ? 'text-primary' : 'text-gray-300 dark:text-gray-600'">
+                                        star
+                                    </span>
+                                </template>
+                                <span class="ml-1 text-xs text-gray-500">{{ r.rating }}/5</span>
+                            </div>
+                        </div>
+
+                        <!-- Review Text -->
+                        <p
+                            class="mt-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap pl-15">
+                            {{ r.text }}
+                        </p>
+
+                        <!-- Photos -->
+                        <div v-if="r.images?.length" class="mt-4 flex flex-wrap gap-3 pl-15">
+                            <img v-for="(img, i) in r.images" :key="i" :src="img"
+                                class="h-24 w-24 rounded-lg object-cover border border-slate-200 dark:border-slate-700 cursor-zoom-in"
+                                alt="review photo" @click="openPrLightbox(img)" />
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
         </div>
         <!-- Image Zoom Modal with smooth transitions -->

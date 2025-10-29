@@ -18,12 +18,12 @@
         </p>
         <div class="flex flex-col sm:flex-row sm:gap-4 space-y-3 sm:space-y-0">
           <router-link 
-            to="/categories"
+            to="/"
             class="rounded-lg bg-[#10A9C7] px-4 sm:px-6 md:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold text-white shadow-lg hover:bg-[#10A9C7]/90 transition-all">
-            Browse Categories
+            Browse Featured Businesses
           </router-link>
           <router-link 
-            to="/"
+            to="/products"
             class="rounded-lg bg-gray-700/80 backdrop-blur-sm px-4 sm:px-6 md:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold text-white shadow-lg hover:bg-gray-700 transition-all">
             Explore Products
           </router-link>
@@ -33,9 +33,9 @@
 
     <!-- Why Choose Section -->
     <section class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-      <h2 class="text-center text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-4">
+      <h3 class="text-center text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-4">
         Why Choose HousebibiGoWhere?
-      </h2>
+      </h3>
       <p class="text-center text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
         We provide the tools and support for home-based businesses to thrive and for buyers to
         find exceptional products.
