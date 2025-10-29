@@ -530,7 +530,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
     window.removeEventListener('scroll', handleScroll);
-    unsubReviews?.()
+    _unsubReviews?.()
 });
 
 const viewAllProducts = () => {
@@ -550,129 +550,213 @@ function toggleFavorite(id) {
 }
 
 /* ===================== ADDED: Reviews helpers ===================== */
-const _buyers = new Map()     // buyerId -> {displayName, photoURL}
-const _products = new Map()   // productId -> {name, imageUrl}
+const _buyers = new Map();    // buyerId -> {displayName, photoURL}
+const _products = new Map();  // productId -> {name, imageUrl}
 
 async function getBuyer(uid) {
-  if (!uid) return null
-  if (_buyers.has(uid)) return _buyers.get(uid)
-  let snap = await getDoc(doc(db, 'users', uid)).catch(() => null)
-  let data = snap?.exists() ? snap.data() : null
+  if (!uid) return null;
+  if (_buyers.has(uid)) return _buyers.get(uid);
+
+  let snap = await getDoc(doc(db, "users", uid)).catch(() => null);
+  let data = snap?.exists() ? snap.data() : null;
+
   if (!data) {
-    snap = await getDoc(doc(db, 'profiles', uid)).catch(() => null)
-    data = snap?.exists() ? snap.data() : null
+    snap = await getDoc(doc(db, "profiles", uid)).catch(() => null);
+    data = snap?.exists() ? snap.data() : null;
   }
-  const user = { displayName: data?.displayName || data?.name || 'User', photoURL: data?.photoURL || data?.avatar || '' }
-  _buyers.set(uid, user)
-  return user
+
+  const user = {
+    displayName: data?.displayName || data?.name || "User",
+    photoURL: data?.photoURL || data?.avatar || ""
+  };
+  _buyers.set(uid, user);
+  return user;
 }
+
 async function getProduct(productId) {
-  if (!productId) return null
-  if (_products.has(productId)) return _products.get(productId)
-  const snap = await getDoc(doc(db, 'products', productId)).catch(() => null)
-  const d = snap?.exists() ? snap.data() : null
-  const prod = { name: d?.name || d?.item_name || 'Product', imageUrl: d?.imageUrl || d?.img_url || '' }
-  _products.set(productId, prod)
-  return prod
+  if (!productId) return null;
+  if (_products.has(productId)) return _products.get(productId);
+
+  const snap = await getDoc(doc(db, "products", productId)).catch(() => null);
+  const d = snap?.exists() ? snap.data() : null;
+  const prod = {
+    name: d?.name || d?.item_name || "Product",
+    imageUrl: d?.imageUrl || d?.img_url || ""
+  };
+  _products.set(productId, prod);
+  return prod;
 }
+
 function mask(name) {
-  const n = (name || 'User').trim()
-  if (n.length <= 2) return n[0] + '*'
-  return `${n[0]}${'*'.repeat(Math.max(1, n.length - 2))}${n[n.length - 1]}`
+  const n = (name || "User").trim();
+  if (n.length <= 2) return n[0] + "*";
+  return `${n[0]}${"*".repeat(Math.max(1, n.length - 2))}${n[n.length - 1]}`;
 }
+
 function niceTime(ts) {
-  const d = ts?.toDate ? ts.toDate() : new Date(ts)
-  return d.toLocaleString('en-SG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const d = ts?.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleString("en-SG", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
-// reactive module
+// ==================== REACTIVE STATE ====================
 const rv = reactive({
-  raw: [],               // flattened rows
-  ui: { sort: 'newest', productId: 'all' },
+  raw: [], // flattened rows
+  ui: { sort: "newest", productId: "all" },
+
   productOptions: computed(() => {
-    const m = new Map()
-    rv.raw.forEach(r => { if (r.productId && r.productName) m.set(r.productId, r.productName) })
-    return Array.from(m.entries()).map(([id, name]) => ({ id, name }))
+    const m = new Map();
+    rv.raw.forEach(r => {
+      if (r.productId && r.productName) m.set(r.productId, r.productName);
+    });
+    return Array.from(m.entries()).map(([id, name]) => ({ id, name }));
   }),
+
   listSorted: computed(() => {
-    let list = rv.raw
-    if (rv.ui.productId !== 'all') list = list.filter(x => x.productId === rv.ui.productId)
+    let list = rv.raw;
+    if (rv.ui.productId !== "all") list = list.filter(x => x.productId === rv.ui.productId);
 
-    // sort
-    if (rv.ui.sort === 'newest') list = [...list].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-    else if (rv.ui.sort === 'oldest') list = [...list].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0))
-    else if (rv.ui.sort === 'high') list = [...list].sort((a, b) => b.rating - a.rating)
-    else if (rv.ui.sort === 'low') list = [...list].sort((a, b) => a.rating - b.rating)
+    if (rv.ui.sort === "newest")
+      list = [...list].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    else if (rv.ui.sort === "oldest")
+      list = [...list].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+    else if (rv.ui.sort === "high")
+      list = [...list].sort((a, b) => b.rating - a.rating);
+    else if (rv.ui.sort === "low")
+      list = [...list].sort((a, b) => a.rating - b.rating);
 
-    return list
+    return list;
   }),
+
   reset() {
-    rv.ui.sort = 'newest'
-    rv.ui.productId = 'all'
+    rv.ui.sort = "newest";
+    rv.ui.productId = "all";
   },
-  // small helpers for template
-  displayName(r) { return Number(r.anonymous) === 1 ? mask(r.buyerName) : (r.buyerName || 'User') },
+
+  // Template helpers
+  displayName(r) {
+    return Number(r.anonymous) === 1 ? mask(r.buyerName) : (r.buyerName || "User");
+  },
   avatarUrl(r) {
     if (Number(r.anonymous) === 1)
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent('Anonymous')}&background=64748b&color=fff&size=64`
-    return r.buyerPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.buyerName || 'User')}&background=10b981&color=fff&size=64`
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        "Anonymous"
+      )}&background=64748b&color=fff&size=64`;
+    return (
+      r.buyerPhoto ||
+      `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        r.buyerName || "User"
+      )}&background=10b981&color=fff&size=64`
+    );
   },
-  formatTime: niceTime,
-})
+  formatTime: niceTime
+});
 
-// live subscription
-let _unsubReviews = null
+// ==================== LIVE SUBSCRIPTION ====================
+let _unsubReviews = null;
+
 onMounted(() => {
-  const q = query(collection(db, 'reviews'), where('sellerId', '==', uid), orderBy('createdAt', 'desc'))
-  _unsubReviews = onSnapshot(q, async (snap) => {
-    const rows = []
-    const tasks = []
-    snap.forEach(ds => {
-      const rev = { id: ds.id, ...ds.data() }
-      const base = {
-        createdAt: rev.createdAt,
-        sellerService: Number(rev.sellerService || 0),
-        delivery: Number(rev.delivery || 0),
-        buyerId: rev.buyerId,
-      }
-      ;(rev.items || []).forEach((it, i) => {
-        const row = {
-          key: `${ds.id}-${i}`,
-          ...base,
-          productId: it.productId || null,
-          size: it.size || null,
-          rating: Number(it.rating || 0),
-          text: it.text || '',
-          images: Array.isArray(it.images) ? it.images : [],
-          anonymous: Number(it.anonymous ?? 0),
+  const q = query(collection(db, "reviews"), where("sellerId", "==", uid), orderBy("createdAt", "desc"));
+  _unsubReviews = onSnapshot(
+    q,
+    async snap => {
+      const rows = [];
+      const tasks = [];
 
-          // placeholders filled by tasks
-          buyerName: null,
-          buyerPhoto: null,
-          productName: null,
-          productImage: null,
-        }
-        rows.push(row)
-        tasks.push((async () => {
-          const u = await getBuyer(base.buyerId); if (u) { row.buyerName = u.displayName; row.buyerPhoto = u.photoURL }
-          const p = await getProduct(it.productId); if (p) { row.productName = p.name; row.productImage = p.imageUrl }
-        })())
-      })
-    })
-    await Promise.all(tasks)
-    rv.raw = rows
-  }, (err) => console.error('reviews onSnapshot error:', err))
-})
-onUnmounted(() => { _unsubReviews?.() })
+      snap.forEach(ds => {
+        const rev = { id: ds.id, ...ds.data() };
+        const base = {
+          createdAt: rev.createdAt,
+          sellerService: Number(rev.sellerService || 0),
+          delivery: Number(rev.delivery || 0),
+          buyerId: rev.buyerId
+        };
 
-// Lightbox (image zoom)
-const lb = ref({ open: false, images: [], index: 0 })
-function openLightbox(images, index = 0) { lb.value.open = true; lb.value.images = images || []; lb.value.index = index }
-function closeLightbox() { lb.value.open = false; lb.value.images = []; lb.value.index = 0 }
-function next() { if (!lb.value.images.length) return; lb.value.index = (lb.value.index + 1) % lb.value.images.length }
-function prev() { if (!lb.value.images.length) return; lb.value.index = (lb.value.index - 1 + lb.value.images.length) % lb.value.images.length }
-function onKey(e){ if(!lb.value.open) return; if(e.key==='Escape') return closeLightbox(); if(e.key==='ArrowRight') return next(); if(e.key==='ArrowLeft') return prev() }
-onMounted(()=>window.addEventListener('keydown', onKey))
-onUnmounted(()=>window.removeEventListener('keydown', onKey))
+        (rev.items || []).forEach((it, i) => {
+          const row = {
+            key: `${ds.id}-${i}`,
+            ...base,
+            productId: it.productId || null,
+            size: it.size || null,
+            rating: Number(it.rating || 0),
+            text: it.text || "",
+            images: Array.isArray(it.images) ? it.images : [],
+            anonymous: Number(it.anonymous ?? 0),
+
+            // placeholders filled by tasks
+            buyerName: null,
+            buyerPhoto: null,
+            productName: null,
+            productImage: null
+          };
+
+          rows.push(row);
+          tasks.push(
+            (async () => {
+              const u = await getBuyer(base.buyerId);
+              if (u) {
+                row.buyerName = u.displayName;
+                row.buyerPhoto = u.photoURL;
+              }
+              const p = await getProduct(it.productId);
+              if (p) {
+                row.productName = p.name;
+                row.productImage = p.imageUrl;
+              }
+            })()
+          );
+        });
+      });
+
+      await Promise.all(tasks);
+      rv.raw = rows;
+    },
+    err => console.error("reviews onSnapshot error:", err)
+  );
+});
+
+onUnmounted(() => {
+  _unsubReviews?.();
+});
+
+// ==================== LIGHTBOX (image zoom) ====================
+const lb = ref({ open: false, images: [], index: 0 });
+
+function openLightbox(images, index = 0) {
+  lb.value.open = true;
+  lb.value.images = images || [];
+  lb.value.index = index;
+}
+
+function closeLightbox() {
+  lb.value.open = false;
+  lb.value.images = [];
+  lb.value.index = 0;
+}
+
+function next() {
+  if (!lb.value.images.length) return;
+  lb.value.index = (lb.value.index + 1) % lb.value.images.length;
+}
+
+function prev() {
+  if (!lb.value.images.length) return;
+  lb.value.index = (lb.value.index - 1 + lb.value.images.length) % lb.value.images.length;
+}
+
+function onKey(e) {
+  if (!lb.value.open) return;
+  if (e.key === "Escape") return closeLightbox();
+  if (e.key === "ArrowRight") return next();
+  if (e.key === "ArrowLeft") return prev();
+}
+
+onMounted(() => window.addEventListener("keydown", onKey));
+onUnmounted(() => window.removeEventListener("keydown", onKey));
 /* ================================================================ */
 </script>
