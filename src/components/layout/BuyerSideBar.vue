@@ -38,10 +38,9 @@ watch(isCollapsed, (newVal) => emit('sidebar-toggle', newVal));
 
 <template>
   <aside
-    :class="[
-      'bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 fixed h-full transition-all duration-300 z-40',
-      isCollapsed ? 'w-20' : 'w-64'
-    ]"
+    class="sidebar bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 fixed h-full transition-all duration-300 z-40"
+    :class="isCollapsed ? 'w-20' : 'w-64'"
+    :style="{ '--sidebar-width': isCollapsed ? '5rem' : '16rem' }"
   >
     <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-end">
       <button
