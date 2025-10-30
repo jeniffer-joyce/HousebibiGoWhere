@@ -3,11 +3,14 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { user } from '@/store/user.js'
 import { auth, db } from '@/firebase/firebase_config'
 import { signOut } from 'firebase/auth'
-/* 🔽 Firestore helpers to read displayName + username */
-import { doc, getDoc } from 'firebase/firestore'
+/* 🔽 Firestore helpers */
+import { doc, getDoc, onSnapshot } from 'firebase/firestore' // ✅ added onSnapshot
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 const { success, error:toastError } = useToast()
+
+// ✅ Pull profilePic from seller_crud for initial load (unchanged from prior step)
+import { authReady, fetchSellerComposite } from '@/firebase/services/sellers/seller_crud.js'
 
 const router = useRouter()
 
@@ -15,14 +18,18 @@ const router = useRouter()
  * Name & Username used in navbar/links
  * --------------------------------------- */
 const displayName = ref('')     // shown text
-const username = ref('')        // 🔵 NEW: used for /:username/ routing
+const username = ref('')        // used for /:username/ routing
+
+// ✅ hold Firestore/user profile pic (reactive)
+const profilePicDb = ref('')
 
 const avatarUrl = computed(() => {
+  if (profilePicDb.value) return profilePicDb.value
   if (user.avatar) return user.avatar
-  
   const name = displayName.value || user.email || 'Seller'
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff&size=200`
 })
+
 /* Robust loader: prefers Firestore, falls back to Auth */
 async function loadName () {
   try {
@@ -38,12 +45,10 @@ async function loadName () {
         authName ||
         authEmail
 
-      // 🔵 NEW: capture username from /users so we can route to /:username/
       username.value =
         String(data.username || user?.username || '').trim().toLowerCase()
     } else {
       displayName.value = authName || authEmail || ''
-      // fallback (no uid) — username stays empty
       username.value = String(user?.username || '').trim().toLowerCase()
     }
   } catch {
@@ -52,48 +57,92 @@ async function loadName () {
   }
 }
 
-/* 🔵 NEW: computed route target for BusinessHomepage (/ :username /) */
+/* Initial one-shot load of profilePic (useful on first mount) */
+async function loadProfilePic () {
+  try {
+    await authReady()
+    const { user: u, business: b } = await fetchSellerComposite()
+    profilePicDb.value = u?.profilePic || u?.photoURL || b?.profilePic || ''
+  } catch {
+    profilePicDb.value = ''
+  }
+}
+
+/* ✅ Realtime listener for profilePic updates */
+let unsubUserPic = null
+async function subscribeProfilePic() {
+  // Clean up existing sub if any
+  if (typeof unsubUserPic === 'function') {
+    unsubUserPic()
+    unsubUserPic = null
+  }
+  const uid = user?.uid || auth.currentUser?.uid
+  if (!uid) return
+
+  // Listen to /users/{uid} changes and refresh avatar
+  const ref = doc(db, 'users', uid)
+  unsubUserPic = onSnapshot(ref, (snap) => {
+    if (!snap.exists()) return
+    const data = snap.data() || {}
+    const nextPic = data.profilePic || data.photoURL || ''
+    // Only update if changed to avoid churn
+    if (nextPic !== profilePicDb.value) {
+      profilePicDb.value = nextPic
+    }
+  }, (err) => {
+    console.error('User profile snapshot error:', err)
+  })
+}
+
+/* ✅ ROUTE TO EDIT ACCOUNT: '/:username/edit-profile' */
 const profileTo = computed(() => {
   if (username.value) {
-    // uses the named route defined in router/index.js:
-    // { path: '/:username/', name: 'business-home', ... }
-    return { name: 'business-home', params: { username: username.value } }
+    return { name: 'edit-profile', params: { username: username.value } }
   }
-  // graceful fallback if username not set yet
   return '/complete-profile/'
 })
 
-//  🔵 NEW: seller messages tab 
-  import { useMessages } from '@/composables/useMessages';
+//  🔵 seller messages tab 
+import { useMessages } from '@/composables/useMessages';
+const currentUserId = computed(() => auth.currentUser?.uid);
+const { totalUnreadCount, loadConversations } = useMessages(currentUserId);
 
-  // Get unread message count
-  const currentUserId = computed(() => auth.currentUser?.uid);
-  const { totalUnreadCount, loadConversations } = useMessages(currentUserId);
-
-  // Load conversations when user is logged in
-  watch(() => [user.isLoggedIn, user.uid], ([loggedIn, uid]) => {
-    if (loggedIn && uid) {
-      loadConversations();
-    }
-  }, { immediate: true });
+watch(() => [user.isLoggedIn, user.uid], ([loggedIn, uid]) => {
+  if (loggedIn && uid) {
+    loadConversations();
+  }
+}, { immediate: true });
 
 /* ------------------------------
  * Theme (light/dark)
  * ------------------------------ */
 const isDark = ref(false)
 
-onMounted(() => {
+onMounted(async () => {
   const savedTheme = localStorage.getItem('theme')
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
   isDark.value = savedTheme ? savedTheme === 'dark' : prefersDark
   document.documentElement.classList.toggle('dark', isDark.value)
 
-  /* ensure name + username load on first mount */
+  /* ensure name + username + avatar load on first mount */
+  await authReady()
   loadName()
+  await loadProfilePic()
+  await subscribeProfilePic() // ✅ start realtime subscription
 })
 
 /* refresh data when login state or uid changes */
-watch(() => [user.isLoggedIn, user.uid], () => { loadName() })
+watch(() => [user.isLoggedIn, user.uid], async () => { 
+  await authReady()
+  loadName()
+  await loadProfilePic()
+  await subscribeProfilePic() // ✅ re-subscribe for new uid
+})
+
+/* Also re-subscribe if Firebase auth.currentUser changes provider-wise */
+watch(() => auth.currentUser?.uid, async () => {
+  await subscribeProfilePic() // ✅ keep listener in sync with auth
+})
 
 const toggleDarkMode = () => {
   isDark.value = !isDark.value
@@ -216,12 +265,12 @@ const closeMobileNav  = () => { showMobileNav.value = false }
               @click.stop="showProfileDropdown = !showProfileDropdown"
               class="focus:outline-none focus:ring-2 focus:ring-primary rounded-full">
               <img 
-                  :src="user.avatar || '/avatar.png'" 
-                  @error="$event.target.src = '/avatar.png'"
-                  alt="Profile" 
-                  class="h-8 w-8 rounded-full object-cover"
+                :src="avatarUrl" 
+                @error="$event.target.src = '/avatar.png'"
+                alt="Profile" 
+                class="h-8 w-8 rounded-full object-cover"
               />
-          </button>
+            </button>
 
             <Transition
               enter-active-class="transition ease-out duration-100"
@@ -242,16 +291,13 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 </div>
 
                 <div class="py-1">
-                  <!-- 🔁 CHANGED: was to="/seller-profile" -->
+                  <!-- Edit Profile (cog icon) -->
                   <RouterLink
                     :to="profileTo"
                     @click="showProfileDropdown = false"
                     class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                    </svg>
-                    My Profile
+                    <span class="material-symbols-outlined text-base leading-none">settings</span>
+                    Edit Profile
                   </RouterLink>
 
                   <button
@@ -338,17 +384,16 @@ const closeMobileNav  = () => { showMobileNav.value = false }
             </div>
 
             <div v-else-if="user.isLoggedIn && !user.loading" class="mt-2">
-              <!-- 🔁 CHANGED: was to="/seller-profile" -->
               <RouterLink
                 :to="profileTo"
                 @click="closeMobileNav"
                 class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <img 
-                  :src="user.avatar || '/avatar.png'" 
+                  :src="avatarUrl" 
                   @error="$event.target.src = '/avatar.png'"
                   alt="Profile" 
                   class="h-8 w-8 rounded-full object-cover"
-              />
+                />
                 <div class="min-w-0">
                   <p class="truncate font-medium">{{ displayName }}</p>
                   <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ user.email }}</p>

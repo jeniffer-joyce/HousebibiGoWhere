@@ -213,7 +213,7 @@ import { user } from '@/store/user.js'
 import Loading from '@/components/status/Loading.vue'
 import AddProductModal from '@/components/modals/AddProductModal.vue'
 import { useToast } from '@/composables/useToast'
-import { authReady, fetchSellerComposite } from '@/firebase/services/sellers/seller_crud'
+import { authReady, fetchSellerComposite } from '@/firebase/services/sellers/seller_crud.js'
 import { getSellerProducts, createProduct, getMyProduct, updateMyProduct } from '@/firebase/services/sellers/seller_product.js'
 
 const { success, error: toastError } = useToast()
