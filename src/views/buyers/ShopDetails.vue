@@ -1,43 +1,69 @@
 <template>
-  <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <main class="flex-grow w-full px-4 sm:px-6 lg:px-8 py-8">
     <!-- Loading -->
     <div v-if="loading" class="flex justify-center items-center min-h-[320px]">
       <Loading />
     </div>
 
     <!-- Content -->
-    <div v-else class=" ">
+    <div v-else class="w-full">
       <!-- ===================== Profile Card ===================== -->
       <div
-        class=" max-w-5xl mx-auto flex flex-col items-center text-center p-6 bg-creamy-white dark:bg-gray-800/50 rounded-xl shadow-sm">
+        class="max-w-5xl mx-auto flex flex-col items-center text-center p-4 sm:p-6 bg-creamy-white dark:bg-gray-800/50 rounded-xl shadow-sm">
         <div class="relative mb-4">
-          <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-32"
+          <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-24 h-24 sm:w-32 sm:h-32"
             :style="{ backgroundImage: `url('${business.profilePic}')` }"></div>
         </div>
 
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-          <span class="inline-flex items-center gap-2">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+          <span class="inline-flex flex-wrap items-center justify-center gap-2">
             {{ business.name }}
-            <span v-if="business.verified" class="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full
-                     bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 align-middle"
-              title="Verified UEN - A trusted, registered business">
-              <span class="material-symbols-outlined text-base leading-none">verified</span>
-              Verified
+
+            <!-- Wrap the entire badge + tooltip in a group container -->
+            <span class="inline-block relative group">
+              <!-- Badge -->
+              <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full
+                   bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200
+                   cursor-help transition-all hover:bg-emerald-200 dark:hover:bg-emerald-900/60">
+                <span class="material-symbols-outlined text-base leading-none">verified</span>
+                Verified
+              </span>
+
+              <!-- Tooltip  -->
+              <div class="absolute top-full left-1/2 -translate-x-1/2 mt-2 pointer-events-none z-50
+                  scale-95 opacity-0 invisible group-hover:scale-100 group-hover:opacity-100 group-hover:visible 
+                  transition-all duration-150 ease-out origin-top">
+                <div class="bg-gray-900 dark:bg-gray-800 text-white rounded-lg shadow-xl px-4 py-3 
+                    border border-gray-700 dark:border-gray-600 min-w-[280px] max-w-xs">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-emerald-400 text-xl">verified_user</span>
+                    <span class="font-bold text-sm">Verified Business</span>
+                  </div>
+                  <p class="text-xs text-gray-300 leading-relaxed">
+                    This seller has been verified with a registered UEN and is a trusted, legitimate business.
+                  </p>
+                </div>
+                <!-- Arrow pointing UP -->
+                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-[1px]">
+                  <div class="border-8 border-transparent border-b-gray-900 dark:border-b-gray-800"></div>
+                </div>
+              </div>
             </span>
           </span>
         </h1>
 
-        <p class="mt-2 text-gray-600 dark:text-gray-400">
+        <p class="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400 px-2">
           {{ business.description || 'No description.' }}
         </p>
 
-        <p class="mt-2 text-gray-600 dark:text-gray-400">
-          <span class="material-symbols-outlined text-lg text-red-500">location_on</span>
+        <p class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
+          <span class="material-symbols-outlined text-base sm:text-lg text-red-500">location_on</span>
           Located @ {{ business.address || '—' }}
         </p>
 
-        <div class="flex flex-wrap items-center justify-center gap-2 mt-2 text-gray-500 dark:text-gray-400">
-          <span class="material-symbols-outlined text-lg text-yellow-500">star</span>
+        <div
+          class="flex flex-wrap items-center justify-center gap-2 mt-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+          <span class="material-symbols-outlined text-base sm:text-lg text-yellow-500">star</span>
           <span class="font-medium">{{ displayRating }} / 5.0</span>
           <span class="text-gray-400 dark:text-gray-600">·</span>
           <span>{{ followingCount }} Following</span>
@@ -46,86 +72,93 @@
         </div>
 
         <!-- Action Buttons -->
-        <div class="mt-4 flex items-center gap-3">
+        <div class="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto px-4 sm:px-0">
           <button
             class="flex items-center justify-center rounded-lg h-10 px-6 bg-primary text-white text-sm font-bold shadow-sm hover:bg-opacity-90 transition-colors">
             Follow
           </button>
 
           <!-- Message Button -->
-          <MessageButton :seller-id="business.uid" :seller-name="business.name" variant="secondary" size="md" />
+          <MessageButton :seller-id="business.uid" :seller-name="business.name" variant="secondary" size="md"
+            class="w-full sm:w-auto" />
         </div>
       </div>
-      <!-- Mobile Horizontal Menu -->
-      <nav class="sm:hidden sticky z-40 dark:bg-gray-800/80 backdrop-blur-md border-y border-gray-200 dark:border-gray-700 flex justify-center gap-6 py-2 text-sm font-medium text-background-dark dark:text-background-light
-                 transition-transform duration-300 ease-in-out" :class="showTopNav ? 'top-16 mt-10' : 'top-0 mt-0'">
-        <button v-for="section in ['about', 'products', 'reviews']" :key="section" @click="scrollToSection(section)"
-          :class="[
+
+      <!-- Mobile Horizontal Menu - Full Width Sticky -->
+      <nav class="sm:hidden sticky top-0 z-40 w-screen -mx-4 bg-white dark:bg-gray-800 backdrop-blur-md border-y border-gray-200 dark:border-gray-700 
+                  flex justify-around gap-2 py-3 text-sm font-medium text-background-dark dark:text-background-light
+                  shadow-sm mt-6">
+        <button v-for="section in ['about', 'products', 'location', 'reviews']" :key="section"
+          @click="scrollToSection(section)" :class="[
             activeSection === section
-              ? 'text-primary font-semibold'
-              : 'text-background-dark/70 dark:text-background-light/70 hover:text-primary',
-            'transition-colors',
+              ? 'text-primary font-semibold border-b-2 border-primary'
+              : 'text-background-dark/70 dark:text-background-light/70',
+            'transition-colors pb-1 px-2',
           ]">
           {{ section.charAt(0).toUpperCase() + section.slice(1) }}
         </button>
       </nav>
+
       <div class="flex max-w-5xl mx-auto gap-8 mt-8">
-        <!-- Sidebar -->
-        <aside :class="[
-          'w-48 flex-shrink-0 sm:block',
-          sidebarOpen ? 'block' : 'hidden',
-          'sticky top-32 self-start'
-        ]">
+        <!-- Desktop Sidebar -->
+        <aside class="hidden sm:block w-48 flex-shrink-0 sticky top-24 self-start">
           <nav aria-label="Sidebar" class="flex flex-col space-y-4 border-r border-primary/20 pr-4">
             <a href="javascript:void(0)" @click="scrollToSection('about')" :class="[
-              'py-2 font-medium text-sm',
+              'py-2 font-medium text-sm transition-all',
               activeSection === 'about'
                 ? 'text-primary border-l-4 border-primary pl-2 bg-primary/5'
                 : 'text-background-dark/60 dark:text-background-light/60 hover:text-primary'
             ]">About</a>
 
             <a href="javascript:void(0)" @click="scrollToSection('products')" :class="[
-              'py-2 font-medium text-sm',
+              'py-2 font-medium text-sm transition-all',
               activeSection === 'products'
                 ? 'text-primary border-l-4 border-primary pl-2 bg-primary/5'
                 : 'text-background-dark/60 dark:text-background-light/60 hover:text-primary'
             ]">Products</a>
 
             <a href="javascript:void(0)" @click="scrollToSection('location')" :class="[
-              'py-2 font-medium text-sm',
+              'py-2 font-medium text-sm transition-all',
               activeSection === 'location'
                 ? 'text-primary border-l-4 border-primary pl-2 bg-primary/5'
                 : 'text-background-dark/60 dark:text-background-light/60 hover:text-primary'
             ]">Location</a>
 
             <a href="javascript:void(0)" @click="scrollToSection('reviews')" :class="[
-              'py-2 font-medium text-sm',
+              'py-2 font-medium text-sm transition-all',
               activeSection === 'reviews'
                 ? 'text-primary border-l-4 border-primary pl-2 bg-primary/5'
                 : 'text-background-dark/60 dark:text-background-light/60 hover:text-primary'
             ]">Reviews</a>
           </nav>
         </aside>
-        <div>
+
+        <!-- Main Content -->
+        <div class="flex-1 min-w-0">
+          <!-- About Section -->
           <section class="mt-10" id="about">
-            <h2 class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">About
+            <h2 class="text-xl sm:text-2xl font-bold text-background-dark dark:text-background-light mb-4 sm:mb-6">
+              About
             </h2>
-            {{ business.bio || 'No bio yet.' }}
+            <p class="text-sm sm:text-base text-gray-700 dark:text-gray-300">
+              {{ business.bio || 'No bio yet.' }}
+            </p>
           </section>
+
+          <!-- Products Section -->
           <section class="mt-10" id="products">
-            <h2 v-if="showAll" class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">All
-              Products
+            <h2 class="text-xl sm:text-2xl font-bold text-background-dark dark:text-background-light mb-4 sm:mb-6">
+              {{ showAll ? 'All Products' : 'Best Selling' }}
             </h2>
-            <h2 v-else class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">Best
-              Selling
-            </h2>
-            <div v-if="showAll" class="mb-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-between w-full">
+
+            <!-- Search & Sort - Mobile Optimized -->
+            <div v-if="showAll" class="mb-6 flex flex-col gap-3 w-full">
               <!-- Search -->
-              <div class="relative w-full md:w-80">
+              <div class="relative w-full">
                 <span
                   class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
                 <input v-model.trim="searchTerm" type="text" placeholder="Search in this shop…"
-                  class="w-full h-10 pl-10 pr-9 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                  class="w-full h-10 pl-10 pr-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
                 <button v-if="searchTerm" @click="searchTerm = ''"
                   class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
                   title="Clear">
@@ -134,36 +167,38 @@
               </div>
 
               <!-- Sort -->
-              <div class="relative sort-menu-root self-end md:self-auto">
+              <div class="relative w-full sort-menu-root">
                 <button @click="toggleSortMenu" @keydown.escape="showSort = false"
-                  class="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <span class="material-symbols-outlined text-base">sort</span>
-                  <span>{{ currentSortLabel }}</span>
+                  class="w-full inline-flex items-center justify-between gap-2 h-10 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-base">sort</span>
+                    <span>{{ currentSortLabel }}</span>
+                  </div>
                   <span class="material-symbols-outlined text-base transition-transform"
                     :class="showSort ? 'rotate-180' : ''">expand_more</span>
                 </button>
 
                 <!-- Sort Menu -->
                 <div v-show="showSort"
-                  class="absolute right-0 mt-2 w-60 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg overflow-hidden z-10">
+                  class="absolute left-0 right-0 mt-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg overflow-hidden z-10">
                   <div class="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
                     Sort by
                   </div>
 
                   <button v-for="opt in sortOptions" :key="opt.value"
                     class="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
-                    :class="sortMode === opt.value
-                      ? 'text-primary font-semibold'
-                      : 'text-gray-700 dark:text-gray-200'
-                      " @click="setSort(opt.value)">
+                    :class="sortMode === opt.value ? 'text-primary font-semibold' : 'text-gray-700 dark:text-gray-200'"
+                    @click="setSort(opt.value)">
                     <span>{{ opt.label }}</span>
                   </button>
                 </div>
               </div>
             </div>
+
+            <!-- Products Grid -->
             <TransitionGroup tag="div" name="fade"
               v-if="(showAll ? filteredSortedProducts.length : topProducts.length) > 0"
-              class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               <RouterLink :to="`/product-details/${product.productId}`"
                 v-for="(product, index) in showAll ? filteredSortedProducts : topProducts" :key="product.productId"
                 :style="{ '--delay': index }"
@@ -171,10 +206,11 @@
 
                 <div class="w-full bg-center bg-no-repeat aspect-square bg-cover bg-gray-200"
                   :style="`background-image: url('${product.imageUrl}')`" />
-                <button @click="toggleFavorite(business.id)"
-                  class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
+
+                <button @click.prevent="toggleFavorite(business.id)"
+                  class="absolute top-2 right-2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
                   <svg
-                    :class="['h-6 w-6 transition-colors', business.isFavorite ? 'text-red-500 fill-current' : 'text-slate-400']"
+                    :class="['h-5 w-5 sm:h-6 sm:w-6 transition-colors', business.isFavorite ? 'text-red-500 fill-current' : 'text-slate-400']"
                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z">
@@ -182,12 +218,13 @@
                   </svg>
                 </button>
 
-                <div class="p-4 flex-1 flex flex-col transition-all duration-300">
-                  <h3 class="text-base font-semibold text-background-dark dark:text-background-light">
+                <div class="p-3 sm:p-4 flex-1 flex flex-col transition-all duration-300">
+                  <h3
+                    class="text-sm sm:text-base font-semibold text-background-dark dark:text-background-light line-clamp-2">
                     {{ product.name }}
                   </h3>
                   <div class="flex justify-between items-center mt-auto pt-2">
-                    <p class="text-md font-bold text-background-dark/70 dark:text-background-light/70">
+                    <p class="text-sm sm:text-base font-bold text-background-dark/70 dark:text-background-light/70">
                       {{ Array.isArray(product.price)
                         ? `$${Math.min(...product.price)}-$${Math.max(...product.price)}`
                         : `$${product.price}` }}
@@ -200,12 +237,11 @@
               </RouterLink>
             </TransitionGroup>
 
-
-            <div v-else class="text-center py-8 text-background-dark/70 dark:text-background-light/70">
+            <div v-else class="text-center py-8 text-background-dark/70 dark:text-background-light/70 text-sm">
               <p v-if="!showAll && topProducts.length === 0">No products sold yet</p>
               <p v-else-if="showAll && allProducts.length === 0">No products sold yet</p>
               <p v-else-if="showAll && allProducts.length > 0 && filteredSortedProducts.length === 0">
-                This product doesn’t exist
+                This product doesn't exist
               </p>
             </div>
 
@@ -217,15 +253,13 @@
             </div>
           </section>
 
-
-          <!-- ===================== Location Section (SIMPLE EMBED - NO GEOCODING) ===================== -->
+          <!-- Location Section -->
           <section class="mt-10" id="location">
-            <h2 class="text-2xl font-bold text-background-dark dark:text-background-light mb-6">
+            <h2 class="text-xl sm:text-2xl font-bold text-background-dark dark:text-background-light mb-4 sm:mb-6">
               Location
             </h2>
 
-            <!-- Google Map Embed (Search Mode - Simple Marker) -->
-            <div v-if="business.address" class="w-full h-96 rounded-lg overflow-hidden shadow-md">
+            <div v-if="business.address" class="w-full h-64 sm:h-96 rounded-lg overflow-hidden shadow-md">
               <iframe
                 :src="`https://www.google.com/maps/embed/v1/search?key=${googleMapsApiKey}&q=${encodeURIComponent(business.address)}&zoom=16`"
                 width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"
@@ -233,118 +267,131 @@
               </iframe>
             </div>
             <div v-else
-              class="w-full h-96 rounded-lg overflow-hidden shadow-md bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-              <p class="text-background-dark/60 dark:text-background-light/60">Address not available</p>
+              class="w-full h-64 sm:h-96 rounded-lg overflow-hidden shadow-md bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+              <p class="text-background-dark/60 dark:text-background-light/60 text-sm">Address not available</p>
             </div>
           </section>
 
-          <!-- ===================== DYNAMIC REVIEWS ===================== -->
+          <!-- Reviews Section -->
           <section class="mt-10" id="reviews">
-            <!-- Header Row (filters on the right) -->
-            <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-              <h2 class="text-2xl font-bold text-background-dark dark:text-background-light">Reviews</h2>
+            <!-- Header Row -->
+            <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <h2 class="text-xl sm:text-2xl font-bold text-background-dark dark:text-background-light">Reviews</h2>
 
-              <div class="ml-auto flex flex-wrap items-center gap-3">
-                <span class="text-sm text-slate-500">Sort</span>
-                <div class="relative">
-                  <select v-model="rv.ui.sort"
-                    class="appearance-none rounded-xl border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm shadow-sm
-                        focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                    <option value="newest">Newest first</option>
-                    <option value="oldest">Oldest first</option>
-                    <option value="high">Highest rating</option>
-                    <option value="low">Lowest rating</option>
-                  </select>
-                  <span
-                    class="pointer-events-none material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-base">
-                    expand_more
-                  </span>
+              <!-- Filters - Mobile Stack -->
+              <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
+                <!-- Sort -->
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-slate-500 whitespace-nowrap">Sort</span>
+                  <div class="relative flex-1 sm:flex-initial">
+                    <select v-model="rv.ui.sort"
+                      class="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm shadow-sm
+                          focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                      <option value="newest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                      <option value="high">Highest rating</option>
+                      <option value="low">Lowest rating</option>
+                    </select>
+                    <span
+                      class="pointer-events-none material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+                      expand_more
+                    </span>
+                  </div>
                 </div>
 
-                <span class="ml-2 text-sm text-slate-500">Product</span>
-                <div class="relative">
-                  <select v-model="rv.ui.productId"
-                    class="appearance-none rounded-xl border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm shadow-sm
-                        focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                    <option value="all">All</option>
-                    <option v-for="p in rv.productOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
-                  </select>
-                  <span
-                    class="pointer-events-none material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-base">
-                    expand_more
-                  </span>
+                <!-- Product Filter -->
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-slate-500 whitespace-nowrap">Product</span>
+                  <div class="relative flex-1 sm:flex-initial">
+                    <select v-model="rv.ui.productId"
+                      class="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm shadow-sm
+                          focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                      <option value="all">All</option>
+                      <option v-for="p in rv.productOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
+                    </select>
+                    <span
+                      class="pointer-events-none material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+                      expand_more
+                    </span>
+                  </div>
                 </div>
 
-                <button @click="rv.reset()" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm
-                    hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                <!-- Reset Button -->
+                <button @click="rv.reset()" class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm
+                      hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                   <span class="material-symbols-outlined text-base">filter_alt_off</span>
                   Reset
                 </button>
               </div>
             </div>
 
-            <!-- Empty -->
+            <!-- Empty State -->
             <div v-if="rv.listSorted.length === 0"
-              class="rounded-xl border border-slate-200 p-10 text-center text-slate-600 dark:border-slate-700 dark:text-slate-400">
+              class="rounded-xl border border-slate-200 p-8 sm:p-10 text-center text-slate-600 dark:border-slate-700 dark:text-slate-400 text-sm">
               No reviews yet.
             </div>
 
             <!-- Review Cards -->
-            <div v-else class="space-y-6">
+            <div v-else class="space-y-4 sm:space-y-6">
               <div v-for="r in rv.listSorted" :key="r.key"
-                class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
-                <!-- Top row: avatar/name/time (left)  •  Seller/Delivery stars (right) -->
-                <div class="flex flex-wrap items-start justify-between gap-4">
+                class="rounded-xl sm:rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
+
+                <!-- Header -->
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div class="flex items-start gap-3">
-                    <img :src="rv.avatarUrl(r)" class="h-12 w-12 rounded-full object-cover" :alt="rv.displayName(r)" />
+                    <img :src="rv.avatarUrl(r)"
+                      class="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover flex-shrink-0"
+                      :alt="rv.displayName(r)" />
                     <div>
-                      <p class="font-semibold text-slate-900 dark:text-white">{{ rv.displayName(r) }}</p>
+                      <p class="font-semibold text-sm sm:text-base text-slate-900 dark:text-white">{{ rv.displayName(r)
+                      }}</p>
                       <p class="text-xs text-slate-500 dark:text-slate-400">{{ rv.formatTime(r.createdAt) }}</p>
                     </div>
                   </div>
 
-                  <!-- Seller / Delivery rating (added back) -->
-                  <div class="flex items-center gap-6">
+                  <!-- Ratings -->
+                  <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 text-xs sm:text-sm">
                     <div class="flex items-center gap-2">
-                      <span class="text-sm text-slate-600 dark:text-slate-300">Seller</span>
-                      <template v-for="n in 5" :key="'ss-'+r.key+n">
-                        <span class="material-symbols-outlined text-[20px]"
-                          :class="n <= (r.sellerService || 0) ? 'text-sky-500' : 'text-slate-300'">star</span>
-                      </template>
+                      <span class="text-slate-600 dark:text-slate-300">Seller</span>
+                      <div class="flex items-center">
+                        <template v-for="n in 5" :key="'ss-'+r.key+n">
+                          <span class="material-symbols-outlined text-base sm:text-[20px]"
+                            :class="n <= (r.sellerService || 0) ? 'text-sky-500' : 'text-slate-300'">star</span>
+                        </template>
+                      </div>
                     </div>
                     <div class="flex items-center gap-2">
-                      <span class="text-sm text-slate-600 dark:text-slate-300">Delivery</span>
-                      <template v-for="n in 5" :key="'dv-'+r.key+n">
-                        <span class="material-symbols-outlined text-[20px]"
-                          :class="n <= (r.delivery || 0) ? 'text-sky-500' : 'text-slate-300'">star</span>
-                      </template>
+                      <span class="text-slate-600 dark:text-slate-300">Delivery</span>
+                      <div class="flex items-center">
+                        <template v-for="n in 5" :key="'dv-'+r.key+n">
+                          <span class="material-symbols-outlined text-base sm:text-[20px]"
+                            :class="n <= (r.delivery || 0) ? 'text-sky-500' : 'text-slate-300'">star</span>
+                        </template>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Product image + name/size + item stars (stacked) -->
+                <!-- Product Info -->
                 <div class="mt-4 flex items-start gap-3">
-                  <!-- product image -->
                   <img :src="r.productImage || defaultProductThumb"
-                    class="h-12 w-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700"
+                    class="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0"
                     alt="product" />
 
-                  <!-- right column: name/size (top), stars (below) -->
-                  <div class="flex-1">
+                  <div class="flex-1 min-w-0">
                     <div class="flex flex-wrap items-center gap-2">
-                      <p class="font-semibold text-slate-900 dark:text-white">
+                      <p class="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate">
                         {{ r.productName || 'Product' }}
                       </p>
                       <span v-if="r.size"
-                        class="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                        class="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 flex-shrink-0">
                         Size: {{ r.size }}
                       </span>
                     </div>
 
-                    <!-- stars directly under name/size -->
                     <div class="mt-1 flex items-center gap-1">
                       <template v-for="n in 5" :key="'it-'+r.key+n">
-                        <span class="material-symbols-outlined text-[20px]"
+                        <span class="material-symbols-outlined text-base sm:text-[20px]"
                           :class="n <= r.rating ? 'text-sky-500' : 'text-slate-300'">star</span>
                       </template>
                       <span class="ml-1 text-xs text-slate-500">{{ r.rating }}/5</span>
@@ -352,39 +399,40 @@
                   </div>
                 </div>
 
-                <!-- Text -->
+                <!-- Review Text -->
                 <p class="mt-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
                   {{ r.text }}
                 </p>
 
-                <!-- Review photos (zoomable) -->
-                <div v-if="r.images?.length" class="mt-4 flex flex-wrap gap-3">
+                <!-- Review Photos -->
+                <div v-if="r.images?.length" class="mt-4 flex flex-wrap gap-2 sm:gap-3">
                   <img v-for="(img, i) in r.images" :key="i" :src="img"
-                    class="h-24 w-24 cursor-zoom-in rounded-lg border border-slate-200 object-cover dark:border-slate-700"
+                    class="h-20 w-20 sm:h-24 sm:w-24 cursor-zoom-in rounded-lg border border-slate-200 object-cover dark:border-slate-700"
                     @click="openLightbox(r.images, i)" alt="review photo" />
                 </div>
               </div>
             </div>
 
             <!-- Lightbox -->
-            <div v-if="lb.open" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/70"
+            <div v-if="lb.open" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4"
               @click.self="closeLightbox">
-              <button class="absolute right-4 top-4 rounded-lg bg-white/90 px-3 py-1 text-sm shadow"
+              <button class="absolute right-4 top-4 rounded-lg bg-white/90 px-3 py-2 text-sm shadow hover:bg-white"
                 @click="closeLightbox">
                 Close
               </button>
-              <button class="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow"
+              <button
+                class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow hover:bg-white"
                 @click="prev">
                 <span class="material-symbols-outlined">chevron_left</span>
               </button>
-              <img :src="lb.images[lb.index]" class="max-h-[86vh] max-w-[90vw] rounded-xl object-contain shadow-2xl" />
-              <button class="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow"
+              <img :src="lb.images[lb.index]" class="max-h-[80vh] max-w-[90vw] rounded-xl object-contain shadow-2xl" />
+              <button
+                class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow hover:bg-white"
                 @click="next">
                 <span class="material-symbols-outlined">chevron_right</span>
               </button>
             </div>
           </section>
-          <!-- ===================== /DYNAMIC REVIEWS ===================== -->
         </div>
       </div>
     </div>
@@ -415,7 +463,6 @@
   transform: scale(0.95);
 }
 
-/* Smooth move transition for reordering */
 .fade-move {
   transition: transform 0.5s ease;
 }
@@ -423,6 +470,15 @@
 html {
   scroll-behavior: smooth;
 }
+
+/* Ensure line-clamp works */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 </style>
 
 <script setup>

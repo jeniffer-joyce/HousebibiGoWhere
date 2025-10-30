@@ -37,13 +37,16 @@ import CompleteProfile from '../views/CompleteProfile.vue';
 
 import ProductDetails from '../views/buyers/ProductDetails.vue'
 import ShopDetails from "../views/buyers/ShopDetails.vue";
+import Checkout from "../views/buyers/Checkout.vue";
 
+// Buyer Account Tabs
 import ProfileTab from '../views/buyers/account/ProfileTab.vue'
 import AddressesTab from '../views/buyers/account/AddressesTab.vue'
 import PaymentsTab from '../views/buyers/account/PaymentsTab.vue'
 import NotificationsTab from '../views/buyers/account/NotificationsTab.vue'
 import ChangePasswordTab from '../views/buyers/account/ChangePasswordTab.vue'
 import PrivacySettingsTab from '../views/buyers/account/PrivacySettingsTab.vue'
+
 
 // For both seller and buyer roles
 import ChangeEmail from '../views/ChangeEmail.vue'
@@ -54,6 +57,7 @@ import { db } from '@/firebase/firebase_config'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth } from '@/firebase/firebase_config'
 import { onAuthStateChanged } from 'firebase/auth'
+
 // ✅ define authReady here so the guard can await it
 const authReady = new Promise((resolve) => {
   const off = onAuthStateChanged(auth, () => {
@@ -182,6 +186,10 @@ const routes = [
   {
     path: '/cart',
     component: Cart,
+  },
+  {
+    path: '/checkout',
+    component: Checkout,
   }
 
 
