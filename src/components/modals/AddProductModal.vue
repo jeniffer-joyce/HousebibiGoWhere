@@ -377,7 +377,9 @@ const form = reactive({
   additional_images: [],    // extra images (derived)
   imageSource: 'unsplash',
   availability: true,
-  category: ''
+  category: '',
+  // ✅ NEW: default totalSales for newly created products
+  totalSales: 0
 })
 
 /* Prefill on open (Edit mode) */
@@ -485,6 +487,7 @@ function resetForm(full = false) {
     form.imageSource = 'unsplash'
     form.availability = true
     form.category = ''
+    form.totalSales = 0 // ✅ reset default
     productImages.value = []
   }
   saving.value = false
@@ -519,6 +522,11 @@ async function handleSubmit() {
       payload.size = null
       payload.price = Number(form.price) || 0
       payload.quantity = Number(form.quantity) || 0
+    }
+
+    // ✅ Only attach totalSales on creation to avoid overwriting existing counts
+    if (!isEdit.value) {
+      payload.totalSales = Number(form.totalSales) || 0
     }
 
     emit('save', payload) // parent decides create/update

@@ -32,6 +32,7 @@ import BuyerOrders from "../views/buyers/BuyerOrders.vue";
 import BuyerAccount from "../views/buyers/BuyerAccount.vue";
 import BuyerFavourites from "../views/buyers/Favourites.vue";
 import BuyerMessages from "../views/buyers/BuyerMessages.vue";
+import Cart from "../views/buyers/Cart.vue";
 import CompleteProfile from '../views/CompleteProfile.vue';
 
 import ProductDetails from '../views/buyers/ProductDetails.vue'
@@ -109,9 +110,11 @@ const routes = [
     path: '/:username/edit-profile/',
     component: EditAccount,
     name: 'edit-profile',
+    redirect: (to) => {
+    return { name: 'edit-profile.my-profile', params: to.params }
+    },
     props: r => ({ username: String(r.params.username || '').toLowerCase() }),
     children: [
-      { path: '', redirect: { name: 'edit-profile.my-profile' } },
       { path: 'my-profile', name: 'edit-profile.my-profile', component: MyProfile },
       { path: 'my-business', name: 'edit-profile.my-business', component: MyBusiness },
       { path: 'return-refund', name: 'edit-profile.return-refund', component: ReturnRefund },
@@ -175,7 +178,12 @@ const routes = [
     component: ProductDetails,
     name: "ProductDetails",
     props: true
+  },
+  {
+    path: '/cart',
+    component: Cart,
   }
+
 
 ]
 

@@ -302,7 +302,7 @@
 
             <!-- reCAPTCHA -->
             <div class="mt-2">
-              <div class="flex justify-center"><div id="recaptcha-container" class="inline-block"></div></div>
+              <div class="flex justify-center"><div :id="recaptchaContainerId" :key="recaptchaKey" class="inline-block"></div></div>
               <p v-if="captchaError" class="text-xs text-red-500 mt-1 text-center">Please complete the reCAPTCHA.</p>
             </div>
 
@@ -477,6 +477,8 @@ const businessOk = computed(()=>{
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 const captchaToken = ref('')
 const captchaError = ref(false)
+const recaptchaKey = ref(0) // Used to force re-render
+const recaptchaContainerId = ref('recaptcha-container-0')
 let widgetId = null
 let themeObserver
 
@@ -489,6 +491,22 @@ function resetRecaptcha() {
     window.grecaptcha.reset(widgetId)
   }
   captchaToken.value = ''
+}
+
+function recreateRecaptcha() {
+  // Increment key to force Vue to destroy and recreate the container
+  recaptchaKey.value++
+  recaptchaContainerId.value = `recaptcha-container-${recaptchaKey.value}`
+  widgetId = null
+  captchaToken.value = ''
+  captchaError.value = false
+  
+  // Wait for Vue to create the new DOM element
+  setTimeout(() => {
+    if (document.getElementById(recaptchaContainerId.value)) {
+      renderRecaptcha()
+    }
+  }, 100)
 }
 
 function loadRecaptchaScript() {
@@ -505,19 +523,35 @@ function loadRecaptchaScript() {
 }
 
 function renderRecaptcha() {
+  const container = document.getElementById(recaptchaContainerId.value)
+  if (!container) {
+    console.error('reCAPTCHA container not found:', recaptchaContainerId.value)
+    return
+  }
+  
+  if (!window.grecaptcha || typeof window.grecaptcha.render !== 'function') {
+    console.error('grecaptcha not ready')
+    return
+  }
+  
   const theme = currentTheme()
-  widgetId = window.grecaptcha.render('recaptcha-container', {
-    sitekey: recaptchaSiteKey,
-    theme,
-    callback: (token) => {
-      captchaToken.value = token
-      captchaError.value = false
-    },
-    'expired-callback': () => {
-      captchaToken.value = ''
-      captchaError.value = true
-    }
-  })
+  
+  try {
+    widgetId = window.grecaptcha.render(recaptchaContainerId.value, {
+      sitekey: recaptchaSiteKey,
+      theme,
+      callback: (token) => {
+        captchaToken.value = token
+        captchaError.value = false
+      },
+      'expired-callback': () => {
+        captchaToken.value = ''
+        captchaError.value = true
+      }
+    })
+  } catch (error) {
+    console.error('Error rendering reCAPTCHA:', error)
+  }
 }
 async function onGoogleSignup() {
   loadingGoogle.value = true
@@ -594,13 +628,9 @@ onMounted(async () => {
   await loadRecaptchaScript()
   renderRecaptcha()
 
+  // Watch for dark mode changes and recreate reCAPTCHA with new container
   themeObserver = new MutationObserver(() => {
-    const el = document.getElementById('recaptcha-container')
-    if (!el || !window.grecaptcha) return
-    el.innerHTML = ''
-    widgetId = null
-    captchaToken.value = ''
-    renderRecaptcha()
+    recreateRecaptcha()
   })
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 })
