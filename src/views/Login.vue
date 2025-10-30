@@ -124,10 +124,10 @@
           </button>
         </div>
 
-        <!-- reCAPTCHA -->
+        <!-- reCAPTCHA - with unique key to force re-render -->
         <div class="mt-2">
           <div class="flex justify-center">
-            <div id="recaptcha-login" class="inline-block"></div>
+            <div :id="recaptchaContainerId" :key="recaptchaKey" class="inline-block"></div>
           </div>
           <p v-if="captchaError" class="text-xs text-red-600 mt-2 text-center">
             Please complete the reCAPTCHA.
@@ -168,7 +168,7 @@
 
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ForgotPasswordModal from '@/components/modals/ForgotPasswordModal.vue'
 import { loginWithIdentifier } from '../firebase/auth/authService'
@@ -190,13 +190,16 @@ const identifier = ref('')
 const password = ref('')
 const showPassword = ref(false)
 
-// reCAPTCHA
+// reCAPTCHA - using dynamic container ID and key for re-rendering
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 const captchaToken = ref('')
 const captchaError = ref(false)
 const showForgotPasswordModal = ref(false)
+const recaptchaKey = ref(0) // Used to force re-render
+const recaptchaContainerId = ref('recaptcha-login-0')
 let widgetId = null
 let expireTimer
+let themeObserver
 
 function loadRecaptchaScript () {
   return new Promise((resolve, reject) => {
@@ -219,21 +222,57 @@ function onTokenReceived (token) {
 }
 
 function renderRecaptcha () {
-  widgetId = window.grecaptcha.render('recaptcha-login', {
-    sitekey: recaptchaSiteKey,
-    callback: onTokenReceived,
-    'expired-callback': () => {
-      captchaToken.value = ''
-      captchaError.value = true
-    }
-  })
+  const container = document.getElementById(recaptchaContainerId.value)
+  if (!container) {
+    console.error('reCAPTCHA container not found:', recaptchaContainerId.value)
+    return
+  }
+  
+  if (!window.grecaptcha || typeof window.grecaptcha.render !== 'function') {
+    console.error('grecaptcha not ready')
+    return
+  }
+  
+  const isDark = document.documentElement.classList.contains('dark')
+  
+  try {
+    widgetId = window.grecaptcha.render(recaptchaContainerId.value, {
+      sitekey: recaptchaSiteKey,
+      theme: isDark ? 'dark' : 'light',
+      callback: onTokenReceived,
+      'expired-callback': () => {
+        captchaToken.value = ''
+        captchaError.value = true
+      }
+    })
+  } catch (error) {
+    console.error('Error rendering reCAPTCHA:', error)
+  }
 }
 
 function resetRecaptcha () {
   if (window.grecaptcha && widgetId !== null) {
-    window.grecaptcha.reset(widgetId)
+    try {
+      window.grecaptcha.reset(widgetId)
+    } catch (e) {
+      console.log('Reset failed:', e)
+    }
   }
   captchaToken.value = ''
+}
+
+function recreateRecaptcha() {
+  // Increment key to force Vue to destroy and recreate the container
+  recaptchaKey.value++
+  recaptchaContainerId.value = `recaptcha-login-${recaptchaKey.value}`
+  widgetId = null
+  captchaToken.value = ''
+  captchaError.value = false
+  
+  // Wait for Vue to create the new DOM element
+  setTimeout(() => {
+    renderRecaptcha()
+  }, 100)
 }
 
 // Route user based on Firestore role (ignores visual toggle)
@@ -282,11 +321,22 @@ onMounted(async () => {
     console.error('Missing VITE_RECAPTCHA_SITE_KEY')
     return
   }
+  
   await loadRecaptchaScript()
   renderRecaptcha()
+
+  // Watch for dark mode changes and recreate reCAPTCHA with new container
+  themeObserver = new MutationObserver(() => {
+    recreateRecaptcha()
+  })
+  themeObserver.observe(document.documentElement, { 
+    attributes: true, 
+    attributeFilter: ['class'] 
+  })
 })
 
 onBeforeUnmount(() => {
+  themeObserver?.disconnect()
   clearTimeout(expireTimer)
   resetRecaptcha()
 })

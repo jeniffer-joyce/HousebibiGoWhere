@@ -110,9 +110,11 @@ const routes = [
     path: '/:username/edit-profile/',
     component: EditAccount,
     name: 'edit-profile',
+    redirect: (to) => {
+    return { name: 'edit-profile.my-profile', params: to.params }
+    },
     props: r => ({ username: String(r.params.username || '').toLowerCase() }),
     children: [
-      { path: '', redirect: { name: 'edit-profile.my-profile' } },
       { path: 'my-profile', name: 'edit-profile.my-profile', component: MyProfile },
       { path: 'my-business', name: 'edit-profile.my-business', component: MyBusiness },
       { path: 'return-refund', name: 'edit-profile.return-refund', component: ReturnRefund },
