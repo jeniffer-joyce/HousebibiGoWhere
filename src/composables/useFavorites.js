@@ -1,18 +1,18 @@
 import { ref, watch } from 'vue'
-import { getDoc, doc } from 'firebase/firestore'
+import { getDoc, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
 import { db } from '@/firebase/firebase_config'
 import { user } from '@/store/user'
 
+  // State
+const isSidebarCollapsed = ref(false)
+const favorites = ref([]) // businesses
+const favoriteProducts = ref([]) // products
+
 export function useFavorites() {
   // Sidebar state
-  const isSidebarCollapsed = ref(false)
   function handleSidebarToggle(collapsed) {
     isSidebarCollapsed.value = collapsed
   }
-
-  // State
-  const favorites = ref([]) // businesses
-  const favoriteProducts = ref([]) // products
 
   // Normalize multiple prices (for products)
   function normalizeProductData(products) {
@@ -98,12 +98,36 @@ export function useFavorites() {
     }
   }
 
-  function toggleProductFavorite(productId) {
-    const product = favoriteProducts.value.find(p => p.id === productId)
-    if (!product) return
-    product.isFavorite = !product.isFavorite
-    if (!product.isFavorite) {
-      favoriteProducts.value = favoriteProducts.value.filter(p => p.id !== productId)
+  async function toggleProductFavorite(product) {
+    if (!user.uid) {
+      console.warn('User not ready')
+      return
+    }
+
+    if (!product || !product.id) return; // safety check
+
+    const userRef = doc(db, 'users', user.uid)
+
+    // Check if product already in favoriteProducts
+    const existing = favoriteProducts.value.find(p => p.id === product.id)
+
+    if (existing) {
+      existing.isFavorite = !existing.isFavorite
+
+      if (existing.isFavorite) {
+        // Add back to favorites in Firestore
+        await updateDoc(userRef, { favourites: arrayUnion(product.id) })
+      } else {
+        // Remove from Firestore
+        await updateDoc(userRef, { favourites: arrayRemove(product.id) })
+        // Remove from local state
+        favoriteProducts.value = favoriteProducts.value.filter(p => p.id !== product.id)
+      }
+    } else {
+      // Add new product to favorites
+      const newProd = { ...product, isFavorite: true }
+      favoriteProducts.value.push(newProd)
+      await updateDoc(userRef, { favourites: arrayUnion(product.id) })
     }
   }
 
@@ -119,12 +143,11 @@ export function useFavorites() {
     { immediate: true }
   )
 
+  // Return shared refs
   return {
-    // state
     isSidebarCollapsed,
     favorites,
     favoriteProducts,
-    // methods
     handleSidebarToggle,
     toggleFavorite,
     toggleProductFavorite,

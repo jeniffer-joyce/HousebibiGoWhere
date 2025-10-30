@@ -1,15 +1,19 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useProducts } from '@/composables/useProducts.js'
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
 import { db, auth } from '@/firebase/firebase_config'
 import { user } from '@/store/user.js'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import ToastNotification from '@/components/ToastNotification.vue' // Import toast
 
+// Import useFavorites
+import { useFavorites } from '@/composables/useFavorites.js'
+
 // Fetch products from Firestore
 const { products, loading, error } = useProducts()
 
+// Use favorites composable
+const { favoriteProducts, toggleProductFavorite, loadFavoriteProducts } = useFavorites()
 
 // Toast notification state
 const showToast = ref(false)
@@ -204,44 +208,66 @@ const displayedProducts = computed(() => {
   return list
 })
 
-// Favourites
-const favourites = ref(new Set()) // product IDs
+// NEW: Pagination state
+const currentPage = ref(1)
+const itemsPerPage = ref(12) // products per page
+const totalPages = computed(() => Math.ceil(displayedProducts.value.length / itemsPerPage.value))
 
-// Load user favourites on mount
-async function loadFavourites() {
-  if (!user.uid) return
-  const userRef = doc(db, 'users', user.uid)
-  const snap = await getDoc(userRef)
-  if (snap.exists()) {
-    const favs = snap.data().favourites || []
-    favourites.value = new Set(favs)
-  }
-}
+// NEW: Paginated products
+const paginatedProducts = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return displayedProducts.value.slice(start, end)
+})
 
-async function toggleFavourite(productId) {
-  if (!user.uid) {
-    alert('Please login to favourite products')
-    return
-  }
-
-  const userRef = doc(db, 'users', user.uid)
-
-  if (favourites.value.has(productId)) {
-    // Remove from favourites
-    favourites.value.delete(productId)
-    await updateDoc(userRef, {
-      favourites: arrayRemove(productId)
-    })
+// NEW: Generate visible page numbers (show 1, 2, …, last)
+const visiblePages = computed(() => {
+  const pages = []
+  const maxVisible = 5
+  if (totalPages.value <= maxVisible) {
+    for (let i = 1; i <= totalPages.value; i++) pages.push(i)
   } else {
-    // Add to favourites
-    favourites.value.add(productId)
-    await updateDoc(userRef, {
-      favourites: arrayUnion(productId)
-    })
+    if (currentPage.value <= 3) {
+      pages.push(1, 2, 3, 4, '...', totalPages.value)
+    } else if (currentPage.value >= totalPages.value - 2) {
+      pages.push(1, '...', totalPages.value - 3, totalPages.value - 2, totalPages.value - 1, totalPages.value)
+    } else {
+      pages.push(
+        1,
+        '...',
+        currentPage.value - 1,
+        currentPage.value,
+        currentPage.value + 1,
+        '...',
+        totalPages.value
+      )
+    }
   }
+  return pages
+})
+
+// NEW: Handle page navigation
+function goToPage(page) {
+  if (page === '...') return
+  currentPage.value = page
 }
 
-onMounted(loadFavourites)
+function nextPage() {
+  if (currentPage.value < totalPages.value) currentPage.value++
+}
+
+function prevPage() {
+  if (currentPage.value > 1) currentPage.value--
+}
+
+// NEW: Example watcher to reset page if filters/sort change
+watch([selectedFilters, selectedSort], () => (currentPage.value = 1))
+
+// favoriteProducts from composable
+onMounted(() => {
+  if (user.value?.uid) loadFavoriteProducts(user.value.uid)
+})
+
 </script>
 
 <template>
@@ -325,16 +351,18 @@ onMounted(loadFavourites)
 
       <!-- Products -->
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <div class="group" v-for="item in displayedProducts" :key="item.id">
+        <div class="group" v-for="item in paginatedProducts" :key="item.id">
           <div class="relative overflow-hidden rounded-lg bg-background-light dark:bg-background-dark">
             <div class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
                  :style="{ backgroundImage: `url(${item.img_url})` }"></div>
-                  <button
-                    @click="toggleFavourite(item.id)"
+                  <button @click="toggleProductFavorite(item)"
                     class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors"
                   >
                     <svg
-                      :class="['h-6 w-6 transition-colors', favourites.has(item.id) ? 'text-red-500 fill-current' : 'text-gray-400']"
+                      :class="[
+                        'h-6 w-6 transition-colors',
+                        favoriteProducts.some(p => p.id === item.id && p.isFavorite) ? 'text-red-500 fill-current' : 'text-gray-400'
+                      ]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -373,16 +401,84 @@ onMounted(loadFavourites)
           </div>
         </div>
       </div>
+
+        <!-- 🔹 Enhanced Pagination Controls -->
+        <div class="flex flex-wrap justify-center items-center gap-2 mt-8 text-sm">
+          <!-- Prev -->
+          <button
+            @click="prevPage"
+            :disabled="currentPage === 1"
+            class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40"
+          >
+            ‹ Prev
+          </button>
+
+          <!-- Page numbers -->
+          <template v-for="(page, idx) in visiblePages" :key="idx">
+            <button
+              v-if="page !== '...'"
+              @click="goToPage(page)"
+              :class="[
+                'px-3 py-1 rounded transition',
+                currentPage === page
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+              ]"
+            >
+              {{ page }}
+            </button>
+            <span v-else class="px-2 select-none">…</span>
+          </template>
+
+          <!-- Next -->
+          <button
+            @click="nextPage"
+            :disabled="currentPage === totalPages"
+            class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40"
+          >
+            Next ›
+          </button>
+
+          <!-- Last -->
+          <button
+            @click="goToPage(totalPages)"
+            :disabled="currentPage === totalPages"
+            class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40"
+          >
+            Last »
+          </button>
+
+          <!-- Go to page dropdown -->
+          <div class="ml-4 flex items-center gap-2">
+            <label for="goto" class="text-gray-600 dark:text-gray-300">Go to page:</label>
+            <select
+              id="goto"
+              v-model.number="currentPage"
+              class="border rounded px-2 py-1 bg-gray-100 dark:bg-gray-800"
+            >
+              <option
+                v-for="n in totalPages"
+                :key="n"
+                :value="n"
+              >
+                {{ n }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
+
+
+  
     <!-- Toast Notification -->
-  <ToastNotification
-    :show="showToast"
-    :type="toastConfig.type"
-    :title="toastConfig.title"
-    :message="toastConfig.message"
-    :duration="4000"
-    @close="closeToast"
-  />
+    <ToastNotification
+      :show="showToast"
+      :type="toastConfig.type"
+      :title="toastConfig.title"
+      :message="toastConfig.message"
+      :duration="4000"
+      @close="closeToast"
+    />
 </main>
 </template>
