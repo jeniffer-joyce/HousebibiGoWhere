@@ -2,11 +2,13 @@ import { ref, watch } from 'vue'
 import { getDoc, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
 import { db } from '@/firebase/firebase_config'
 import { user } from '@/store/user'
+import { useToast } from '@/composables/useToast.js'
 
   // State
 const isSidebarCollapsed = ref(false)
 const favorites = ref([]) // businesses
 const favoriteProducts = ref([]) // products
+const { error, warning } = useToast()
 
 export function useFavorites() {
   // Sidebar state
@@ -100,6 +102,7 @@ export function useFavorites() {
 
   async function toggleProductFavorite(product) {
     if (!user.uid) {
+      warning('Please log in to manage favorites.', 'Login Required')
       console.warn('User not ready')
       return
     }

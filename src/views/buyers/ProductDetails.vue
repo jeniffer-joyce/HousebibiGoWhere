@@ -11,6 +11,11 @@ import { useCart } from '@/composables/useCart'
 
 import Loading from '@/components/status/Loading.vue';
 
+import { useToast } from '@/composables/useToast.js' // Import toast
+
+import AddToCartSuccessModal from '@/components/modals/AddToCartSuccessModal.vue'
+
+
 const route = useRoute()
 
 // Get product ID from route params
@@ -21,7 +26,7 @@ const {
     product,
     seller,
     loading,
-    error,
+    productError,
     formattedPrice,
     productImages,
     mainImage,
@@ -57,6 +62,11 @@ const {
 const selectedSize = ref(0);
 const userQuantity = ref(1)
 const currentImageIndex = ref(0) // Track current image in mobile carousel
+
+// Add to Cart Success Modal
+const showSuccessModal = ref(false)
+const addedProductName = ref('')
+const addedQuantity = ref(1)
 
 function selectSize(index) {
     selectedSize.value = index;
@@ -312,16 +322,17 @@ function closePrLightbox() { prLightbox.open = false; prLightbox.url = '' }
 
 onBeforeUnmount(() => { prUnsub && prUnsub() })
 
+const { error, warning } = useToast()
 
 // Add to cart
-
 const router = useRouter()
 const { adding, addToCart } = useCart()
 
 // Add to cart handler
 async function handleAddToCart() {
+
     if (selectedQuantity.value <= 0) {
-        alert('This item is out of stock')
+        warning("This item is out of stock", "Out of stock")
         return
     }
 
@@ -334,8 +345,12 @@ async function handleAddToCart() {
 
         await addToCart(productData, userQuantity.value, selectedSize.value)
 
-        // Show success message
-        alert(`Added ${userQuantity.value} item(s) to cart!`)
+        // Store data for modal
+        addedProductName.value = productData.item_name
+        addedQuantity.value = userQuantity.value
+
+        // Show success modal
+        showSuccessModal.value = true
 
         console.log('Product data being sent to cart:', {
             id: productData.id,
@@ -348,29 +363,37 @@ async function handleAddToCart() {
             userQuantity: userQuantity.value
         })
 
-        // Optional: Navigate to cart or stay on page
-        router.push('/cart')
-    } catch (error) {
-        alert(error.message || 'Failed to add to cart')
+  
+        // router.push('/cart')
+    } catch (err) {
+        warning('Please log in to manage cart.', 'Login Required')
+        console.error(err)
     }
 }
+function closeSuccessModal() {
+    showSuccessModal.value = false
+}
 
-// Replace your existing "Add to Cart" button in the template with this:
 </script>
 
 <style scoped>
 /* Hide scrollbar for mobile image carousel */
 .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
 }
 
 .scrollbar-hide::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari and Opera */
+    display: none;
+    /* Chrome, Safari and Opera */
 }
 </style>
 
 <template>
+    <AddToCartSuccessModal :show="showSuccessModal" :product-name="addedProductName" :quantity="addedQuantity"
+        @close="closeSuccessModal" />
     <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-10 sm:px-6 lg:px-8">
         <!-- Loading -->
         <div v-if="loading" class="flex justify-center items-center min-h-[320px]">
@@ -395,12 +418,11 @@ async function handleAddToCart() {
                         <div @scroll="handleImageScroll"
                             class="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4"
                             style="scroll-behavior: smooth; -webkit-overflow-scrolling: touch;">
-                            <div v-for="(image, index) in productImages" :key="index" 
+                            <div v-for="(image, index) in productImages" :key="index"
                                 class="flex-shrink-0 w-full snap-center">
                                 <!-- Image - clickable with better cursor and hover effect -->
                                 <div class="h-64 sm:h-80 rounded-lg bg-cover bg-center bg-no-repeat cursor-zoom-in hover:opacity-95 hover:shadow-xl transition-all duration-300"
-                                    :style="`background-image: url('${image}');`" 
-                                    @click="openImageModal(image)">
+                                    :style="`background-image: url('${image}');`" @click="openImageModal(image)">
                                 </div>
 
                                 <!-- Disclaimer below image -->
@@ -411,7 +433,7 @@ async function handleAddToCart() {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Image counter dots -->
                         <div v-if="productImages.length > 1" class="flex justify-center gap-1.5 mt-3">
                             <div v-for="(image, index) in productImages" :key="`dot-${index}`"
@@ -427,8 +449,7 @@ async function handleAddToCart() {
                     <div v-for="(image, index) in productImages" :key="index">
                         <!-- Image - clickable with better cursor and hover effect -->
                         <div class="h-64 sm:h-80 lg:h-96 rounded-lg bg-cover bg-center bg-no-repeat cursor-zoom-in hover:opacity-95 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
-                            :style="`background-image: url('${image}');`" 
-                            @click="openImageModal(image)">
+                            :style="`background-image: url('${image}');`" @click="openImageModal(image)">
                         </div>
 
                         <!-- Disclaimer below image -->
@@ -477,11 +498,11 @@ async function handleAddToCart() {
                                 </button>
                             </div>
                         </div>
-                        
+
                         <!-- Quantity Section -->
                         <div>
                             <h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-white">Quantity</h3>
-                            
+
                             <!-- Stock Status + Quantity -->
                             <div class="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <!-- Quantity Buttons -->
@@ -492,9 +513,9 @@ async function handleAddToCart() {
                                         −
                                     </button>
 
-                                    <input type="number" v-model.number="userQuantity" :min="selectedQuantity > 0 ? 1 : 0"
-                                        :max="selectedQuantity" :disabled="selectedQuantity <= 0" 
-                                        class="w-16 sm:w-20 h-9 sm:h-10 text-center text-sm sm:text-base border border-gray-300 dark:border-slate-600 rounded-lg 
+                                    <input type="number" v-model.number="userQuantity"
+                                        :min="selectedQuantity > 0 ? 1 : 0" :max="selectedQuantity"
+                                        :disabled="selectedQuantity <= 0" class="w-16 sm:w-20 h-9 sm:h-10 text-center text-sm sm:text-base border border-gray-300 dark:border-slate-600 rounded-lg 
                                             bg-white dark:bg-slate-700 text-gray-900 dark:text-white 
                                             focus:outline-none focus:ring-2 focus:ring-primary
                                             disabled:bg-gray-100 dark:disabled:bg-slate-800 
@@ -510,7 +531,8 @@ async function handleAddToCart() {
                                 </div>
 
                                 <!-- Stock Status -->
-                                <p class="text-xs sm:text-sm font-medium text-center sm:text-right" :class="selectedStockStatus.color">
+                                <p class="text-xs sm:text-sm font-medium text-center sm:text-right"
+                                    :class="selectedStockStatus.color">
                                     {{ selectedStockStatus.text }}
                                 </p>
                             </div>
@@ -554,7 +576,8 @@ async function handleAddToCart() {
                                     :style="`background-image: url('${seller.profile_image || seller.logo || seller.profilePic || 'https://via.placeholder.com/150'}');`">
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="font-semibold text-sm sm:text-base text-gray-800 dark:text-white truncate">
+                                    <p
+                                        class="font-semibold text-sm sm:text-base text-gray-800 dark:text-white truncate">
                                         {{ seller.business_name || seller.name || 'Unknown Seller' }}
                                     </p>
                                     <a class="text-xs sm:text-sm text-primary hover:underline" href="#">View Shop</a>
@@ -605,7 +628,8 @@ async function handleAddToCart() {
                                 class="material-symbols-outlined pointer-events-none absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 text-gray-400 text-base sm:text-lg">expand_more</span>
                         </div>
 
-                        <button @click="resetPrFilters" class="inline-flex items-center gap-1.5 sm:gap-2 h-9 sm:h-10 px-2.5 sm:px-3 rounded-lg border border-gray-200 dark:border-gray-700
+                        <button @click="resetPrFilters"
+                            class="inline-flex items-center gap-1.5 sm:gap-2 h-9 sm:h-10 px-2.5 sm:px-3 rounded-lg border border-gray-200 dark:border-gray-700
                         bg-white dark:bg-gray-900 text-xs sm:text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                             <span class="material-symbols-outlined text-sm sm:text-base">filter_alt_off</span>
                             <span class="hidden xs:inline">Reset</span>
@@ -625,13 +649,15 @@ async function handleAddToCart() {
                     <!-- Header: Avatar + Username + Timestamp -->
                     <div class="flex items-start justify-between gap-3">
                         <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                            <img :src="prAvatar(r)" class="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover flex-shrink-0"
+                            <img :src="prAvatar(r)"
+                                class="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover flex-shrink-0"
                                 :alt="prDisplayName(r)" />
                             <p class="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">
                                 {{ prDisplayName(r) }}
                             </p>
                         </div>
-                        <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap flex-shrink-0">
+                        <p
+                            class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap flex-shrink-0">
                             {{ prFormatTime(r.createdAt) }}
                         </p>
                     </div>
