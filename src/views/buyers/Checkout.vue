@@ -5,6 +5,7 @@ import { db, auth } from "@/firebase/firebase_config"
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 import Loading from '@/components/status/Loading.vue';
+import { useToast } from '@/composables/useToast.js';
 
 
 const router = useRouter()
@@ -355,25 +356,30 @@ function groupItemsByName(items) {
     return grouped
 }
 
+const { error, warning, info } = useToast()
+
 // Checkout function
 async function proceedToPayment() {
     if (!selectedAddress.value) {
-        alert('Please add a delivery address')
+        warning('Please add a delivery address', 'Missing Address')
         return
     }
 
     if (selectedCartItems.value.length === 0) {
-        alert('No items selected for checkout')
+        info('No items selected for checkout', 'Empty Cart')
         return
     }
 
     if (hasStockIssues.value) {
-        alert('Some items are out of stock or have insufficient quantity. Please review your cart.')
+        error(
+            'Some items are out of stock or have insufficient quantity. Please review your cart.',
+            'Stock Issue'
+        )
         return
     }
 
     // TODO: Implement payment gateway
-    alert('Payment gateway integration coming soon')
+    info('Payment gateway integration coming soon', 'Coming Soon')
 }
 </script>
 

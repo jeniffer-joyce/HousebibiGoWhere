@@ -5,7 +5,7 @@ import { db, auth } from "@/firebase/firebase_config"
 import { doc, getDoc, setDoc, updateDoc, arrayRemove, arrayUnion, onSnapshot, collection, query, where, getDocs } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 import Loading from '@/components/status/Loading.vue';
-
+import { useToast } from '@/composables/useToast.js' // Import toast
 
 const router = useRouter()
 const currentUser = ref(null)
@@ -16,6 +16,8 @@ const selectedItems = ref(new Set())
 const shopProfilePics = ref({})
 const stockWarnings = ref(new Map()) // Map of cartItemId to actual available stock
 const actualStockMap = ref(new Map()) // Map of cartItemId to current actual stock from database
+
+const { error, warning, info } = useToast()
 
 // Auth state
 onAuthStateChanged(auth, (user) => {
@@ -148,7 +150,7 @@ async function updateQuantity(item, newQuantity) {
 
     // Validate against actual stock
     if (newQuantity > actualStock) {
-        alert(`Only ${actualStock} items available in stock`)
+        error(`Only ${actualStock} items available in stock`, 'Stock Error')
         return
     }
 
@@ -173,7 +175,7 @@ async function updateQuantity(item, newQuantity) {
         }
     } catch (error) {
         console.error('Error updating quantity:', error)
-        alert('Failed to update quantity')
+        warning('Failed to update quantity', 'Update Error')
     } finally {
         updatingItemId.value = null
     }
@@ -213,7 +215,7 @@ async function updateSize(item, newSizeIndex) {
         }
     } catch (error) {
         console.error('Error updating size:', error)
-        alert('Failed to update size')
+        warning('Failed to update size', 'Update Error')
     } finally {
         updatingItemId.value = null
     }
@@ -245,7 +247,7 @@ async function removeItem(item) {
         }
     } catch (error) {
         console.error('Error removing item:', error)
-        alert('Failed to remove item')
+        warning('Failed to remove item', 'Remove Error')
     } finally {
         updatingItemId.value = null
     }
@@ -385,7 +387,7 @@ function groupItemsByName(items) {
 // Navigate to checkout
 function proceedToCheckout() {
     if (selectedItems.value.size === 0) {
-        alert('Please select at least one item to checkout')
+        warning('Please select at least one item to checkout', 'No Items Selected')
         return
     }
 
@@ -691,7 +693,7 @@ function proceedToCheckout() {
                                 <div v-for="(sellerGroup, sellerId) in selectedItemsBySeller" :key="sellerId"
                                     class="space-y-2">
                                     <p class="text-sm font-medium text-gray-800 dark:text-white">{{ sellerGroup.shopName
-                                        }}</p>
+                                    }}</p>
 
                                     <!-- Group items by name -->
                                     <div v-for="(itemGroup, itemName) in groupItemsByName(sellerGroup.items)"
