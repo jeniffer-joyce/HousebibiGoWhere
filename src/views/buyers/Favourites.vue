@@ -2,6 +2,9 @@
 import { ref, computed } from 'vue'
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
 import { useFavorites } from '@/composables/useFavorites.js'
+import { user } from '@/store/user.js'
+
+console.log(user.avatar)
 
 const {
   isSidebarCollapsed,
@@ -35,6 +38,7 @@ const filteredBusinesses = computed(() => {
     b.category.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 })
+
 </script>
 
 <template>
@@ -58,27 +62,15 @@ const filteredBusinesses = computed(() => {
           </p>
         </div>
 
-        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
           <!-- Unified Search -->
-          <div class="w-full sm:w-auto flex-1">
+          <div class="w-full sm:w-4/5 md:w-3/4 lg:w-2/3 xl:w-1/2 ml-auto">
             <input
               v-model="searchQuery"
               type="text"
               placeholder="Search your favorite products or businesses..."
-              class="w-full sm:max-w-md md:max-w-xl pl-4 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+              class="w-full pl-4 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
             />
-          </div>
-
-          <!-- Notifications & Profile -->
-          <div class="flex items-center gap-3">
-            <button class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-              </svg>
-            </button>
-            <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="Profile"
-                 class="h-10 w-10 rounded-full border-2 border-primary" />
           </div>
         </div>
       </div>
