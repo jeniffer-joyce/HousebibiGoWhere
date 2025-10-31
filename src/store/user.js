@@ -1,7 +1,7 @@
 import { reactive } from "vue"
 import { auth, db } from "@/firebase/firebase_config.js"
 import { onAuthStateChanged } from "firebase/auth"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, getDoc, query, collection, where, onSnapshot } from "firebase/firestore"
 
 export const user = reactive({
   isLoggedIn: false,
@@ -11,10 +11,10 @@ export const user = reactive({
   email: null,
   role: "buyer", // default role
   loading: true,
-  cart: [],
+  cartCount: 0,
   favourites: [],
   favouriteBusinesses: [],
-  needsOnboarding: false,  
+  needsOnboarding: false,
   preferences: {
     theme: "dark",
     language: "en",
@@ -23,6 +23,33 @@ export const user = reactive({
   },
   isSigningUp: false, // NEW: Track if user is in signup process
 })
+
+let unsubscribeCart = null
+
+function subscribeToCartCount(userId) {
+  if (unsubscribeCart) {
+    unsubscribeCart()
+  }
+
+  if (!userId) {
+    user.cartCount = 0
+    return
+  }
+
+  const cartRef = doc(db, 'carts', userId)
+
+  unsubscribeCart = onSnapshot(cartRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const cartData = snapshot.data()
+      user.cartCount = cartData?.items?.length || 0
+    } else {
+      user.cartCount = 0
+    }
+  }, (error) => {
+    console.error('Error fetching cart count:', error)
+    user.cartCount = 0
+  })
+}
 
 // Listen for login/logout changes automatically
 onAuthStateChanged(auth, async (firebaseUser) => {
@@ -42,12 +69,14 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     user.uid = firebaseUser.uid
     user.email = firebaseUser.email
 
+    subscribeToCartCount(firebaseUser.uid)
+
     // Fetch user role and preferences from Firestore with retry logic
     try {
       const docRef = doc(db, "users", firebaseUser.uid)
       let attempts = 0
       let docSnap = null
-      
+
       // Retry up to 5 times with longer delays for signup scenarios
       while (attempts < 5) {
         docSnap = await getDoc(docRef)
@@ -60,17 +89,17 @@ onAuthStateChanged(auth, async (firebaseUser) => {
           await new Promise(resolve => setTimeout(resolve, delay))
         }
       }
-      
+
       if (docSnap && docSnap.exists()) {
         const data = docSnap.data()
         console.log("✅ Fetched user data:", data)
 
         user.role = data.role || "buyer"
-        
+
         // Load user preferences
         user.preferences.categories = data.preferredCategories || []
         user.preferences.hasSetPreferences = data.hasSetPreferences || false
-        
+
         // Use seller's logo if available
         if (user.role === "seller" && data.logo) {
           user.avatar = data.logo
@@ -101,6 +130,12 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     user.favouriteBusinesses = []
     user.preferences.categories = []
     user.preferences.hasSetPreferences = false
+
+    if (unsubscribeCart) {
+      unsubscribeCart()
+      unsubscribeCart = null
+    }
+    user.cartCount = 0
   }
   user.loading = false
 })

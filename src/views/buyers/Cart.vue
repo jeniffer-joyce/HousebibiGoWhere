@@ -6,6 +6,10 @@ import { doc, getDoc, setDoc, updateDoc, arrayRemove, arrayUnion, onSnapshot, co
 import { onAuthStateChanged } from "firebase/auth"
 import Loading from '@/components/status/Loading.vue';
 import { useToast } from '@/composables/useToast.js' // Import toast
+import RemoveFromCartModal from '@/components/modals/RemoveFromCartModal.vue'
+
+const showRemoveModal = ref(false)
+const itemToRemove = ref(null)
 
 const router = useRouter()
 const currentUser = ref(null)
@@ -221,11 +225,16 @@ async function updateSize(item, newSizeIndex) {
     }
 }
 
-// Remove item from cart
-async function removeItem(item) {
+function initiateRemove(item) {
     if (!currentUser.value) return
+    itemToRemove.value = item
+    showRemoveModal.value = true
+}
+// Remove item from cart
+async function confirmRemoveItem() {
+    const item = itemToRemove.value
 
-    if (!confirm('Remove this item from cart?')) return
+    if (!item) return
 
     updatingItemId.value = item.cartItemId
 
@@ -536,7 +545,7 @@ function proceedToCheckout() {
                                                 </div>
 
                                                 <!-- Remove button (desktop) -->
-                                                <button @click="removeItem(item)"
+                                                <button @click="initiateRemove(item)"
                                                     :disabled="updatingItemId === item.cartItemId"
                                                     class="hidden sm:block text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 
                                                         disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0" title="Remove item">
@@ -547,6 +556,11 @@ function proceedToCheckout() {
                                                             d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                     </svg>
                                                 </button>
+                                                <RemoveFromCartModal :show="showRemoveModal"
+                                                    :product-name="itemToRemove?.item_name || ''"
+                                                    :quantity="itemToRemove?.quantity || 1"
+                                                    @close="showRemoveModal = false; itemToRemove = null"
+                                                    @confirm="confirmRemoveItem" />
                                             </div>
 
                                             <!-- Size Selector (if available) -->
@@ -693,7 +707,7 @@ function proceedToCheckout() {
                                 <div v-for="(sellerGroup, sellerId) in selectedItemsBySeller" :key="sellerId"
                                     class="space-y-2">
                                     <p class="text-sm font-medium text-gray-800 dark:text-white">{{ sellerGroup.shopName
-                                    }}</p>
+                                        }}</p>
 
                                     <!-- Group items by name -->
                                     <div v-for="(itemGroup, itemName) in groupItemsByName(sellerGroup.items)"
