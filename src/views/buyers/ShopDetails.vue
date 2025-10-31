@@ -207,11 +207,14 @@
                 <div class="w-full bg-center bg-no-repeat aspect-square bg-cover bg-gray-200"
                   :style="`background-image: url('${product.imageUrl}')`" />
 
-                <button @click.prevent="toggleFavorite(business.id)"
-                  class="absolute top-2 right-2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
-                  <svg
-                    :class="['h-5 w-5 sm:h-6 sm:w-6 transition-colors', business.isFavorite ? 'text-red-500 fill-current' : 'text-slate-400']"
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button @click.stop.prevent="toggleProductFavorite({
+                  id: product.productId,
+
+                })" class="absolute top-2 right-2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                  <svg :class="[
+                    'h-5 w-5 sm:h-6 sm:w-6 transition-colors',
+                    favoriteProducts.some(p => p.id === product.productId) ? 'text-red-500 fill-current' : 'text-slate-400'
+                  ]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z">
                     </path>
@@ -474,11 +477,10 @@ html {
 /* Ensure line-clamp works */
 .line-clamp-2 {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  /* -webkit-line-clamp: 2; */
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
 </style>
 
 <script setup>
@@ -489,6 +491,9 @@ import Loading from '@/components/status/Loading.vue';
 import MessageButton from '@/components/messageButton.vue';
 import defaultProfilePic from '@/assets/defaultBusinessLogo.png'
 import { getSellerProductsSortedBySales } from '@/composables/productUtils.js';
+
+import { useFavorites } from '@/composables/useFavorites.js'
+import { user } from '@/store/user.js'
 
 /* --------- ADDED: Firestore imports for dynamic reviews --------- */
 import { db } from '@/firebase/firebase_config'
@@ -508,6 +513,9 @@ const loading = ref(true);
 
 // Google Maps API Key for Embed API
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+
+// Add this after your other const declarations (around line 20)
+const { favoriteProducts, toggleProductFavorite, loadFavoriteProducts } = useFavorites()
 
 const topProducts = computed(() => {
   return showAll.value ? allProducts.value : allProducts.value.slice(0, 3);
@@ -619,6 +627,9 @@ onMounted(async () => {
   /* ------------------------------------------------ */
 
   window.addEventListener('scroll', handleScroll);
+  if (user.value?.uid) {
+    loadFavoriteProducts(user.value.uid)
+  }
 });
 
 onUnmounted(() => {
@@ -849,8 +860,6 @@ onMounted(() => window.addEventListener("keydown", onKey));
 onUnmounted(() => window.removeEventListener("keydown", onKey));
 /* ================================================================ */
 
-/* misc */
-function toggleFavorite(id) { /* your follow/fav impl */ }
 // SEARCH + SORT 
 const searchTerm = ref('')
 const showSort = ref(false)

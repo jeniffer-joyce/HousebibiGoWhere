@@ -7,7 +7,7 @@ export function useProduct(productId) {
     const seller = ref(null)
     const loading = ref(true)
     // const selectedImage = ref(0)
-    const error = ref(null)
+    const productError = ref(null)
 
     // Format price
     const formattedPrice = computed(() => {
@@ -91,7 +91,7 @@ export function useProduct(productId) {
     async function loadProduct() {
         try {
             loading.value = true
-            error.value = null
+            productError.value = null
 
             // Fetch all products (you might want to optimize this to fetch single product)
             const products = await getSellerProducts()
@@ -100,7 +100,7 @@ export function useProduct(productId) {
             product.value = products.find(p => p.id === productId.value)
 
             if (!product.value) {
-                error.value = 'Product not found'
+                productError.value = 'Product not found'
                 return
             }
 
@@ -111,7 +111,7 @@ export function useProduct(productId) {
 
         } catch (err) {
             console.error('Error loading product:', err)
-            error.value = err.message || 'Failed to load product'
+            productError.value = err.message || 'Failed to load product'
         } finally {
             loading.value = false
         }
@@ -129,7 +129,7 @@ export function useProduct(productId) {
         product,
         seller,
         loading,
-        error,
+        productError,
         // selectedImage,
 
         // Computed
