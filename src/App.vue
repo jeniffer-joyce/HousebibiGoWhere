@@ -7,6 +7,7 @@
           v-else
           :is-buyer-side-bar="user.role === 'buyer' && $route.path.startsWith('/buyer-')"
         />
+        <ChatIcon />
 
         <router-view />
         <ToastNotification
@@ -37,6 +38,7 @@ import Footer from '@/components/layout/Footer.vue'
 import OnboardingModal from '@/components/modals/OnboardingModal.vue'
 import { useToast } from '@/composables/useToast'
 import ToastNotification from '@/components/ToastNotification.vue'
+import ChatIcon from '@/components/layout/ChatIcon.vue'
 
 const { toastState, close } = useToast()
 

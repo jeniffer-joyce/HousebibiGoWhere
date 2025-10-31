@@ -115,39 +115,46 @@ let ticking = false
 let lastDirection = 'up' // track last direction to prevent rapid flip-flop
 
 function handleScrollForNavbar() {
-  if (!ticking) {
-    window.requestAnimationFrame(() => {
-      const currentY = window.scrollY
-      const isMobile = window.innerWidth < 880
-      const delta = currentY - lastScrollY.value
+  if (ticking) return
 
-      if (!isMobile) {
-        showTopNav.value = true
-        lastScrollY.value = currentY
-        ticking = false
-        return
-      }
+  window.requestAnimationFrame(() => {
+    const currentY = window.scrollY
+    const isMobile = window.innerWidth < 880
+    const delta = currentY - lastScrollY.value
+    const scrollThreshold = 30 // smoother threshold
 
-      const scrollThreshold = 30 //  smoother threshold
-      const hasScrolledEnough = Math.abs(delta) > scrollThreshold
-
-      if (hasScrolledEnough) {
-        const direction = delta > 0 ? 'down' : 'up'
-
-        //  Only toggle if direction actually changes
-        if (direction !== lastDirection) {
-          showTopNav.value = direction === 'up'
-          lastDirection = direction
-        }
-
-        lastScrollY.value = currentY
-      }
-
+    if (!isMobile) {
+      showTopNav.value = true
+      lastScrollY.value = currentY
       ticking = false
-    })
+      return
+    }
 
-    ticking = true
-  }
+    // Only trigger if scrolled enough
+    if (Math.abs(delta) > scrollThreshold) {
+      const direction = delta > 0 ? 'down' : 'up'
+
+      if (direction === 'down') {
+        // Hide navbar
+        showTopNav.value = false
+
+        // Close mobile dropdown smoothly when scrolling down
+        if (showMobileNav.value) {
+          showMobileNav.value = false
+        }
+      } else {
+        // Show navbar again
+        showTopNav.value = true
+      }
+
+      lastDirection = direction
+      lastScrollY.value = currentY
+    }
+
+    ticking = false
+  })
+
+  ticking = true
 }
 
 const props = defineProps({
@@ -376,11 +383,17 @@ onUnmounted(() => {
   </header>
 
   <!-- Mobile menu -->
-  <Transition enter-active-class="transition duration-150 ease-out"
-    enter-from-class="transform -translate-y-2 opacity-0" enter-to-class="transform translate-y-0 opacity-100"
-    leave-active-class="transition duration-100 ease-in" leave-from-class="transform translate-y-0 opacity-100"
-    leave-to-class="transform -translate-y-2 opacity-0">
-    <div v-if="showMobileNav" :key="uiState.isSidebarCollapsed"
+    <Transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="transform -translate-y-2 opacity-0"
+      enter-to-class="transform translate-y-0 opacity-100"
+      leave-active-class="transition duration-300 ease-in"
+      leave-from-class="transform translate-y-0 opacity-100"
+      leave-to-class="transform -translate-y-2 opacity-0"
+    >
+    <div
+      v-if="showMobileNav"
+      :key="uiState.isSidebarCollapsed"
       class="fixed top-[64px] z-50 block [@media(min-width:880px)]:hidden border-t border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark shadow-lg transition-all duration-300"
       :style="dropdownStyle">
       <nav class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8 block [@media(min-width:880px)]:hidden">
