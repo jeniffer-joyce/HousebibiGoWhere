@@ -218,6 +218,12 @@ const closeMobileNav  = () => { showMobileNav.value = false }
               {{ totalUnreadCount > 9 ? '9+' : totalUnreadCount }}
             </span>
           </RouterLink>
+          
+          <RouterLink
+            to="/seller-analytics/"
+            class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary transition-colors">
+            Analytics
+          </RouterLink>
           <RouterLink
             to="/dashboard/"
             class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary transition-colors">
@@ -360,6 +366,12 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                   {{ totalUnreadCount > 9 ? '9+' : totalUnreadCount }}
                 </span>
               </span>
+            </RouterLink>
+            <RouterLink
+              to="/seller-analytics/"
+              @click="closeMobileNav"
+              class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+              Analytics
             </RouterLink>
             <RouterLink
               to="/dashboard/"
