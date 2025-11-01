@@ -10,6 +10,7 @@ import About from '../views/About.vue'
 // Seller Views
 import ForSellers from '../views/ForSellers.vue'
 import SellerOrders from '../views/sellers/SellerOrders.vue'
+import SellerAnalytics from '../views/sellers/SellerAnalytics.vue'
 import { user } from '../store/user.js'
 import SellerMessages from "../views/sellers/SellerMessages.vue";
 import BusinessHomepage from "../views/sellers/BusinessHomepage.vue";
@@ -95,6 +96,10 @@ const routes = [
   {
     path: '/seller-orders/',
     component: SellerOrders
+  },
+  {
+    path: '/seller-analytics/',
+    component: SellerAnalytics
   },
   {
     path: '/seller-messages/',
@@ -226,7 +231,7 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // 3) 🔑 Cold-start redirect: if hitting "/" with an authenticated user,
+  // 3) 🔒 Cold-start redirect: if hitting "/" with an authenticated user,
   //    read Firestore once to get role + username and redirect to /:username/
   if (to.path === '/' && auth.currentUser) {
     try {
