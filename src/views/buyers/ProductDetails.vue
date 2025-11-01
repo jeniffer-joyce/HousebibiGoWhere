@@ -96,13 +96,19 @@ const selectedFormattedPrice = computed(() => {
 })
 
 const selectedQuantity = computed(() => {
-    if (selectedSize.value !== null && product.value?.quantity && Array.isArray(product.value.quantity)) {
-        // Return the quantity corresponding to the selected size
-        return product.value.quantity[selectedSize.value];
+    if (product.value?.quantity !== undefined) {
+        // If quantity is an array and a size is selected
+        if (Array.isArray(product.value.quantity) && selectedSize.value !== null) {
+            return product.value.quantity[selectedSize.value] || 0;
+        }
+        // If quantity is just a number
+        if (typeof product.value.quantity === 'number') {
+            return product.value.quantity;
+        }
     }
-    // Default to the first stock quantity if no size is selected
-    return product.value?.quantity[0] || 0;  // Default to 0 if no quantity is found
-})
+    return 0; // default fallback
+});
+
 
 // Format Availability status
 const selectedStockStatus = computed(() => {
