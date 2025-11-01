@@ -94,8 +94,16 @@ const routes = [
     component: ForSellers
   },
   {
-    path: '/seller-orders/',
-    component: SellerOrders
+    path: '/seller-orders',
+    component: () => import('@/views/sellers/SellerOrdersLayout.vue'),
+    children: [
+      { path: '', redirect: { name: 'SellerOrdersToShip' } }, // default route
+      { path: 'to-ship',        name: 'SellerOrdersToShip',        component: () => import('@/views/sellers/orders/SellerOrdersToShip.vue') },
+      { path: 'shipping',       name: 'SellerOrdersShipping',      component: () => import('@/views/sellers/orders/SellerOrdersShipping.vue') },
+      { path: 'completed',      name: 'SellerOrdersCompleted',     component: () => import('@/views/sellers/orders/SellerOrdersCompleted.vue') },
+      { path: 'cancellation',   name: 'SellerOrdersCancellation',  component: () => import('@/views/sellers/orders/SellerOrdersCancellation.vue') },
+      { path: 'return-refund',  name: 'SellerOrdersReturnRefund',  component: () => import('@/views/sellers/orders/SellerOrdersReturnRefund.vue') },
+    ]
   },
   {
     path: '/seller-analytics/',

@@ -1,0 +1,13 @@
+<!-- src/views/sellers/orders/SellerOrdersToShip.vue -->
+<template>
+  <h2 class="text-2xl font-bold mb-4">To Ship</h2>
+  <OrdersTable :rows="rows" />
+</template>
+
+<script setup>
+import { computed } from 'vue'
+import { useSellerOrders } from '@/composables/useSellerOrders'
+import OrdersTable from './_OrdersTable.vue'
+const { orders, statusOf } = useSellerOrders()
+const rows = computed(() => orders.value.filter(o => statusOf(o) === 'to_ship'))
+</script>
