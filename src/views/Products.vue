@@ -5,6 +5,7 @@ import { db, auth } from '@/firebase/firebase_config'
 import { user } from '@/store/user.js'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import ToastNotification from '@/components/ToastNotification.vue' // Import toast
+import { RouterLink } from 'vue-router'
 
 // Import useFavorites
 import { useFavorites } from '@/composables/useFavorites.js'
@@ -350,57 +351,86 @@ onMounted(() => {
       </div>
 
       <!-- Products -->
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <div class="group" v-for="item in paginatedProducts" :key="item.id">
-          <div class="relative overflow-hidden rounded-lg bg-background-light dark:bg-background-dark">
-            <div class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
-                 :style="{ backgroundImage: `url(${item.img_url})` }"></div>
-                  <button @click="toggleProductFavorite(item)"
-                    class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <svg
-                      :class="[
-                        'h-6 w-6 transition-colors',
-                        favoriteProducts.some(p => p.id === item.id && p.isFavorite) ? 'text-red-500 fill-current' : 'text-gray-400'
-                      ]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                      />
-                    </svg>
-                  </button>
-          </div>
-          <div class="pt-3">
-            <h3 class="font-bold text-base">{{ item.item_name }}</h3>
-            <p class="text-sm">{{ item.sellerName }}</p>
-            <p class="font-bold mt-1">
-              {{
-                (() => {
-                  if (!item.sizes || !item.sizes.length) return '$0'
-                  const prices = item.sizes.map(s => s.price)
-                  const min = Math.min(...prices)
-                  const max = Math.max(...prices)
-                  return min === max ? `$${min}` : `$${min} - $${max}`
-                })()
-              }}
-            </p>
-            <!-- Ratings -->
-            <div class="flex items-center mt-1">
-              <span v-for="n in 5" :key="n" class="text-yellow-500 text-sm">
-                <span v-if="n <= item.rating">★</span>
-                <span v-else class="text-gray-300 dark:text-gray-600">★</span>
-              </span>
-              <span class="ml-2 text-xs text-subtle-dark dark:text-subtle-dark">{{ item.rating }}/5</span>
+      <div
+        v-else
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+      >
+        <div
+          v-for="item in paginatedProducts"
+          :key="item.id"
+          class="relative group block hover:opacity-90 transition"
+        >
+          <!-- ✨ Product link -->
+          <RouterLink
+            :to="`/product-details/${item.id}`"
+            class="block overflow-hidden rounded-lg bg-background-light dark:bg-background-dark"
+          >
+            <!-- Product image -->
+            <div
+              class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
+              :style="{ backgroundImage: `url(${item.img_url})` }"
+            ></div>
+
+            <!-- Product Info -->
+            <div class="pt-3">
+              <h3 class="font-bold text-base truncate">{{ item.item_name }}</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 truncate">
+                {{ item.sellerName }}
+              </p>
+              <p class="font-bold mt-1">
+                {{
+                  (() => {
+                    if (!item.sizes || !item.sizes.length) return '$0'
+                    const prices = item.sizes.map(s => s.price)
+                    const min = Math.min(...prices)
+                    const max = Math.max(...prices)
+                    return min === max ? `$${min}` : `$${min} - $${max}`
+                  })()
+                }}
+              </p>
+
+              <div class="flex items-center mt-1">
+                <span v-for="n in 5" :key="n" class="text-yellow-500 text-sm">
+                  <span v-if="n <= item.rating">★</span>
+                  <span v-else class="text-gray-300 dark:text-gray-600">★</span>
+                </span>
+                <span
+                  class="ml-2 text-xs text-subtle-dark dark:text-subtle-dark"
+                >
+                  {{ item.rating }}/5
+                </span>
+              </div>
             </div>
-          </div>
+          </RouterLink>
+
+          <!-- ❤️ Favorite button now OUTSIDE the link -->
+          <button
+            @click="toggleProductFavorite(item)"
+            class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors z-20"
+          >
+            <svg
+              :class="[
+                'h-6 w-6 transition-colors',
+                favoriteProducts.some(p => p.id === item.id && p.isFavorite)
+                  ? 'text-red-500 fill-current'
+                  : 'text-gray-400'
+              ]"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              />
+            </svg>
+          </button>
         </div>
       </div>
+
+
 
         <!-- 🔹 Enhanced Pagination Controls -->
         <div class="flex flex-wrap justify-center items-center gap-2 mt-8 text-sm">
