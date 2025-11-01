@@ -269,6 +269,10 @@ onMounted(() => {
   if (user.value?.uid) loadFavoriteProducts(user.value.uid)
 })
 
+watch(paginatedProducts, (products) => {
+  console.log('Product data sample:', products[0])
+}, { immediate: true })
+
 </script>
 
 <template>
@@ -362,7 +366,11 @@ onMounted(() => {
         >
           <!-- ✨ Product link -->
           <RouterLink
-            :to="`/product-details/${item.id}`"
+            :to="{
+            name: 'ProductDetails',
+            params: { id: item.id },
+            query: { fromProductsPage: true, shop: item.sellerID }
+          }"
             class="block overflow-hidden rounded-lg bg-background-light dark:bg-background-dark"
           >
             <!-- Product image -->
@@ -403,7 +411,7 @@ onMounted(() => {
             </div>
           </RouterLink>
 
-          <!-- ❤️ Favorite button now OUTSIDE the link -->
+          <!-- Favorite button now OUTSIDE the link -->
           <button
             @click="toggleProductFavorite(item)"
             class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors z-20"

@@ -15,8 +15,23 @@ import { useToast } from '@/composables/useToast.js' // Import toast
 
 import AddToCartSuccessModal from '@/components/modals/AddToCartSuccessModal.vue'
 
-
 const route = useRoute()
+const router = useRouter()
+
+defineProps({
+  productId: String
+})
+
+// NEW: Show "Go to Shop" button if navigated from products page
+const showGoToShop = route.query.fromProductsPage === 'true';
+const shopUsername = route.query.shop
+
+// NEW: Function to go to the shop
+function goToShop() {
+  if (shopUsername) {
+    router.push(`/shop-details/${shopUsername}`)
+  }
+}
 
 // Get product ID from route params
 const productId = computed(() => route.params.id)
@@ -326,7 +341,6 @@ onBeforeUnmount(() => { prUnsub && prUnsub() })
 const { error, warning } = useToast()
 
 // Add to cart
-const router = useRouter()
 const { adding, addToCart } = useCart()
 
 // Add to cart handler
@@ -374,7 +388,6 @@ async function handleAddToCart() {
 function closeSuccessModal() {
     showSuccessModal.value = false
 }
-
 </script>
 
 <style scoped>
@@ -586,6 +599,61 @@ function closeSuccessModal() {
                                 <MessageButton :seller-id="product.seller_id || seller.uid || seller.id"
                                     :seller-name="seller.business_name || seller.name || 'Seller'" variant="secondary"
                                     size="sm" class="hidden sm:flex" />
+                            </div>
+                        </div>
+
+                        <!-- ✅ Enhanced Go to Shop - Clickable seller card with visit button -->
+                        <div v-if="showGoToShop && shopUsername && product" class="mt-4">
+                            <!-- Show card immediately using product data (faster) -->
+                            <div
+                                @click="goToShop"
+                                class="group cursor-pointer rounded-lg bg-white dark:bg-background-dark border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all duration-200 overflow-hidden"
+                            >
+                                <div class="flex items-center gap-3 sm:gap-4 p-4">
+                                    <!-- Clickable Profile Picture - Use seller data if available, otherwise placeholder -->
+                                    <div 
+                                        class="h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 rounded-full bg-cover bg-center ring-2 ring-gray-200 dark:ring-gray-700 group-hover:ring-blue-500 transition-all duration-200"
+                                        :style="`background-image: url('${seller?.imageURL || seller?.logo || seller?.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(product.sellerName || 'Seller') + '&background=3b82f6&color=fff&size=128'}');`"
+                                    ></div>
+                                    
+                                    <!-- Seller Info - Use product.sellerName (already loaded) -->
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                            {{ seller?.business_name || seller?.name || product.sellerName || 'Seller' }}
+                                        </p>
+                                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-base">storefront</span>
+                                            Click to visit shop
+                                        </p>
+                                    </div>
+                                    
+                                    <!-- Visit Button -->
+                                    <button
+                                        @click.stop="goToShop"
+                                        class="flex-shrink-0 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors duration-200 flex items-center gap-1.5"
+                                    >
+                                        <span>Visit</span>
+                                        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                            
+                        <!-- Loading state only if product hasn't loaded yet -->
+                        <div v-else-if ="showGoToShop && shopeUsername" class="rounded-lg bg-white dark:bg-background-dark border-2 border-gray-200 dark:border-gray-700 p-4">
+                                <div class="flex items-center gap-3 sm:gap-4">
+                                    <div class="h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+                                    <div class="flex-1">
+                                        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2 animate-pulse"></div>
+                                        <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-24 animate-pulse"></div>
+                                    </div>
+                                    <button
+                                        @click="goToShop"
+                                        class="flex-shrink-0 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors duration-200 flex items-center gap-1.5"
+                                    >
+                                        <span>Visit</span>
+                                        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                                    </button>
                             </div>
                         </div>
                     </div>
