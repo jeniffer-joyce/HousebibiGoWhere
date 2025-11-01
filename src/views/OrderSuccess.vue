@@ -296,33 +296,43 @@ function viewOrders() {
       <!-- Additional Info -->
       <div class="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
         <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">What's Next?</h3>
-        
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-          <div>
-            <div class="mb-2">
-              <span class="inline-block w-10 h-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center">1</span>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+
+          <!-- Step 1: Order Confirmation -->
+          <div class="flex items-start gap-4">
+            <!-- Step number -->
+            <span class="inline-block w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center mt-1">1</span>
+            <!-- Icon + text centered -->
+            <div class="flex flex-col items-center">
+              <img src="https://img.icons8.com/ios-filled/50/000000/task-completed.png" alt="Order Confirmation" class="w-8 h-8 mb-1">
+              <p class="text-sm font-medium text-slate-900 dark:text-white">Order Confirmation</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 text-center">Click on "View My Orders"</p>
             </div>
-            <p class="text-sm font-medium text-slate-900 dark:text-white mb-1">Order Confirmation</p>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Click on "View My Orders"</p>
           </div>
           
-          <div>
-            <div class="mb-2">
-              <span class="inline-block w-10 h-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center">2</span>
+          <!-- Step 2: Processing -->
+          <div class="flex items-start gap-4">
+            <span class="inline-block w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center mt-1">2</span>
+            <div class="flex flex-col items-center">
+              <img src="https://img.icons8.com/ios-filled/50/000000/process.png" alt="Processing" class="w-8 h-8 mb-1">
+              <p class="text-sm font-medium text-slate-900 dark:text-white">Processing</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 text-center">Seller prepares your items</p>
             </div>
-            <p class="text-sm font-medium text-slate-900 dark:text-white mb-1">Processing</p>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Seller prepares your items</p>
           </div>
           
-          <div>
-            <div class="mb-2">
-              <span class="inline-block w-10 h-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center">3</span>
+          <!-- Step 3: Delivery -->
+          <div class="flex items-start gap-4">
+            <span class="inline-block w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center mt-1">3</span>
+            <div class="flex flex-col items-center">
+              <img src="https://img.icons8.com/ios-filled/50/000000/motorcycle-delivery-single-box.png" alt="Delivery" class="w-8 h-8 mb-1">
+              <p class="text-sm font-medium text-slate-900 dark:text-white">Delivery</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 text-center">Track your shipment</p>
             </div>
-            <p class="text-sm font-medium text-slate-900 dark:text-white mb-1">Delivery</p>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Track your shipment</p>
           </div>
+
         </div>
       </div>
+
     </div>
   </main>
 </template>
