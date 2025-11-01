@@ -1,9 +1,11 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { db, auth } from "@/firebase/firebase_config"
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"
+import { doc, getDoc, setDoc, onSnapshot, updateDoc, arrayRemove } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
+import { getFunctions, httpsCallable } from "firebase/functions"
+import { stripePromise } from '@/firebase/services/stripe'
 import Loading from '@/components/status/Loading.vue';
 import { useToast } from '@/composables/useToast.js';
 
@@ -16,6 +18,9 @@ const selectedItems = ref(new Set())
 const loading = ref(true)
 const shopProfilePics = ref({})
 const stockWarnings = ref(new Map()) // Map of cartItemId to actual available stock
+
+// Payment processing state
+const processingPayment = ref(false)
 
 // Address modal state
 const showAddressModal = ref(false)
@@ -159,117 +164,114 @@ async function validateCartStock() {
                 actualStock = productData.quantity || 0
             }
 
-            // Compare actual stock with cart quantity
-            if (actualStock < item.quantity) {
+            // If requested quantity exceeds available stock, add warning
+            if (item.quantity > actualStock) {
                 stockWarnings.value.set(item.cartItemId, {
                     available: actualStock,
                     requested: item.quantity
                 })
             }
         } catch (error) {
-            console.error(`Error validating stock for item ${item.cartItemId}:`, error)
+            console.error(`Error validating stock for product ${item.productId}:`, error)
         }
     }
 }
 
-// Clean up listener on unmount
-onMounted(() => {
-    return () => {
-        if (unsubscribe) unsubscribe()
-    }
-})
-
-// Computed properties
+// Filter cart items to only show selected ones
 const selectedCartItems = computed(() => {
     return cartItems.value.filter(item => selectedItems.value.has(item.cartItemId))
 })
 
-const selectedItemsBySeller = computed(() => {
-    const groups = {}
+// Group items by seller
+const itemsBySeller = computed(() => {
+    const grouped = {}
     selectedCartItems.value.forEach(item => {
-        if (!groups[item.sellerId]) {
-            groups[item.sellerId] = {
-                shopName: item.shopName,
+        if (!grouped[item.sellerId]) {
+            grouped[item.sellerId] = {
+                sellerName: item.sellerName,
                 items: []
             }
         }
-        groups[item.sellerId].items.push(item)
+        grouped[item.sellerId].items.push(item)
     })
-    return groups
+    return grouped
 })
 
-const subtotal = computed(() => {
-    return selectedCartItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+// Calculate subtotal for each seller
+function getSellerSubtotal(sellerId) {
+    const seller = itemsBySeller.value[sellerId]
+    if (!seller) return 0
+    return seller.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+}
+
+// Calculate total
+const orderTotal = computed(() => {
+    return selectedCartItems.value.reduce((sum, item) => {
+        return sum + (item.price * item.quantity)
+    }, 0)
 })
 
-const shippingFee = computed(() => {
-    // Calculate shipping per seller (placeholder logic)
-    return Object.keys(selectedItemsBySeller.value).length * 3.00
-})
-
-const total = computed(() => {
-    return subtotal.value + shippingFee.value
-})
-
-const hasAddresses = computed(() => {
-    return userDetails.value?.addresses && userDetails.value.addresses.length > 0
-})
-
+// Get selected address
 const selectedAddress = computed(() => {
-    if (!hasAddresses.value) return null
+    if (!userDetails.value?.addresses || userDetails.value.addresses.length === 0) return null
     return userDetails.value.addresses[selectedAddressIndex.value]
 })
 
-// Check if any items are out of stock or have insufficient quantity
-const hasStockIssues = computed(() => {
+// Check if there are any stock warnings
+const hasStockWarnings = computed(() => {
     return stockWarnings.value.size > 0
 })
 
-const canProceedToPayment = computed(() => {
-    return selectedAddress.value && !hasStockIssues.value && selectedCartItems.value.length > 0
+// Address form validation
+const fullNameValid = computed(() => addressForm.value.fullName.trim().length > 0)
+const phoneValid = computed(() => /^[89]\d{7}$/.test(addressForm.value.phoneLocal))
+const postalValid = computed(() => /^\d{6}$/.test(addressForm.value.postalCode))
+const streetValid = computed(() => addressForm.value.streetName.trim().length > 0)
+const typeValid = computed(() => addressForm.value.type.length > 0)
+const addressFormValid = computed(() => {
+    return fullNameValid.value && phoneValid.value && postalValid.value && streetValid.value && typeValid.value
 })
 
-// Address form validation
-const fullNameValid = computed(() => (addressForm.value.fullName || '').trim().length > 0)
-const phoneValid = computed(() => /^[89]\d{7}$/.test(addressForm.value.phoneLocal || ''))
-const postalValid = computed(() => /^\d{6}$/.test(addressForm.value.postalCode || ''))
-const streetValid = computed(() => (addressForm.value.streetName || '').trim().length > 0)
-const typeValid = computed(() => ['home', 'work', 'others'].includes(addressForm.value.type))
-const addressFormValid = computed(() =>
-    fullNameValid.value && phoneValid.value && postalValid.value && streetValid.value && typeValid.value
-)
+function sanitizePhone() {
+    addressForm.value.phoneLocal = addressForm.value.phoneLocal.replace(/\D/g, '').slice(0, 8)
+}
 
-// Address modal functions
+function sanitizeUnit() {
+    addressForm.value.unitNumber = addressForm.value.unitNumber.replace(/[^0-9-]/g, '')
+}
+
 function openAddressModal(index = -1) {
-    addressError.value = ''
-    touched.value = { fullName: false, phone: false, postal: false, street: false, type: false }
     editAddressIndex.value = index
-
-    if (index === -1) {
-        // New address
+    if (index >= 0) {
+        const addr = userDetails.value.addresses[index]
         addressForm.value = {
-            fullName: userDetails.value?.displayName || '',
-            phoneLocal: userDetails.value?.phone || '',
+            fullName: addr.fullName,
+            phoneLocal: addr.phone.replace('+65', ''),
+            postalCode: addr.postalCode,
+            streetName: addr.streetName,
+            unitNumber: addr.unitNumber || '',
+            type: addr.type,
+            makeDefault: addr.default === 1
+        }
+    } else {
+        addressForm.value = {
+            fullName: '',
+            phoneLocal: '',
             postalCode: '',
             streetName: '',
             unitNumber: '',
-            type: 'home',
-            makeDefault: !hasAddresses.value,
-        }
-    } else {
-        // Edit existing address
-        const addr = userDetails.value.addresses[index]
-        addressForm.value = {
-            fullName: addr.fullName || '',
-            phoneLocal: (addr.phoneNumber || '').replace('+65 ', ''),
-            postalCode: addr.postalCode || '',
-            streetName: addr.streetName || '',
-            unitNumber: addr.unitNumber || '',
-            type: addr.type || 'home',
-            makeDefault: addr.default === 1,
+            type: '',
+            makeDefault: false
         }
     }
-
+    touched.value = {
+        fullName: false,
+        phone: false,
+        postal: false,
+        street: false,
+        type: false
+    }
+    addressError.value = ''
     showAddressModal.value = true
 }
 
@@ -277,401 +279,345 @@ function closeAddressModal() {
     showAddressModal.value = false
 }
 
-function sanitizePhone() {
-    addressForm.value.phoneLocal = (addressForm.value.phoneLocal || '').replace(/\D/g, '').slice(0, 8)
-}
-
-function sanitizeUnit() {
-    let v = (addressForm.value.unitNumber || '')
-    v = v.replace(/[^\d-]/g, '').replace(/-+/g, '-')
-    if (v.startsWith('-')) v = v.slice(1)
-    const parts = v.split('-')
-    if (parts.length > 2) v = parts[0] + '-' + parts.slice(1).join('')
-    addressForm.value.unitNumber = v
-}
-
 async function saveAddress() {
-    touched.value = { fullName: true, phone: true, postal: true, street: true, type: true }
-    if (!addressFormValid.value) {
-        addressError.value = 'Please fix the highlighted fields.'
-        return
-    }
+    if (!addressFormValid.value || !currentUser.value) return
 
-    if (!currentUser.value) return
+    savingAddress.value = true
+    addressError.value = ''
 
     try {
-        savingAddress.value = true
-        const newAddr = {
+        const newAddress = {
             fullName: addressForm.value.fullName.trim(),
-            phoneNumber: `+65 ${addressForm.value.phoneLocal}`,
-            postalCode: addressForm.value.postalCode.trim(),
+            phone: `+65${addressForm.value.phoneLocal}`,
+            postalCode: addressForm.value.postalCode,
             streetName: addressForm.value.streetName.trim(),
             unitNumber: addressForm.value.unitNumber.trim(),
             type: addressForm.value.type,
-            default: addressForm.value.makeDefault ? 1 : 0,
+            default: addressForm.value.makeDefault ? 1 : 0
         }
 
-        const addresses = userDetails.value?.addresses ? [...userDetails.value.addresses] : []
+        let addresses = userDetails.value.addresses || []
 
-        if (editAddressIndex.value === -1) {
-            // Add new address
-            if (addresses.length === 0) newAddr.default = 1
-            else if (newAddr.default === 1) addresses.forEach(a => a.default = 0)
-            addresses.push(newAddr)
-            selectedAddressIndex.value = addresses.length - 1
+        if (addressForm.value.makeDefault) {
+            addresses = addresses.map(a => ({ ...a, default: 0 }))
+        }
+
+        if (editAddressIndex.value >= 0) {
+            addresses[editAddressIndex.value] = newAddress
         } else {
-            // Update existing address
-            if (newAddr.default === 1) addresses.forEach((a, i) => a.default = i === editAddressIndex.value ? 1 : 0)
-            addresses[editAddressIndex.value] = { ...addresses[editAddressIndex.value], ...newAddr }
+            addresses.push(newAddress)
         }
 
-        await setDoc(doc(db, 'users', currentUser.value.uid), { addresses }, { merge: true })
+        await updateDoc(doc(db, 'users', currentUser.value.uid), { addresses })
 
-        // Update local state
-        if (!userDetails.value) userDetails.value = {}
         userDetails.value.addresses = addresses
 
+        if (addressForm.value.makeDefault || editAddressIndex.value === selectedAddressIndex.value) {
+            selectedAddressIndex.value = editAddressIndex.value >= 0 ? editAddressIndex.value : addresses.length - 1
+        }
+
+        useToast().success(editAddressIndex.value >= 0 ? 'Address updated!' : 'Address added!')
         closeAddressModal()
     } catch (error) {
         console.error('Error saving address:', error)
-        addressError.value = 'Could not save address.'
+        addressError.value = 'Failed to save address. Please try again.'
     } finally {
         savingAddress.value = false
     }
 }
 
-// Helper functions
-function formatPrice(price) {
-    return `$${parseFloat(price).toFixed(2)}`
-}
+async function deleteAddress(index) {
+    if (!currentUser.value || !confirm('Delete this address?')) return
 
-function groupItemsByName(items) {
-    const grouped = {}
-    items.forEach(item => {
-        if (!grouped[item.item_name]) {
-            grouped[item.item_name] = []
+    try {
+        const addresses = [...userDetails.value.addresses]
+        addresses.splice(index, 1)
+
+        await updateDoc(doc(db, 'users', currentUser.value.uid), { addresses })
+        userDetails.value.addresses = addresses
+
+        if (selectedAddressIndex.value >= addresses.length) {
+            selectedAddressIndex.value = Math.max(0, addresses.length - 1)
         }
-        grouped[item.item_name].push(item)
-    })
-    return grouped
+
+        useToast().success('Address deleted')
+    } catch (error) {
+        console.error('Error deleting address:', error)
+        useToast().error('Failed to delete address')
+    }
 }
 
-const { error, warning, info } = useToast()
-
-// Checkout function
+function formatPrice(price) {
+    return `$${price.toFixed(2)}`
+}
+// STRIPE PAYMENT INTEGRATION
 async function proceedToPayment() {
+    // Validation checks
     if (!selectedAddress.value) {
-        warning('Please add a delivery address', 'Missing Address')
+        useToast().error('Please select a delivery address')
         return
     }
 
     if (selectedCartItems.value.length === 0) {
-        info('No items selected for checkout', 'Empty Cart')
+        useToast().error('No items selected for checkout')
         return
     }
 
-    if (hasStockIssues.value) {
-        error(
-            'Some items are out of stock or have insufficient quantity. Please review your cart.',
-            'Stock Issue'
-        )
+    if (hasStockWarnings.value) {
+        useToast().error('Please resolve stock availability issues before proceeding')
         return
     }
 
-    // TODO: Implement payment gateway
-    info('Payment gateway integration coming soon', 'Coming Soon')
+    processingPayment.value = true
+
+    try {
+        // Prepare items for Stripe
+        const items = selectedCartItems.value.map(item => ({
+            name: item.item_name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.img_url || null
+        }))
+
+        // Get current URL for success/cancel redirects
+        const baseUrl = window.location.origin
+
+        // Get user auth token
+        const token = await auth.currentUser.getIdToken()
+
+        // Call Firebase Function via HTTP request
+        const functionUrl = 'https://us-central1-craftconnect-3b52c.cloudfunctions.net/createCheckoutSession'
+        
+        const response = await fetch(functionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                items: items,
+                successUrl: `${baseUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
+                cancelUrl: `${baseUrl}/checkout`
+            })
+        })
+
+        if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || 'Payment failed')
+        }
+
+        const data = await response.json()
+
+        // Redirect to Stripe Checkout
+        window.location.href = data.url
+
+    } catch (error) {
+        console.error('Payment error:', error)
+        useToast().error(error.message || 'Payment failed. Please try again.')
+        processingPayment.value = false
+    }
 }
+
+// Cleanup
+onBeforeUnmount(() => {
+    if (unsubscribe) unsubscribe()
+})
 </script>
 
 <template>
-    <main
-        class="flex-1 px-4 sm:px-6 lg:px-8 xl:px-40 py-6 sm:py-10 bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
-        <div class="max-w-8xl mx-auto">
-            <!-- Breadcrumb -->
-            <!-- <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4 sm:mb-6">
-                <RouterLink to="/" class="hover:text-primary">Home</RouterLink>
-                <span>/</span>
-                <RouterLink to="/cart" class="hover:text-primary">Cart</RouterLink>
-                <span>/</span>
-                <span class="font-medium text-gray-700 dark:text-gray-200">Checkout</span>
-            </div> -->
+    <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+        <div v-if="loading" class="flex justify-center items-center min-h-[400px]">
+            <Loading size="lg" />
+        </div>
 
-            <!-- Page Title -->
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-6">Checkout</h1>
-
-            <!-- Loading State -->
-            <div v-if="loading" class="flex justify-center items-center min-h-[320px]">
-                <Loading />
-            </div>
-
-            <!-- Empty Cart -->
-            <div v-else-if="selectedCartItems.length === 0" class="text-center py-20">
-                <svg class="w-24 h-24 mx-auto text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor"
-                    viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-                <p class="text-xl text-gray-600 dark:text-gray-400 mb-4">No items to checkout</p>
-                <RouterLink to="/cart"
-                    class="inline-block px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                    Go to Cart
-                </RouterLink>
-            </div>
-
-            <!-- Checkout Content -->
-            <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-12">
-                <!-- Stock Warning Banner -->
-                <div v-if="hasStockIssues" class="lg:col-span-3">
-                    <div
-                        class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
-                        <svg class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <div class="flex-1">
-                            <p class="font-semibold text-red-800 dark:text-red-300 text-sm sm:text-base">Stock
-                                Availability Issue</p>
-                            <p class="text-sm text-red-700 dark:text-red-400 mt-1">
-                                Some items in your order are out of stock or have insufficient quantity. Please return
-                                to your cart to update quantities or remove unavailable items.
-                            </p>
-                            <RouterLink to="/cart"
-                                class="inline-block mt-2 text-sm font-medium text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline">
-                                Go to Cart →
-                            </RouterLink>
-                        </div>
+        <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column: Address & Items -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Delivery Address Section -->
+                <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold text-slate-900 dark:text-white">Delivery Address</h2>
+                        <button @click="openAddressModal()"
+                            class="text-sm font-medium text-primary hover:text-primary/80">
+                            + Add New Address
+                        </button>
                     </div>
-                </div>
 
-                <!-- Left Column - Forms -->
-                <div class="lg:col-span-2 space-y-6">
-                    <!-- Delivery Address Section -->
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 sm:p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Delivery Address</h2>
-                            <button @click="openAddressModal()"
-                                class="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
-                                + Add New
-                            </button>
-                        </div>
+                    <!-- No addresses -->
+                    <div v-if="!userDetails?.addresses || userDetails.addresses.length === 0"
+                        class="text-center py-8 text-slate-500 dark:text-slate-400">
+                        <p class="mb-4">No delivery address added yet</p>
+                        <button @click="openAddressModal()"
+                            class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90">
+                            Add Address
+                        </button>
+                    </div>
 
-                        <!-- No addresses -->
-                        <div v-if="!hasAddresses"
-                            class="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-                            <svg class="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-3" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <p class="text-gray-600 dark:text-gray-400 mb-3">No delivery address added yet</p>
-                            <button @click="openAddressModal()"
-                                class="inline-block px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
-                                Add Address
-                            </button>
-                        </div>
-
-                        <!-- Address list -->
-                        <div v-else class="space-y-3">
-                            <div v-for="(addr, idx) in userDetails.addresses" :key="idx"
-                                @click="selectedAddressIndex = idx"
-                                class="relative border-2 rounded-lg p-4 cursor-pointer transition-all"
-                                :class="selectedAddressIndex === idx
+                    <!-- Address list -->
+                    <div v-else class="space-y-3">
+                        <div v-for="(address, index) in userDetails.addresses" :key="index" @click="selectedAddressIndex = index"
+                            :class="[
+                                'rounded-lg border-2 p-4 cursor-pointer transition-all',
+                                selectedAddressIndex === index
                                     ? 'border-primary bg-primary/5 dark:bg-primary/10'
-                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'">
-
-                                <!-- Radio button -->
-                                <div class="absolute top-4 right-4">
-                                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="selectedAddressIndex === idx
-                                        ? 'border-primary bg-primary'
-                                        : 'border-gray-300 dark:border-gray-600'">
-                                        <div v-if="selectedAddressIndex === idx" class="w-2 h-2 bg-white rounded-full">
-                                        </div>
+                                    : 'border-slate-200 dark:border-slate-700 hover:border-primary/50'
+                            ]">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="font-semibold text-slate-900 dark:text-white">{{ address.fullName
+                                            }}</span>
+                                        <span v-if="address.default === 1"
+                                            class="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">Default</span>
+                                        <span
+                                            class="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 capitalize">{{
+                                                address.type }}</span>
                                     </div>
-                                </div>
-
-                                <div class="pr-8">
-                                    <div class="flex items-center gap-2 mb-2">
-                                        <span class="text-sm font-semibold capitalize text-gray-800 dark:text-gray-200">
-                                            {{ addr.type }}
-                                        </span>
-                                        <span v-if="addr.default === 1"
-                                            class="text-xs px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full font-semibold">
-                                            Default
-                                        </span>
-                                    </div>
-
-                                    <p class="font-medium text-gray-900 dark:text-white text-sm sm:text-base">{{
-                                        addr.fullName }}</p>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ addr.phoneNumber }}</p>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">
-                                        {{ addr.streetName }}<span v-if="addr.unitNumber">, #{{ addr.unitNumber
-                                            }}</span>, Singapore {{ addr.postalCode }}
+                                    <p class="text-sm text-slate-600 dark:text-slate-400">{{ address.phone }}</p>
+                                    <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                        {{ address.streetName }}
+                                        <span v-if="address.unitNumber">#{{ address.unitNumber }}</span>,
+                                        Singapore {{ address.postalCode }}
                                     </p>
-
-                                    <button @click.stop="openAddressModal(idx)"
-                                        class="mt-2 text-xs font-medium text-primary hover:text-primary/80">
-                                        Edit
+                                </div>
+                                <div class="flex gap-2">
+                                    <button @click.stop="openAddressModal(index)"
+                                        class="text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-primary">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </button>
+                                    <button @click.stop="deleteAddress(index)"
+                                        class="text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-500">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Order Items Section -->
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 sm:p-6">
-                        <h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">Order Items</h2>
-
-                        <div class="space-y-4">
-                            <div v-for="(sellerGroup, sellerId) in selectedItemsBySeller" :key="sellerId"
-                                class="space-y-3">
-                                <!-- Shop Header -->
-                                <div class="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-gray-700">
-                                    <div v-if="shopProfilePics[sellerId]"
-                                        class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-cover bg-center flex-shrink-0"
-                                        :style="`background-image: url('${shopProfilePics[sellerId]}');`">
-                                    </div>
-                                    <div v-else
-                                        class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
-                                        <svg class="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 dark:text-gray-400" fill="none"
-                                            stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                        </svg>
-                                    </div>
-                                    <span class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
-                                        {{ sellerGroup.shopName }}
-                                    </span>
-                                </div>
-
-                                <!-- Items -->
-                                <div v-for="item in sellerGroup.items" :key="item.cartItemId" class="flex gap-3 py-2"
-                                    :class="{ 'opacity-60': stockWarnings.has(item.cartItemId) }">
-                                    <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-cover bg-center flex-shrink-0"
-                                        :style="`background-image: url('${item.img_url}');`">
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
-                                            {{ item.item_name }}
-                                        </p>
-                                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                                            {{ item.size || 'Standard' }}
-                                        </p>
-
-                                        <!-- Stock warning -->
-                                        <p v-if="stockWarnings.has(item.cartItemId) && stockWarnings.get(item.cartItemId).available === 0"
-                                            class="text-xs text-red-600 dark:text-red-400 font-medium mt-1">
-                                            ⚠️ Out of stock
-                                        </p>
-                                        <p v-else-if="stockWarnings.has(item.cartItemId)"
-                                            class="text-xs text-orange-600 dark:text-orange-400 font-medium mt-1">
-                                            ⚠️ Only {{ stockWarnings.get(item.cartItemId).available }} available (you
-                                            have {{ item.quantity }})
-                                        </p>
-
-                                        <div class="flex items-center justify-between mt-1">
-                                            <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                                                × {{ item.quantity }}
-                                            </span>
-                                            <span
-                                                class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
-                                                {{ formatPrice(item.price * item.quantity) }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Payment Method Section (Placeholder) -->
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 sm:p-6">
-                        <h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">Payment Method</h2>
-                        <div
-                            class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
-                            <svg class="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-3" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                            </svg>
-                            <p class="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                                Payment gateway integration coming soon
+                <!-- Stock Warnings -->
+                <div v-if="hasStockWarnings"
+                    class="rounded-xl border-2 border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20 p-4">
+                    <div class="flex items-start gap-3">
+                        <svg class="h-6 w-6 text-red-600 dark:text-red-400 shrink-0 mt-0.5" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div>
+                            <h3 class="font-semibold text-red-900 dark:text-red-200 mb-2">Stock Availability Issues</h3>
+                            <ul class="space-y-1 text-sm text-red-800 dark:text-red-300">
+                                <li v-for="[itemId, warning] in stockWarnings" :key="itemId">
+                                    {{ cartItems.find(i => i.cartItemId === itemId)?.name }}:
+                                    Only {{ warning.available }} available (you requested {{ warning.requested }})
+                                </li>
+                            </ul>
+                            <p class="mt-2 text-sm text-red-700 dark:text-red-400">
+                                Please update quantities in your cart before proceeding.
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Right Column - Order Summary -->
-                <div class="lg:col-span-1">
-                    <div class="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm lg:sticky lg:top-10">
-                        <h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">Order Summary</h2>
+                <!-- Items by Seller -->
+                <div v-for="(seller, sellerId) in itemsBySeller" :key="sellerId"
+                    class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6">
+                    <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                        <img v-if="shopProfilePics[sellerId]" :src="shopProfilePics[sellerId]" :alt="seller.sellerName"
+                            class="h-10 w-10 rounded-full object-cover" />
+                        <div v-else
+                            class="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                            {{ seller.sellerName.charAt(0) }}
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-900 dark:text-white">{{ seller.sellerName }}</h3>
+                    </div>
 
-                        <!-- Items breakdown -->
-                        <div class="space-y-3 mb-4 max-h-64 overflow-y-auto">
-                            <div v-for="(sellerGroup, sellerId) in selectedItemsBySeller" :key="sellerId"
-                                class="space-y-2">
-                                <p class="text-sm font-medium text-gray-800 dark:text-white">{{ sellerGroup.shopName }}
+                    <div class="space-y-4">
+                        <div v-for="item in seller.items" :key="item.cartItemId" class="flex gap-4">
+                            <img :src="item.img_url" :alt="item.name"
+                                class="h-20 w-20 rounded-lg object-cover shrink-0" />
+                            <div class="flex-1 min-w-0">
+                                <p class="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
+                                    {{ item.item_name }}
+                                </p>
+                                
+                                <!-- Variation/Size -->
+                                <p v-if="item.size" class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+                                    <span class="font-medium">Variation:</span> {{ item.size }}
+                                </p>
+                                
+                                <!-- Description (if available) -->
+                                <p v-if="item.description" class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                                    {{ item.description }}
                                 </p>
 
-                                <div v-for="(itemGroup, itemName) in groupItemsByName(sellerGroup.items)"
-                                    :key="itemName" class="pl-3 space-y-1">
-                                    <p class="text-xs text-gray-700 dark:text-gray-300">{{ itemName }}</p>
+                                <!-- Stock warning -->
+                                <p v-if="stockWarnings.has(item.cartItemId) && stockWarnings.get(item.cartItemId).available === 0"
+                                    class="text-xs text-red-600 dark:text-red-400 font-medium mt-1">
+                                    ⚠️ Out of stock
+                                </p>
+                                <p v-else-if="stockWarnings.has(item.cartItemId)"
+                                    class="text-xs text-orange-600 dark:text-orange-400 font-medium mt-1">
+                                    ⚠️ Only {{ stockWarnings.get(item.cartItemId).available }} available (you
+                                    have {{ item.quantity }})
+                                </p>
 
-                                    <div v-for="item in itemGroup" :key="item.cartItemId"
-                                        class="flex justify-between items-center text-xs pl-2">
-                                        <span class="text-gray-600 dark:text-gray-400">
-                                            {{ item.size || 'Standard' }} × {{ item.quantity }}
-                                        </span>
-                                        <span class="font-medium text-gray-800 dark:text-white">
-                                            {{ formatPrice(item.price * item.quantity) }}
-                                        </span>
-                                    </div>
+                                <div class="flex items-center justify-between mt-1">
+                                    <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                                        Qty: × {{ item.quantity }}
+                                    </span>
+                                    <span class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
+                                        {{ formatPrice(item.price * item.quantity) }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Pricing breakdown -->
-                        <div class="space-y-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                            <div class="flex justify-between text-sm text-gray-600 dark:text-gray-300">
-                                <span>Subtotal</span>
-                                <span class="font-medium text-gray-800 dark:text-white">{{ formatPrice(subtotal)
-                                    }}</span>
-                            </div>
-
-                            <div class="flex justify-between text-sm text-gray-600 dark:text-gray-300">
-                                <span>Shipping Fee</span>
-                                <span class="font-medium text-gray-800 dark:text-white">{{ formatPrice(shippingFee)
-                                    }}</span>
-                            </div>
-
-                            <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-                                <div
-                                    class="flex justify-between text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-                                    <span>Total</span>
-                                    <span>{{ formatPrice(total) }}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Place Order Button -->
-                        <button @click="proceedToPayment" :disabled="!canProceedToPayment"
-                            class="mt-6 w-full flex items-center justify-center rounded-lg h-11 sm:h-12 px-4 bg-primary text-white text-sm sm:text-base font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            <span v-if="hasStockIssues">Stock Issues - Cannot Proceed</span>
-                            <span v-else-if="!selectedAddress">Add Address to Continue</span>
-                            <span v-else>Place Order</span>
-                        </button>
-
-                        <p v-if="hasStockIssues" class="mt-2 text-xs text-center text-red-600 dark:text-red-400">
-                            Please update your cart before proceeding
-                        </p>
-
-                        <RouterLink to="/cart"
-                            class="mt-3 w-full flex items-center justify-center text-primary hover:text-primary/80 text-xs sm:text-sm font-medium transition-colors">
-                            ← Back to Cart
-                        </RouterLink>
                     </div>
+
+                    <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                        <span class="text-slate-600 dark:text-slate-400">Subtotal:</span>
+                        <span class="text-lg font-bold text-slate-900 dark:text-white">${{ getSellerSubtotal(sellerId).toFixed(2) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Order Summary -->
+            <div class="lg:col-span-1">
+                <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 sticky top-6">
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Order Summary</h2>
+
+                    <div class="space-y-3 mb-6">
+                        <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                            <span>Items ({{ selectedCartItems.length }})</span>
+                            <span>${{ orderTotal.toFixed(2) }}</span>
+                        </div>
+                        <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                            <span>Shipping</span>
+                            <span class="text-green-600 dark:text-green-400">FREE</span>
+                        </div>
+                        <div class="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-between">
+                            <span class="font-bold text-lg text-slate-900 dark:text-white">Total</span>
+                            <span class="font-bold text-lg text-slate-900 dark:text-white">${{ orderTotal.toFixed(2) }}</span>
+                        </div>
+                    </div>
+
+                    <button 
+                        @click="proceedToPayment"
+                        :disabled="processingPayment || !selectedAddress || selectedCartItems.length === 0 || hasStockWarnings"
+                        class="w-full rounded-lg bg-primary px-6 py-3 font-semibold text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                        <span v-if="processingPayment">Processing...</span>
+                        <span v-else>Proceed to Payment</span>
+                    </button>
+
+                    <p class="text-xs text-center text-slate-500 dark:text-slate-400 mt-4">
+                        By placing this order, you agree to our Terms & Conditions
+                    </p>
                 </div>
             </div>
         </div>

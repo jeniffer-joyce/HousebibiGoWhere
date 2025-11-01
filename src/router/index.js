@@ -190,7 +190,17 @@ const routes = [
   {
     path: '/checkout',
     component: Checkout,
+  },
+  {
+  path: '/order-success',
+  name: 'OrderSuccess',
+  component: () => import('@/views/OrderSuccess.vue'),
+  meta: {
+    requiresAuth: true // Optional: only logged-in users can access
   }
+}
+
+  
 
 
 ]
