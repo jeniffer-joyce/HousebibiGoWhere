@@ -186,7 +186,7 @@ const routes = [
     path: '/product-details/:id',
     component: ProductDetails,
     name: "ProductDetails",
-    props: true
+    props: route => ({ productId: route.params.id })
   },
   {
     path: '/cart',
