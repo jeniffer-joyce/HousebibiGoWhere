@@ -1,0 +1,960 @@
+<template>
+  <div class="min-h-screen bg-slate-50 dark:bg-slate-900 p-6 sm:p-10">
+    <div class="mx-auto w-full max-w-7xl space-y-8">
+      <!-- Header -->
+      <header>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Return / Refund Requests</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400">
+          Review and respond to buyers’ refund or return requests.
+        </p>
+      </header>
+
+      <!-- Status Filter + Search -->
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="relative w-full md:w-1/2">
+          <input
+            v-model.trim="queryStr"
+            type="text"
+            placeholder="Search by product name or order #"
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm
+                   text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500
+                   dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <button
+            v-if="queryStr"
+            @click="queryStr = ''"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Filter by Status:</label>
+          <select
+            v-model="stateFilter"
+            class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
+                   focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          >
+            <option value="">All</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="declined">Declined</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div
+        v-if="loading"
+        class="flex h-48 items-center justify-center text-slate-500 dark:text-slate-400"
+      >
+        <svg class="mr-2 h-5 w-5 animate-spin text-blue-600" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+          <path class="opacity-75" fill="currentColor" d="M4 12a 8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
+        </svg>
+        Loading requests…
+      </div>
+
+      <!-- Empty -->
+      <div
+        v-else-if="paged.length === 0"
+        class="rounded-2xl border border-dashed border-slate-300 bg-white py-20 text-center
+               dark:border-slate-700 dark:bg-slate-800"
+      >
+        <p class="text-lg font-semibold text-slate-900 dark:text-white">No requests found</p>
+        <p class="mt-1 text-slate-500 dark:text-slate-400">All caught up here.</p>
+      </div>
+
+      <!-- Table -->
+      <div v-else class="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+        <!-- Header row -->
+        <div
+          class="grid grid-cols-12 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-600
+                 dark:bg-slate-800 dark:text-slate-300"
+        >
+          <div class="col-span-4">Product(s)</div>
+          <div class="col-span-1 text-center">Amount</div>
+          <div class="col-span-2 text-center">Requested On</div>
+          <div class="col-span-1 text-center">Solution</div>
+          <div class="col-span-1 text-center">Buyer Details</div>
+          <div class="col-span-1 text-center">Status</div>
+          <div class="col-span-1 text-center">Actions</div>
+        </div>
+
+        <!-- Rows -->
+        <div
+          v-for="r in paged"
+          :key="r.id"
+          class="grid grid-cols-12 items-center border-t border-slate-200 px-4 py-3
+                 text-sm dark:border-slate-700"
+        >
+          <!-- Product(s) -->
+          <div class="col-span-12 flex items-center gap-3 md:col-span-4">
+            <img
+              :src="findProductImg(r)"
+              class="h-14 w-14 flex-none rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+            />
+            <div class="min-w-0">
+              <p class="font-medium text-slate-900 dark:text-white truncate">
+                {{ findProductName(r) }}
+              </p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Order: {{ r.orderId }}</p>
+            </div>
+          </div>
+
+          <!-- Amount -->
+          <div class="col-span-6 text-center md:col-span-1 font-semibold">
+            S${{ Number(r.returnRequestSummary?.amount ?? 0).toFixed(2) }}
+          </div>
+
+          <!-- Requested On -->
+          <div class="col-span-6 text-center md:col-span-2">
+            {{ formatDate(r.returnRequestSummary?.requestedAt) }}
+          </div>
+
+          <!-- Solution -->
+          <div class="col-span-6 text-center md:col-span-1 capitalize">
+            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              {{ solutionLabel(r.returnRequestSummary?.solution) }}
+            </span>
+          </div>
+
+          <!-- Buyer Details -->
+          <div class="col-span-6 text-center md:col-span-1">
+            <button
+              @click="openBuyerDetails(r)"
+              class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50
+                     dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              View Details
+            </button>
+          </div>
+
+          <!-- Status -->
+          <div class="col-span-6 text-center md:col-span-1">
+            <span
+              class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
+              :class="statusClass(r.returnRequestSummary?.state)"
+            >
+              {{ capitalizeStatus(r.returnRequestSummary?.state || 'pending') }}
+            </span>
+          </div>
+
+          <!-- Actions -->
+          <div class="col-span-6 flex flex-col items-center gap-2 text-center md:col-span-1">
+            <!-- Pending -->
+            <template v-if="r.returnRequestSummary?.state === 'pending'">
+              <button
+                @click="openConfirm(r, 'approved')"
+                class="w-20 rounded-md bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
+              >
+                Approve
+              </button>
+              <button
+                @click="openConfirm(r, 'declined')"
+                class="w-20 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+              >
+                Decline
+              </button>
+            </template>
+
+            <!-- Approved / Declined -->
+            <template v-else>
+              <button
+                @click="openDecisionDetails(r)"
+                class="rounded-md bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+              >
+                {{ decisionDetailLabel(r) }}
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div
+        v-if="!loading"
+        class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+      >
+        <p>
+          Showing <span class="font-medium">{{ pageStart }}</span>–
+          <span class="font-medium">{{ pageEnd }}</span> of
+          <span class="font-medium">{{ filtered.length }}</span> results
+        </p>
+        <div class="flex gap-2">
+          <button
+            :disabled="page === 1"
+            @click="page--"
+            class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                   disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+          >
+            Previous
+          </button>
+          <button
+            :disabled="page === totalPages || totalPages === 0"
+            @click="page++"
+            class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                   disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision Details Modal (post-approve/decline) -->
+    <div
+      v-if="showDecisionDetails"
+      class="fixed inset-0 z-[70] flex items-center justify-center"
+    >
+      <!-- Dim overlay (no blur) -->
+      <div class="absolute inset-0 bg-slate-900/50" @click="showDecisionDetails = false"></div>
+
+      <!-- Sheet card -->
+      <div
+        class="relative z-[71] w-full max-w-4xl rounded-2xl bg-white p-6 shadow-2xl sm:p-8 dark:bg-slate-800"
+        @click.stop
+      >
+        <!-- Header -->
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div
+              class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-700
+                      ring-1 ring-blue-100 dark:bg-blue-900/30 dark:text-blue-200 dark:ring-blue-900/40"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3a9 9 0 1 0 9 9A9.01 9.01 0 0 0 12 3Zm1 13h-2v-2h2Zm0-4h-2V7h2Z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-slate-900 dark:text-white">
+                {{ decisionTitle(selectedDecision) }}
+              </h3>
+
+              <!-- Subheader pills -->
+              <div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                <span class="rounded-full bg-slate-100 px-2.5 py-0.5 font-medium text-slate-700
+                              dark:bg-slate-700/60 dark:text-slate-200">
+                  Order: {{ selectedDecision?.orderId }}
+                </span>
+
+                <span
+                  class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-medium text-xs"
+                  :class="statusPillClass(selectedDecision?.returnRequestSummary?.state)"
+                >
+                  <span class="h-2 w-2 rounded-full" :class="statusDotClass(selectedDecision?.returnRequestSummary?.state)"></span>
+                  {{ capitalizeStatus(selectedDecision?.returnRequestSummary?.state || 'pending') }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            @click="showDecisionDetails = false"
+            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50
+                   dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Close
+          </button>
+        </div>
+
+        <!-- Summary grid -->
+        <div class="mt-6 grid gap-4 md:grid-cols-3">
+          <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Requested On</p>
+            <p class="mt-1 font-medium text-slate-900 dark:text-white">
+              {{ formatDate(selectedDecision?.returnRequestSummary?.requestedAt) }}
+            </p>
+          </div>
+
+          <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Solution</p>
+            <p class="mt-1 font-medium text-slate-900 dark:text-white">
+              {{ solutionLabel(selectedDecision?.returnRequestSummary?.solution) }}
+            </p>
+          </div>
+
+          <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Status</p>
+            <p class="mt-1 font-medium text-slate-900 dark:text-white">
+              <span
+                class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                :class="statusPillClass(selectedDecision?.returnRequestSummary?.state)"
+              >
+                <span class="h-2 w-2 rounded-full" :class="statusDotClass(selectedDecision?.returnRequestSummary?.state)"></span>
+                {{ capitalizeStatus(selectedDecision?.returnRequestSummary?.state || 'pending') }}
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Products (first product shown for context) -->
+        <div class="mt-6 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div class="flex items-center justify-between border-b border-slate-200 px-4 py-2.5 text-sm font-semibold
+                      text-slate-900 dark:border-slate-700 dark:text-white">
+            <span>Product</span>
+            <span class="text-slate-500 dark:text-slate-400">Amount</span>
+          </div>
+          <div class="flex items-center justify-between gap-3 px-4 py-3">
+            <div class="flex min-w-0 items-center gap-3">
+              <img
+                :src="findProductImg(selectedDecision)"
+                class="h-14 w-14 flex-none rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+              />
+              <div class="min-w-0">
+                <p class="truncate font-medium text-slate-900 dark:text-white">
+                  {{ findProductName(selectedDecision) }}
+                </p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Order: {{ selectedDecision?.orderId }}</p>
+              </div>
+            </div>
+            <div class="font-semibold text-slate-900 dark:text-white">
+              S${{ Number(selectedDecision?.returnRequestSummary?.amount ?? 0).toFixed(2) }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Decision-specific details -->
+        <div v-if="selectedDecision?.returnRequestSummary?.state === 'approved'" class="mt-6">
+          <div class="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-200">
+            <b>Refund Approved</b> — Buyer has been refunded.
+          </div>
+        </div>
+
+        <div v-else-if="selectedDecision?.returnRequestSummary?.state === 'declined'" class="mt-6">
+          <div class="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/40 dark:bg-rose-900/20">
+            <p class="text-sm font-semibold text-rose-700 dark:text-rose-200">Decline Reason (Seller)</p>
+            <p class="mt-1 text-sm text-rose-800 dark:text-rose-100">
+              {{ selectedDecision?.returnRequestSummary?.declineReason }}
+            </p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <img
+                v-for="(img, idx) in selectedDecision?.returnRequestSummary?.declineEvidenceUrls || []"
+                :key="idx"
+                :src="img"
+                class="h-20 w-20 rounded-md object-cover ring-1 ring-rose-200 dark:ring-rose-900/40"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buyer Details Modal -->
+    <div
+      v-if="showBuyerDetails"
+      class="fixed inset-0 z-[80]"
+      @keydown.esc="showBuyerDetails = false"
+    >
+      <!-- Modal -->
+      <div
+        class="details-zoom mx-auto mt-16 w-[min(980px,93vw)] rounded-2xl bg-white p-0 shadow-2xl ring-1 ring-black/5 dark:bg-slate-900"
+        role="dialog"
+        aria-modal="true"
+      >
+        <!-- Header -->
+        <div class="flex items-center justify-between gap-4 border-b border-slate-200/80 px-6 py-4 dark:border-slate-700/60">
+          <div class="flex min-w-0 items-center gap-4">
+            <div class="min-w-0">
+              <h3 class="truncate text-lg font-semibold text-slate-900 dark:text-white">
+                Buyer Details
+              </h3>
+              <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                <span class="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  Order: {{ selectedBuyer?.orderId }}
+                </span>
+                <span
+                  class="rounded-full px-2 py-0.5 font-medium"
+                  :class="{
+                    'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200': (selectedBuyer?.returnRequestSummary?.state || 'pending') === 'pending',
+                    'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200': selectedBuyer?.returnRequestSummary?.state === 'approved',
+                    'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200': selectedBuyer?.returnRequestSummary?.state === 'declined'
+                  }"
+                >
+                  {{ (selectedBuyer?.returnRequestSummary?.state || 'Pending')[0].toUpperCase() + (selectedBuyer?.returnRequestSummary?.state || 'Pending').slice(1) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            @click="showBuyerDetails = false"
+            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50
+                   dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            Close
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="px-6 pb-6 pt-5">
+          <!-- Info cards -->
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+              <p class="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Requested On</p>
+              <p class="mt-1 font-semibold text-slate-900 dark:text-white">
+                {{ formatDate(selectedBuyer?.returnRequestSummary?.requestedAt) }}
+              </p>
+            </div>
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+              <p class="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Buyer Email</p>
+              <p class="mt-1 truncate font-semibold text-slate-900 dark:text-white">
+                {{ selectedBuyer?.returnRequestSummary?.email || '—' }}
+              </p>
+            </div>
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+              <p class="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Solution</p>
+              <p class="mt-1 font-semibold text-slate-900 capitalize dark:text-white">
+                {{ (selectedBuyer?.returnRequestSummary?.solution || 'refund').includes('return') ? 'Return' : 'Refund' }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Reason / Description -->
+          <div class="mt-5 grid gap-5 lg:grid-cols-2">
+            <div class="rounded-xl border border-slate-200 p-5 dark:border-slate-700">
+              <h4 class="text-sm font-semibold text-slate-900 dark:text-white">Reason</h4>
+              <p class="mt-1 text-sm text-slate-700 dark:text-slate-200">
+                {{ selectedBuyer?.returnRequestSummary?.reasonLabel || '—' }}
+              </p>
+            </div>
+            <div class="rounded-xl border border-slate-200 p-5 dark:border-slate-700">
+              <h4 class="text-sm font-semibold text-slate-900 dark:text-white">Buyer Description</h4>
+              <p class="mt-1 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
+                {{ selectedBuyer?.returnRequestSummary?.reasonDescription || '—' }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Products -->
+          <div class="mt-5">
+            <h4 class="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Products</h4>
+            <div class="space-y-3">
+              <template v-if="(selectedBuyer?.returnRequestSummary?.items || []).length">
+                <div
+                  v-for="(it, idx) in selectedBuyer.returnRequestSummary.items"
+                  :key="idx"
+                  class="flex items-center justify-between rounded-xl border border-slate-200 p-3 dark:border-slate-700"
+                >
+                  <div class="flex min-w-0 items-center gap-3">
+                    <img
+                      :src="findProductImg(selectedBuyer, it.productId)"
+                      class="h-12 w-12 rounded object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                    />
+                    <div class="min-w-0">
+                      <p class="truncate font-medium text-slate-900 dark:text-white">
+                        {{ findProductName(selectedBuyer, it.productId) }}
+                      </p>
+                      <p class="text-xs text-slate-500 dark:text-slate-400">Qty: {{ it.quantity ?? 1 }}</p>
+                    </div>
+                  </div>
+                  <div class="text-right font-semibold text-slate-900 dark:text-white">
+                    S${{ Number(it.itemTotal ?? 0).toFixed(2) }}
+                  </div>
+                </div>
+              </template>
+              <p v-else class="text-sm text-slate-500 dark:text-slate-400">(No specific items listed)</p>
+            </div>
+          </div>
+
+          <!-- Evidence -->
+          <div class="mt-5">
+            <h4 class="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Buyer Evidence</h4>
+            <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+              <template v-if="(selectedBuyer?.returnRequestSummary?.photoUrls || []).length">
+                <a
+                  v-for="(u,i) in selectedBuyer.returnRequestSummary.photoUrls"
+                  :key="i"
+                  :href="u"
+                  target="_blank"
+                  rel="noopener"
+                  class="group block rounded-lg ring-1 ring-slate-200 transition hover:ring-blue-300 dark:ring-slate-700"
+                >
+                  <img :src="u" class="h-24 w-full rounded-lg object-cover group-hover:scale-[1.02]" />
+                </a>
+              </template>
+              <p v-else class="text-sm text-slate-500 dark:text-slate-400">(No evidence uploaded)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm Full Refund Modal -->
+    <div
+      v-if="confirm.visible && confirm.action === 'approved'"
+      class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
+      @click="confirm.visible = false"
+    >
+      <div
+        class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:mx-4 dark:bg-slate-800"
+        @click.stop
+      >
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Confirm Full Refund</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          Once you confirm, the full payment will be refunded to the buyer.
+          <b>You will no longer be able to raise a dispute afterwards.</b>
+        </p>
+        <p class="mt-4 text-sm font-medium text-slate-700 dark:text-slate-200">
+          Refund to Buyer:
+          <span class="font-bold text-blue-600">
+            S${{ confirm.target?.returnRequestSummary?.amount?.toFixed(2) }}
+          </span>
+        </p>
+        <div class="mt-5 flex justify-end gap-2">
+          <button
+            @click="confirm.visible=false"
+            class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Cancel
+          </button>
+          <button
+            @click="applyDecision"
+            class="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decline Refund Modal (Evidence Required) -->
+    <div
+      v-if="confirm.visible && confirm.action === 'declined'"
+      class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
+      @click="confirm.visible = false"
+    >
+      <div
+        class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl sm:mx-4 dark:bg-slate-800"
+        @click.stop
+      >
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Upload Evidence</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          Please upload evidence before proceeding.  
+          Photo(s) showing the correct product packaged in fulfilling this order, preferably CCTV footage.
+        </p>
+
+        <div class="mt-3">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Photo(s) <span class="text-rose-600">*</span></label>
+          <input type="file" multiple accept="image/*" @change="handleDeclineFiles" class="text-sm" />
+          <div class="mt-2 flex flex-wrap gap-2">
+            <img
+              v-for="(img, idx) in declineEvidencePreviews"
+              :key="idx"
+              :src="img"
+              class="h-20 w-20 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+            />
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+            Description <span class="text-rose-600">*</span>
+          </label>
+          <textarea
+            v-model="declineReason"
+            rows="3"
+            placeholder="Evidence explanation (required)"
+            maxlength="256"
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
+                   placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500
+                   dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          ></textarea>
+          <p class="mt-1 text-xs text-slate-400">{{ declineReason.length }}/256</p>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-2">
+          <button
+            @click="confirm.visible=false"
+            class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Cancel
+          </button>
+          <button
+            :disabled="!declineReason.trim() || declineFiles.length === 0"
+            @click="submitDecline"
+            class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            Submit
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <ToastNotification
+      v-if="toast.show"
+      :show="toast.show"
+      :type="toast.type"
+      :title="toast.title"
+      :message="toast.message"
+      :duration="toast.duration"
+      @close="toast.show = false"
+    />
+  </div>
+</template>
+
+<script setup>
+import { getAuth } from 'firebase/auth'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { auth, db, storage } from '@/firebase/firebase_config'
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import {
+  collection, query as fsQuery, where, orderBy, onSnapshot,
+  doc, updateDoc, Timestamp, getDoc
+} from 'firebase/firestore'
+import ToastNotification from '@/components/ToastNotification.vue'
+
+console.debug('[Storage bucket]', getStorage().bucket || '(default app bucket)')
+
+/* ------------ UI state ------------ */
+const loading = ref(true)
+const queryStr = ref('')
+const stateFilter = ref('') // '', 'pending', 'approved', 'declined'
+const toast = ref({ show:false, type:'success', title:'', message:'', duration:3000 })
+const showDecisionDetails = ref(false)
+const selectedDecision = ref(null)
+const showBuyerDetails = ref(false)
+const selectedBuyer = ref(null)
+
+/* ------------ Data ------------ */
+const requests = ref([])
+let stopAuth = null
+let stopOrders = null
+
+function showToast(o){
+  toast.value = {
+    show:true,
+    type:o.type||'success',
+    title:o.title||'',
+    message:o.message||'',
+    duration:o.duration||3000
+  }
+}
+
+/** Make sure the signed-in seller actually owns the order before uploading evidence */
+async function verifySellerBeforeUpload(row) {
+  const sellerUid = auth.currentUser?.uid || ''
+  if (!sellerUid) throw new Error('Not signed in.')
+
+  const snap = await getDoc(doc(db, 'orders', row.id))
+  if (!snap.exists()) throw new Error(`Order ${row.id} not found.`)
+
+  const o = snap.data() || {}
+  const rootSeller = o.sellerId || null
+  const prodSellers = (o.products || []).map(p => p?.sellerId).filter(Boolean)
+  const match = sellerUid && (sellerUid === rootSeller || prodSellers.includes(sellerUid))
+
+  if (!match) {
+    const detail = JSON.stringify({ sellerUid, rootSeller, prodSellers })
+    throw new Error(`Seller mismatch: ${detail}`)
+  }
+}
+
+/* ------------ Live query with fallback ------------ */
+onMounted(() => {
+  stopAuth = auth.onAuthStateChanged(async (u) => {
+    if (stopOrders) { stopOrders(); stopOrders = null }
+    if (!u) { loading.value = false; requests.value = []; return }
+
+    // Primary: orders where root sellerId == me
+    const qPrimary = fsQuery(
+      collection(db, 'orders'),
+      where('sellerId', '==', u.uid),
+      where('status', '==', 'return_refund'),
+      orderBy('createdAt','desc')
+    )
+
+    stopOrders = onSnapshot(qPrimary, (snap) => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      if (docs.length) {
+        requests.value = docs
+        loading.value = false
+      } else {
+        // Fallback: filter client-side by products[0].sellerId == me
+        const qFallback = fsQuery(
+          collection(db, 'orders'),
+          where('status','==','return_refund'),
+          orderBy('createdAt','desc')
+        )
+        // Replace listener with fallback
+        stopOrders = onSnapshot(qFallback, (snap2) => {
+          const all = snap2.docs.map(d => ({ id: d.id, ...d.data() }))
+          requests.value = all.filter(o => (o.products?.[0]?.sellerId || o.sellerId) === u.uid)
+          loading.value = false
+        }, () => loading.value = false)
+      }
+    }, () => loading.value = false)
+  })
+})
+
+onBeforeUnmount(() => { stopOrders?.(); stopAuth?.() })
+
+/* ------------ Helpers ------------ */
+const statusOf = (r) => r?.returnRequestSummary?.state || 'pending'
+
+function formatDate(ts){
+  if(!ts) return '—'
+  if (ts?.toDate) {
+    return ts.toDate().toLocaleString('en-SG', {
+      year:'numeric', month:'short', day:'numeric',
+      hour:'2-digit', minute:'2-digit'
+    })
+  }
+  try { return new Date(ts).toLocaleString('en-SG') } catch { return '—' }
+}
+function capitalizeStatus(s){ return (s||'pending').replace(/^\w/, c => c.toUpperCase()) }
+
+function statusClass(state){
+  switch(state){
+    case 'approved': return 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200'
+    case 'declined': return 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'
+    default: return 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
+  }
+}
+function solutionLabel(sol){
+  if(!sol) return 'Refund'
+  const s = String(sol).toLowerCase()
+  if (s.includes('return')) return 'Return'
+  return 'Refund'
+}
+
+/** Support:
+ *  - top table: pass only the order row → pick first product
+ *  - buyer details list: pass (row, productId) → find the specific product
+ */
+function findProduct(row, productId) {
+  const products = row?.products || []
+  if (!products.length) return null
+  if (!productId) return products[0]
+  return products.find(p => p.productId === productId || p.id === productId) || products[0]
+}
+function findProductImg(row, productId) {
+  const p = findProduct(row, productId)
+  return p?.img_url || p?.imageUrl || ''
+}
+function findProductName(row, productId) {
+  const p = findProduct(row, productId)
+  return p?.item_name || p?.name || '(Unknown item)'
+}
+
+const decisionTitle = (row) => {
+  const sol = row?.returnRequestSummary?.solution || ''
+  const isReturn = String(sol).toLowerCase().includes('return')
+  return isReturn ? 'Return Details' : 'Refund Details'
+}
+function statusPillClass(state){
+  switch(state){
+    case 'approved': return 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200'
+    case 'declined': return 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'
+    default:         return 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
+  }
+}
+function statusDotClass(state){
+  switch(state){
+    case 'approved': return 'bg-green-600'
+    case 'declined': return 'bg-rose-600'
+    default:         return 'bg-amber-600'
+  }
+}
+
+/* ------------ Filter + search + paginate ------------ */
+const filtered = computed(() => {
+  let list = requests.value
+
+  // status filter
+  if (stateFilter.value)
+    list = list.filter(r => statusOf(r) === stateFilter.value)
+
+  // search by orderId or product names
+  const q = queryStr.value.trim().toLowerCase()
+  if (q) {
+    list = list.filter(r => {
+      const names = (r.products || []).map(p => p.item_name || p.name || '').join(' ').toLowerCase()
+      return (r.orderId || '').toLowerCase().includes(q) || names.includes(q)
+    })
+  }
+
+  return list.sort((a,b) => {
+    const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : +new Date(a.createdAt || 0)
+    const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : +new Date(b.createdAt || 0)
+    return tb - ta
+  })
+})
+
+/** Guess a safe image MIME (prevents storage/unauthorized when rules check image/*) */
+function guessImageMime(file) {
+  if (file?.type && file.type.startsWith('image/')) return file.type
+  const name = (file?.name || '').toLowerCase()
+  if (name.endsWith('.png'))  return 'image/png'
+  if (name.endsWith('.webp')) return 'image/webp'
+  if (name.endsWith('.gif'))  return 'image/gif'
+  if (name.endsWith('.bmp'))  return 'image/bmp'
+  if (name.endsWith('.svg'))  return 'image/svg+xml'
+  return 'image/jpeg'
+}
+
+const pageSize = 10
+const page = ref(1)
+const totalPages = computed(() => Math.ceil(filtered.value.length / pageSize))
+const paged = computed(() => filtered.value.slice((page.value-1)*pageSize, page.value*pageSize))
+const pageStart = computed(() => filtered.value.length ? (page.value-1)*pageSize+1 : 0)
+const pageEnd = computed(() => Math.min(page.value*pageSize, filtered.value.length))
+
+/* ------------ Actions ------------ */
+const confirm = ref({ visible:false, action:null, target:null })
+
+function openConfirm(row, action){
+  confirm.value = { visible:true, action, target:row }
+}
+function openDecisionDetails(row){
+  selectedDecision.value = row
+  showDecisionDetails.value = true
+}
+function decisionDetailLabel(row){
+  const sol = row?.returnRequestSummary?.solution
+  const isReturn = String(sol||'').toLowerCase().includes('return')
+  return isReturn ? 'View Return Details' : 'View Refund Details'
+}
+function openBuyerDetails(row){
+  selectedBuyer.value = row
+  showBuyerDetails.value = true
+}
+
+async function applyDecision(){
+  const row = confirm.value.target
+  if(!row) return
+  const state = 'approved'
+  confirm.value.visible = false
+  try{
+    await updateDoc(doc(db,'orders',row.id),{
+      returnRequestSummary:{
+        ...row.returnRequestSummary,
+        state,
+        reviewedAt: Timestamp.now(),
+        reviewedBy: auth.currentUser?.uid || null
+      },
+      statusLog:[...(row.statusLog||[]),{ status:'return_approved', by:'seller', time:Timestamp.now() }]
+    })
+    showToast({ type:'success', title:'Approved', message:'Refund approved successfully.' })
+  }catch(e){
+    console.error(e)
+    showToast({ type:'error', title:'Failed', message:'Could not approve request.' })
+  }
+}
+
+async function applyDecline(payload){
+  const row = confirm.value.target
+  if(!row) return
+  confirm.value.visible = false
+  try{
+    await updateDoc(doc(db,'orders',row.id),{
+      returnRequestSummary:{
+        ...row.returnRequestSummary,
+        state:'declined',
+        declineReason: payload.reason,
+        declineEvidenceUrls: payload.evidenceUrls || [],
+        reviewedAt: Timestamp.now(),
+        reviewedBy: auth.currentUser?.uid || null
+      },
+      statusLog:[...(row.statusLog||[]),{ status:'return_declined', by:'seller', time:Timestamp.now() }]
+    })
+    showToast({ type:'success', title:'Declined', message:'Refund request declined with reason and evidence.' })
+  }catch(e){
+    console.error(e)
+    showToast({ type:'error', title:'Failed', message:'Could not decline request.' })
+  }
+}
+
+const declineReason = ref('')
+const declineFiles = ref([])
+const declineEvidencePreviews = ref([])
+
+function handleDeclineFiles(e) {
+  const files = Array.from(e.target.files || [])
+  declineFiles.value = files
+  declineEvidencePreviews.value = files.map(f => URL.createObjectURL(f))
+}
+
+async function submitDecline() {
+  const row = confirm.value.target
+  if (!row) return
+  confirm.value.visible = false
+
+  try {
+    await verifySellerBeforeUpload(row) // pre-flight safety check
+
+    const sellerUid = auth.currentUser?.uid
+    if (!sellerUid) throw new Error('Not signed in.')
+
+    const uploadedUrls = []
+
+    for (const f of declineFiles.value) {
+      const safeName = `${Date.now()}_${(f.name || 'evidence').replace(/[^\w.\-]/g, '_')}`
+      // IMPORTANT: path uses the **signed-in seller UID**
+      const path = `decline_evidence/${row.id}/${sellerUid}/${safeName}`
+      const fileRef = storageRef(storage, path)
+
+      const metadata = {
+        contentType: guessImageMime(f),
+        cacheControl: 'public,max-age=31536000'
+      }
+
+      console.debug('[DeclineUpload] path:', path, 'contentType:', metadata.contentType)
+      await uploadBytes(fileRef, f, metadata)
+      const url = await getDownloadURL(fileRef)
+      uploadedUrls.push(url)
+    }
+
+    await updateDoc(doc(db, 'orders', row.id), {
+      returnRequestSummary: {
+        ...row.returnRequestSummary,
+        state: 'declined',
+        declineReason: declineReason.value,
+        declineEvidenceUrls: uploadedUrls,
+        reviewedAt: Timestamp.now(),
+        reviewedBy: sellerUid
+      },
+      statusLog: [
+        ...(row.statusLog || []),
+        { status: 'return_declined', by: 'seller', time: Timestamp.now() }
+      ]
+    })
+
+    showToast({
+      type: 'success',
+      title: 'Declined',
+      message: 'Buyer will be notified with your reason and evidence.'
+    })
+  } catch (err) {
+    console.error('Decline failed (Storage/Firestore):', err)
+    let msg = err?.message || 'Unexpected error.'
+    if (err?.code === 'storage/unauthorized') {
+      msg = 'Upload was blocked by Storage Rules. Common causes: file is not detected as an image (contentType), or upload path does not match your UID bucket rules.'
+    }
+    if (err?.code === 'storage/forbidden') {
+      msg = 'Forbidden by bucket or token. Check Storage rules deployment and authentication.'
+    }
+    showToast({
+      type: 'error',
+      title: 'Decline Failed',
+      message: msg
+    })
+  } finally {
+    declineReason.value = ''
+    declineFiles.value = []
+    declineEvidencePreviews.value = []
+  }
+}
+</script>
+
+<style scoped>
+.details-zoom {
+  animation: dz .18s ease-out;
+  transform-origin: 50% 40%;
+}
+@keyframes dz {
+  from { opacity: .0; transform: scale(.98); }
+  to   { opacity: 1;  transform: scale(1); }
+}
+</style>
