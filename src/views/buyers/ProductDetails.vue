@@ -106,23 +106,18 @@ const selectedQuantity = computed(() => {
 
 // Format Availability status
 const selectedStockStatus = computed(() => {
-    if (selectedQuantity.value <= 0) {
-        return {
-            text: 'Out of stock',
-            color: 'text-red-600'
-        }
-    } else if (selectedQuantity.value <= 10) {
-        return {
-            text: `Limited availability (${selectedQuantity.value})`,
-            color: 'text-yellow-600'
-        }
-    } else {
-        return {
-            text: `In stock (${selectedQuantity.value} available)`,
-            color: 'text-green-600'
-        }
-    }
+  // Wait until product data is actually loaded
+  if (!product.value || product.value.quantity == null) {
+    return { text: 'Loading...', color: 'text-gray-400' }
+  }
+
+  if (product.value.quantity <= 0) {
+    return { text: 'Out of Stock', color: 'text-red-600' }
+  }
+
+  return { text: 'In Stock', color: 'text-green-600' }
 })
+
 
 // Ensure userQuantity stays within stock and handles out-of-stock
 watch([userQuantity, selectedQuantity], () => {
