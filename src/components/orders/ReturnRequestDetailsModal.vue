@@ -139,6 +139,8 @@ const stateLabel = computed(() =>
   state.value === 'approved' ? 'Approved' :
   state.value === 'declined' ? 'Declined' : 'Pending'
 )
+const showRefundedLine = computed(() => state.value === 'approved')
+const refundedLine = (q) => `Refunded for ${q}`
 
 const headerLine = computed(() => {
   const amt = Number(summary.value?.amount ?? 0).toFixed(2)

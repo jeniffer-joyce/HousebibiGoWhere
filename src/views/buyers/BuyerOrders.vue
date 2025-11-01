@@ -139,7 +139,14 @@
                 <div class="flex items-start gap-3">
                   <img :src="it.img_url" class="h-16 w-16 rounded-md object-cover" />
                   <div>
-                    <p class="font-medium text-slate-900 dark:text-white">{{ it.item_name }}</p>
+                    <!-- 🔗 Product name navigates to product details -->
+                    <RouterLink
+                      :to="`/product-details/${it.productId}`"
+                      class="font-medium text-slate-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400 transition"
+                    >
+                      {{ it.item_name }}
+                    </RouterLink>
+
                     <p class="text-sm text-slate-500 dark:text-slate-400">
                       <span v-if="it.size">Size: {{ it.size }}</span>
                       <span v-if="it.size && (it.quantity ?? 1)"> • </span>
@@ -167,18 +174,13 @@
 
               <div class="flex flex-wrap items-center justify-end gap-2">
                 <!-- Buttons -->
-                <template v-if="statusOf(o) === 'to_pay'">
-                  <button @click="payNow(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Pay Now</button>
-                  <button @click="changePayment(o)" class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50">Change Payment</button>
-                  <button @click="openCancelConfirm(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Cancel Order</button>
-                </template>
-
-                <template v-else-if="statusOf(o) === 'to_ship'">
-                  <button @click="openCancelConfirm(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Cancel Order</button>
-                </template>
-
-                <template v-else-if="statusOf(o) === 'to_receive'">
-                  <button @click="markReceived(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Order Received</button>
+                <template v-if="statusOf(o) === 'to_receive'">
+                  <button
+                    @click="openReceivedConfirm(o)"
+                    class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                  >
+                    Order Received
+                  </button>
                 </template>
 
                 <template v-else-if="statusOf(o) === 'completed'">
@@ -205,6 +207,16 @@
                   >
                     Request Return/Refund
                   </button>
+                </template>
+
+                <template v-else-if="statusOf(o) === 'to_pay'">
+                  <button @click="payNow(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Pay Now</button>
+                  <button @click="changePayment(o)" class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50">Change Payment</button>
+                  <button @click="openCancelConfirm(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Cancel Order</button>
+                </template>
+
+                <template v-else-if="statusOf(o) === 'to_ship'">
+                  <button @click="openCancelConfirm(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Cancel Order</button>
                 </template>
 
                 <template v-else-if="statusOf(o) === 'cancelled'">
@@ -257,6 +269,52 @@
       </div>
     </div>
 
+    <!-- Order Received Confirm Modal -->
+    <div
+      v-if="showReceivedConfirm"
+      class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
+      @click="showReceivedConfirm=false"
+    >
+      <div
+        class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:mx-4 dark:bg-slate-800"
+        @click.stop
+      >
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+          Confirm Order Received?
+        </h3>
+
+        <!-- Subtext similar to Shopee’s guidance -->
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          By confirming, you acknowledge the items were received. We’ll release payment to the seller now.
+          If there’s an issue, you can still request a return/refund for your order under the 'Completed' tab.
+        </p>
+
+        <!-- Order summary line for context -->
+        <div class="mt-4 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-600 dark:text-slate-300">Order #</span>
+            <span class="font-semibold text-slate-900 dark:text-white">{{ orderToReceive?.orderId }}</span>
+          </div>
+        </div>
+
+        <div class="mt-5 flex justify-end gap-2">
+          <button
+            @click="showReceivedConfirm=false"
+            class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Cancel
+          </button>
+          <button
+            :disabled="receiveProcessing"
+            @click="confirmReceived"
+            class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {{ receiveProcessing ? 'Confirming…' : 'Confirm' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modals -->
     <CancelledDetailsModal
       v-if="!!selectedCancelled"
@@ -305,6 +363,17 @@
       @close="showReviewDetails=false; orderForReviewDetails=null"
       @edit="editReviewsForOrder"
     />
+
+    <!-- Toast (wired to `toast`) -->
+    <ToastNotification
+      v-if="toast.show"
+      :show="toast.show"
+      :type="toast.type"
+      :title="toast.title"
+      :message="toast.message"
+      :duration="toast.duration"
+      @close="toast.show = false"
+    />
   </div>
 </template>
 
@@ -312,18 +381,19 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { RouterLink } from 'vue-router'
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
+import ToastNotification from '@/components/ToastNotification.vue'  // ✅ ADDED
+
 import { auth, db } from '@/firebase/firebase_config'
 import {
   collection, query as fsQuery, where, orderBy, onSnapshot,
   doc, updateDoc, arrayUnion, Timestamp,
-  getDocs, addDoc, serverTimestamp, limit          
+  getDocs, addDoc, serverTimestamp, limit
 } from 'firebase/firestore'
 
 import CancelledDetailsModal from '@/components/orders/CancelledDetailsModal.vue'
 import OrderDetailsModal from '@/components/orders/OrderDetailsModal.vue'
 import ReturnRequestModal from '@/components/orders/ReturnRequestModal.vue'
 import ReturnRequestDetailsModal from '@/components/orders/ReturnRequestDetailsModal.vue'
-
 import RateOrderModal from '@/components/orders/RateOrderModal.vue'
 import ReviewDetailsModal from '@/components/orders/ReviewDetailsModal.vue'
 
@@ -344,11 +414,23 @@ const orderForReturnDetails = ref(null)
 const orders = ref([])
 const showRateModal = ref(false)
 const orderForRating = ref(null)
-const reviewedOrders = ref(new Set())           
-const showReviewDetails = ref(false)            
-const orderForReviewDetails = ref(null)         
-const editExistingReviews = ref([])             
-const editMode = ref('create')                  
+const reviewedOrders = ref(new Set())
+const showReviewDetails = ref(false)
+const orderForReviewDetails = ref(null)
+const editExistingReviews = ref([])
+const editMode = ref('create')
+
+/* ✅ Toast state (ADDED) */
+const toast = ref({
+  show: false,
+  type: 'success',   // success | error | warning | info
+  title: '',
+  message: '',
+  duration: 3000
+})
+function showToast({ type='success', title='', message='', duration=3000 }) {
+  toast.value = { show: true, type, title, message, duration }
+}
 
 /* Tabs */
 const tabs = [
@@ -367,7 +449,7 @@ const statusMap = {
   to_ship:       { label: 'To Ship',       cls: 'bg-indigo-50 text-indigo-700', dot: 'bg-indigo-600' },
   to_receive:    { label: 'To Receive',    cls: 'bg-sky-50 text-sky-700',     dot: 'bg-sky-600' },
   completed:     { label: 'Delivered',     cls: 'bg-green-50 text-green-700', dot: 'bg-green-600' },
-  cancelled:     { label: 'Cancelled',     cls: 'bg-slate-100 text-slate-700', dot: 'bg-slate-500' },
+  cancelled:     { label: 'Cancelled',     cls: 'bg-red-50 text-red-700',     dot: 'bg-red-600' },
   return_refund: { label: 'Return/Refund', cls: 'bg-amber-50 text-amber-700', dot: 'bg-amber-600' }
 }
 
@@ -475,13 +557,19 @@ function formatDate(ts) {
   try { return new Date(ts).toLocaleString('en-SG') } catch { return '—' }
 }
 
-/* Actions (no alerts) */
+/* Actions */
 function payNow(o) { /* integrate your gateway */ }
 function changePayment(o) { /* open change payment UI */ }
 
 function openCancelConfirm(o) {
   orderToCancel.value = o
   showCancelConfirm.value = true
+}
+
+function openReturnModal(o) {
+  if (hasReview(o) || statusOf(o) !== 'completed') return
+  orderForReturn.value = o
+  showReturnModal.value = true
 }
 async function confirmCancel() {
   if (!orderToCancel.value) return
@@ -494,12 +582,20 @@ async function confirmCancel() {
   orderToCancel.value = null
 }
 
-function markReceived(o) {
-  updateDoc(doc(db, 'orders', o.id), {
-    status: 'completed',
-    statusLog: arrayUnion({ status: 'completed', by: 'buyer', time: Timestamp.now() })
-  })
+/* ✅ Wrap markReceived with try/catch and show toast errors */
+async function markReceived(o) {
+  try {
+    await updateDoc(doc(db, 'orders', o.id), {
+      status: 'completed',
+      statusLog: arrayUnion({ status: 'completed', by: 'buyer', time: Timestamp.now() })
+    })
+    // no toast here
+  } catch (err) {
+    console.error('markReceived failed:', err)
+    throw err
+  }
 }
+
 function rateOrder(o) {
   orderForRating.value = o
   showRateModal.value = true
@@ -514,10 +610,28 @@ function closeRateModal() {
 }
 
 // when the modal emits "submitted"
-function handleReviewSubmitted() {
-  closeRateModal()
-  banner.value = { show: true, msg: 'Thanks! Your review has been submitted.' }
-  setTimeout(() => { banner.value.show = false }, 3500)
+function handleReturnSubmitted(evt) {
+  // evt may contain { orderId, message } etc. depending on your modal setup
+
+  showReturnModal.value = false
+  orderForReturn.value = null
+
+  // Optional local update (if you track return orders locally)
+  // e.g., mark order as "return_refund"
+  if (evt?.orderId) {
+    const idx = orders.value.findIndex(o => o.orderId === evt.orderId)
+    if (idx !== -1) {
+      orders.value[idx].status = 'return_refund'
+    }
+  }
+
+  // ✅ Success toast
+  showToast({
+    type: 'success',
+    title: 'Return/Refund submitted',
+    message: 'Your return or refund request has been successfully sent.',
+    duration: 3000
+  })
 }
 
 function viewCancelledDetails(o) { selectedCancelled.value = o }
@@ -577,6 +691,43 @@ function openRateModal(o) {
   showRateModal.value = true
 }
 
+// NEW state for the received-confirm modal
+const showReceivedConfirm = ref(false)
+const orderToReceive = ref(null)
+const receiveProcessing = ref(false)
+
+// Open the modal with the selected order
+function openReceivedConfirm(o) {
+  orderToReceive.value = o
+  showReceivedConfirm.value = true
+}
+
+// Confirm action → call existing markReceived, handle toast & UI
+async function confirmReceived() {
+  if (!orderToReceive.value) return
+  receiveProcessing.value = true
+  try {
+    await markReceived(orderToReceive.value)
+    showToast({
+      type: 'success',
+      title: 'Marked as received',
+      message: 'Thanks! The order has been marked as received.',
+      duration: 2500
+    })
+    showReceivedConfirm.value = false
+    orderToReceive.value = null
+  } catch (err) {
+    showToast({
+      type: 'error',
+      title: 'Action failed',
+      message: err?.message || 'We could not mark this order as received.',
+      duration: 4000
+    })
+    console.error('confirmReceived failed:', err)
+  } finally {
+    receiveProcessing.value = false
+  }
+}
 </script>
 
 <style scoped>

@@ -11,6 +11,16 @@
         </p>
       </header>
 
+      <!-- Fallback banner (only shows when we had to use client-side filter) -->
+      <div
+        v-if="usedFallback"
+        class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+      >
+        ⚠️ Showing results via a safe fallback (status-only query filtered
+        on the client). Some older orders may be missing a top-level
+        <code>sellerId</code>. New requests will still appear normally.
+      </div>
+
       <!-- Search -->
       <div>
         <input
@@ -35,9 +45,7 @@
                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200'"
           >
             <span class="text-sm font-medium">{{ t.label }}</span>
-            <span
-              class="rounded-full px-2 py-0.5 text-xs font-bold bg-blue-600 text-white"
-            >
+            <span class="rounded-full px-2 py-0.5 text-xs font-bold bg-blue-600 text-white">
               {{ tabCounts[t.key] }}
             </span>
           </button>
@@ -91,9 +99,8 @@
             </div>
           </div>
 
-          <!-- Rows: Reason / Description / Evidence / Solution -->
+          <!-- Reason / Description / Evidence / Solution -->
           <div class="divide-y divide-slate-100 dark:divide-slate-700">
-            <!-- Reason -->
             <div class="p-4">
               <div class="text-sm font-semibold text-slate-900 dark:text-white mb-1">Reason</div>
               <div class="text-sm text-slate-700 dark:text-slate-200">
@@ -101,7 +108,6 @@
               </div>
             </div>
 
-            <!-- Buyer Description -->
             <div class="p-4">
               <div class="text-sm font-semibold text-slate-900 dark:text-white mb-1">Buyer Description</div>
               <p class="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
@@ -109,7 +115,6 @@
               </p>
             </div>
 
-            <!-- Evidence -->
             <div class="p-4">
               <div class="text-sm font-semibold text-slate-900 dark:text-white mb-2">Evidence</div>
               <div class="flex flex-wrap gap-2">
@@ -125,7 +130,6 @@
               </div>
             </div>
 
-            <!-- Solution -->
             <div class="p-4">
               <div class="text-sm font-semibold text-slate-900 dark:text-white mb-1">Solution</div>
               <div class="text-sm text-slate-700 dark:text-slate-200 capitalize">
@@ -178,7 +182,6 @@
             </div>
 
             <div class="flex flex-wrap items-center justify-end gap-2">
-              <!-- Approve / Decline (disabled if not pending or once decided) -->
               <button
                 :disabled="actionsDisabled(r) || isRowDisabled(r.id)"
                 :class="[
@@ -256,6 +259,7 @@ import {
 
 /* ------------ UI state ------------ */
 const loading = ref(true)
+const usedFallback = ref(false)
 const queryStr = ref('')
 const active = ref('all')
 
@@ -265,14 +269,12 @@ const isProcessing = ref(false)
 
 /* Permanently disable decided rows */
 const permanentlyDisabled = ref(new Set())
-function isRowDisabled(orderId) {
-  return permanentlyDisabled.value.has(orderId)
-}
+const isRowDisabled = (orderId) => permanentlyDisabled.value.has(orderId)
 
 /* ------------ Data ------------ */
 const requests = ref([])
 
-// Tabs for return/refund state (we filter on client)
+/* Tabs */
 const tabs = [
   { key: 'all',      label: 'All' },
   { key: 'pending',  label: 'Pending' },
@@ -280,39 +282,90 @@ const tabs = [
   { key: 'declined', label: 'Declined' }
 ]
 
-/* ------------ Fetch seller's requests ------------ */
-let unsub = null
-onMounted(() => {
-  const stop = auth.onAuthStateChanged(async (u) => {
-    if (!u) { loading.value = false; return }
+/* ------------ Fetch seller's requests with fallback ------------ */
+let stopAuth = null
+let stopOrders = null
 
-    // Load orders for this seller that are in return_refund status, newest first.
-    const q = fsQuery(
+onMounted(() => {
+  stopAuth = auth.onAuthStateChanged(async (u) => {
+    if (stopOrders) { stopOrders(); stopOrders = null }
+    usedFallback.value = false
+
+    if (!u) { loading.value = false; requests.value = []; return }
+
+    // Primary query: requires root sellerId
+    const qPrimary = fsQuery(
       collection(db, 'orders'),
       where('sellerId', '==', u.uid),
       where('status', '==', 'return_refund'),
       orderBy('createdAt', 'desc')
     )
 
-    unsub?.()
-    unsub = onSnapshot(q, (snap) => {
-      requests.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      loading.value = false
+    stopOrders = onSnapshot(qPrimary, (snap) => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      console.log('[ReturnRefund] primary results:', docs.length, docs)
+      if (docs.length > 0) {
+        requests.value = docs
+        loading.value = false
+      } else {
+        // Fallback: status-only + client filter by products[0].sellerId
+        usedFallback.value = true
+        const qFallback = fsQuery(
+          collection(db, 'orders'),
+          where('status', '==', 'return_refund'),
+          orderBy('createdAt', 'desc')
+        )
+        if (stopOrders) { stopOrders(); stopOrders = null } // swap listeners
+        stopOrders = onSnapshot(qFallback, (snap2) => {
+          const all = snap2.docs.map(d => ({ id: d.id, ...d.data() }))
+          const mine = all.filter(x => (x.products?.[0]?.sellerId || x.sellerId) === u.uid)
+          console.log('[ReturnRefund] fallback filtered:', mine.length, mine)
+          requests.value = mine
+          loading.value = false
+        }, (err2) => {
+          console.error('ReturnRefund fallback onSnapshot error:', err2)
+          loading.value = false
+        })
+      }
     }, (err) => {
-      console.error('ReturnRefund onSnapshot error:', err)
-      loading.value = false
+      console.error('ReturnRefund primary onSnapshot error:', err)
+      // If primary itself fails (rules/index), try fallback once
+      usedFallback.value = true
+      const qFallback = fsQuery(
+        collection(db, 'orders'),
+        where('status', '==', 'return_refund'),
+        orderBy('createdAt', 'desc')
+      )
+      stopOrders = onSnapshot(qFallback, (snap2) => {
+        const all = snap2.docs.map(d => ({ id: d.id, ...d.data() }))
+        const mine = all.filter(x => (x.products?.[0]?.sellerId || x.sellerId) === (u?.uid || ''))
+        console.log('[ReturnRefund] fallback (after error) filtered:', mine.length, mine)
+        requests.value = mine
+        loading.value = false
+      }, (err2) => {
+        console.error('ReturnRefund fallback onSnapshot error:', err2)
+        loading.value = false
+      })
     })
   })
-  onBeforeUnmount(() => { stop(); unsub?.() })
+})
+
+onBeforeUnmount(() => {
+  if (stopOrders) stopOrders()
+  if (stopAuth) stopAuth()
 })
 
 /* ------------ Helpers ------------ */
-function statusOf(r) {
-  return r?.returnRequestSummary?.state || 'pending'
-}
+const statusOf = (r) => r?.returnRequestSummary?.state || 'pending'
+
 function formatDate(ts) {
   if (!ts) return '—'
-  if (ts.toDate) return ts.toDate().toLocaleString('en-SG', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
+  if (ts?.toDate) {
+    return ts.toDate().toLocaleString('en-SG', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    })
+  }
   try { return new Date(ts).toLocaleString('en-SG') } catch { return '—' }
 }
 
@@ -372,22 +425,14 @@ const visibleRequests = computed(() => {
   })
 })
 
-/* Product helpers (find product info for items) */
-function findProduct(r, productId) {
-  return (r.products || []).find(p => p.productId === productId) || null
-}
-function findProductImg(r, productId) {
-  return findProduct(r, productId)?.img_url || ''
-}
-function findProductName(r, productId) {
-  return findProduct(r, productId)?.item_name || '(Unknown item)'
-}
+/* Product helpers */
+const findProduct = (r, productId) =>
+  (r.products || []).find(p => p.productId === productId) || null
+const findProductImg = (r, productId) => findProduct(r, productId)?.img_url || ''
+const findProductName = (r, productId) => findProduct(r, productId)?.item_name || '(Unknown item)'
 
-/* Disable logic: disable if not pending, or while processing */
-function actionsDisabled(r) {
-  const state = statusOf(r)
-  return state !== 'pending' || isProcessing.value
-}
+/* Disable logic */
+const actionsDisabled = (r) => statusOf(r) !== 'pending' || isProcessing.value
 
 /* Confirm -> apply decision */
 function openConfirm(row, action) {
@@ -417,8 +462,6 @@ async function applyDecision() {
         }
       ]
     })
-
-    // Permanently disable buttons for this order in the UI
     permanentlyDisabled.value.add(row.id)
   } catch (e) {
     console.error('❌ Seller decision update failed:', e)
@@ -429,10 +472,7 @@ async function applyDecision() {
 </script>
 
 <style scoped>
-/* subtle hover */
 article:hover { transform: translateY(-1px); transition: box-shadow .2s, transform .2s; }
-
-/* scrollbars */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background-color: rgba(100,116,139,0.3); border-radius: 8px; }
 ::-webkit-scrollbar-thumb:hover { background-color: rgba(100,116,139,0.5); }

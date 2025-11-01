@@ -43,6 +43,13 @@
                 <span v-if="it.size && it.quantity"> • </span>
                 Qty: {{ it.quantity ?? 1 }}
               </p>
+              <!-- ✅ NEW: show refunded quantity (blue) when refund approved for this product -->
+              <p
+                v-if="refundQtyByProduct[it.productId]"
+                class="mt-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400"
+              >
+                Refunded for {{ refundQtyByProduct[it.productId] }} Qty
+              </p>
             </div>
           </div>
           <div class="text-right font-semibold text-slate-900 dark:text-white">
@@ -59,7 +66,6 @@
             <p>Singapore {{ order?.shippingAddress?.postalCode }}</p>
             <p class="mt-1 text-slate-500 dark:text-slate-400">Tel: {{ order?.shippingAddress?.phoneNumber }}</p>
 
-            <!-- Hide carrier/track if not shipped yet (e.g., to_pay) -->
             <template v-if="order?.status !== 'to_pay' && order?.logistics?.shippedAt">
               <p class="mt-3 text-slate-500 dark:text-slate-400">Carrier: {{ order?.logistics?.shipper || '—' }}</p>
               <p class="text-slate-500 dark:text-slate-400">Tracking: {{ order?.logistics?.trackingNumber || '—' }}</p>
@@ -90,7 +96,6 @@
 
         <!-- Footer buttons -->
         <div class="mt-6 flex items-center justify-between">
-          <!-- Left: Buy again -->
           <button
             class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
             @click="$emit('buy-again', order)"
@@ -98,14 +103,15 @@
             Buy Again
           </button>
 
-          <!-- Right: Refund details & Close -->
           <div class="flex items-center gap-2">
             <button
+              v-if="lastStatus !== 'cancelled'"
               class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
               @click="$emit('open-refund', order)"
             >
               Refund Details
             </button>
+
             <button
               class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
               @click="$emit('close')"
@@ -156,5 +162,18 @@ const lastStatusTime = computed(() => lastEntry.value?.time || props.order?.upda
 const cancelledBy = computed(() => {
   if (lastStatus.value !== 'cancelled') return '—'
   return lastEntry.value?.by === 'seller' ? 'seller' : 'you'
+})
+
+/* ✅ NEW: map of refunded quantities per product when refund is approved */
+const refundQtyByProduct = computed(() => {
+  const s = props.order?.returnRequestSummary
+  if (!s || s.state !== 'approved') return {}
+  const map = {}
+  for (const it of s.items || []) {
+    const pid = it?.productId
+    const q = Number(it?.quantity ?? 0)
+    if (pid && q > 0) map[pid] = (map[pid] || 0) + q
+  }
+  return map
 })
 </script>
