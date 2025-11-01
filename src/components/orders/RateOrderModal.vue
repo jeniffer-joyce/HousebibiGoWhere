@@ -27,8 +27,11 @@
           </button>
         </div>
 
-        <!-- Warning -->
-        <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <!-- Warning (only for first-time reviews) -->
+        <div
+          v-if="!isEdit"
+          class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
           ⚠️ Once you submit your review, you will no longer be able to request a return or refund for this order.
         </div>
 

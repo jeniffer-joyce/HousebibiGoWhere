@@ -21,6 +21,10 @@
             Request Return/Refund
           </h3>
         </div>
+        <!-- Warning banner -->
+        <div class="mx-4 mb-1 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          ⚠️ Once you submit this request, you will no longer be able to leave a review for this order.
+        </div>
 
         <!-- Items from this seller -->
         <div class="p-4 space-y-3">
@@ -300,12 +304,13 @@ const unitPrice = (p) => Number(p.price ?? (p.totalPrice ?? 0) / Math.max(p.quan
 // Only items from this order's seller are shown
 const sellerId = computed(() => props.order?.sellerId || props.order?.products?.[0]?.sellerId)
 const sellerItems = computed(() =>
-  (props.order?.products || []).filter(p => (p.sellerId || null) === sellerId.value)
+  (props.order?.products || [])
+    .map((p, idx) => ({ ...p, __orderIdx: idx }))   // ← keep source index
+    .filter(p => (p.sellerId || null) === sellerId.value)
 )
 // Map sellerItems local index to **order.products** index
 function idxInOrder(localIdx) {
-  const sellerPid = sellerItems.value[localIdx]?.productId
-  return (props.order?.products || []).findIndex(p => p.productId === sellerPid)
+  return sellerItems.value[localIdx]?.__orderIdx ?? -1
 }
 
 /* Autofill email & default select all visible items on open */
@@ -429,8 +434,9 @@ async function submit() {
     // 4) UPDATE parent /orders doc summary + status
     try {
       await updateDoc(doc(db, 'orders', props.order.id), {
-        status: 'return_refund',
-        statusLog: arrayUnion({ status:'return_refund', by:'buyer', time: Timestamp.now() }),
+      sellerId: props.order?.sellerId || props.order?.products?.[0]?.sellerId || null,
+      status: 'return_refund',
+      statusLog: arrayUnion({ status:'return_refund', by:'buyer', time: Timestamp.now() }),
         returnRequestSummary: {
           id: requestDoc.id,
           reasonKey: reasonKey.value,
