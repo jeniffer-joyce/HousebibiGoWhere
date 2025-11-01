@@ -401,21 +401,16 @@ async function loadAnalyticsData() {
     }
 
     // Get orders - need to fetch all and filter client-side due to Firestore limitations
+    // Get orders by sellerId directly
     const ordersQuery = query(
       collection(db, 'orders'),
+      where('sellerId', '==', uid),
       orderBy('createdAt', 'desc')
     )
     const ordersSnap = await getDocs(ordersQuery)
     
     // Filter orders that contain seller's products
-    orders.value = ordersSnap.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(order => {
-        if (!order.products || !Array.isArray(order.products)) return false
-        return order.products.some(product => 
-          sellerProductIds.includes(product.productId)
-        )
-      })
+    orders.value = ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 
     // Get reviews for seller's products
     const reviewsQuery = query(

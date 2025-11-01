@@ -51,9 +51,18 @@ const {
 } = useProduct(productId)
 
 // Load product on mount
-onMounted(() => {
-    loadProduct()
+onMounted(async () => {
+  await loadProduct()
+  
+  // Debug logs
+  console.log('Product loaded:', product.value)
+  console.log('Product sellerId:', product.value?.sellerId)  // Add this
+  console.log('Product sellerID:', product.value?.sellerID)  // Check both casings
+  console.log('Seller loaded:', seller.value)
+  console.log('Seller profilePic:', seller.value?.profilePic)
 })
+
+
 
 const {
     showImageModal,
@@ -177,22 +186,38 @@ const prProducts = new Map() // productId -> {name}
 
 // Fetch a buyer's display info
 async function prFetchBuyer(uid) {
+
     if (!uid) return { displayName: 'User', photoURL: '' }
     if (prBuyers.has(uid)) return prBuyers.get(uid)
-    // try users, then profiles
+
+    // Try users
     let snap = await getDoc(doc(db, 'users', uid)).catch(() => null)
     let data = snap?.exists() ? snap.data() : null
+
+    // Try profiles
     if (!data) {
         snap = await getDoc(doc(db, 'profiles', uid)).catch(() => null)
         data = snap?.exists() ? snap.data() : null
     }
-    const user = {
-        displayName: data?.displayName || data?.name || 'User',
-        photoURL: data?.photoURL || data?.avatar || ''
+
+    // ✅ Try businesses (for seller logos)
+    if (!data) {
+        snap = await getDoc(doc(db, 'businesses', uid)).catch(() => null)
+        data = snap?.exists() ? snap.data() : null
     }
+
+    const user = {
+        displayName: data?.displayName || data?.name || data?.business_name || 'User',
+        photoURL: data?.photoURL || data?.avatar || data?.profilePic || '',
+        profilePic: data?.profilePic || '',
+        business_name: data?.business_name || ''
+    }
+
     prBuyers.set(uid, user)
     return user
 }
+
+
 
 // optional: product name lookup (if needed)
 async function prFetchProductName(pid) {
@@ -369,7 +394,7 @@ async function handleAddToCart() {
 
         console.log('Product data being sent to cart:', {
             id: productData.id,
-            sellerId: productData.sellerID,
+            sellerId: productData.sellerId,
             item_name: productData.item_name,
             price: productData.price,
             quantity: productData.quantity,
@@ -581,26 +606,7 @@ function closeSuccessModal() {
                                 variant="secondary" size="md" class="w-full" />
                         </div>
 
-                        <!-- Seller Info -->
-                        <div v-if="seller">
-                            <h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-white">Seller</h3>
-                            <div
-                                class="mt-2 flex items-center gap-3 sm:gap-4 rounded-lg bg-white p-3 sm:p-4 shadow-sm dark:bg-background-dark">
-                                <div class="h-12 w-12 sm:h-16 sm:w-16 flex-shrink-0 rounded-full bg-cover bg-center"
-                                    :style="`background-image: url('${seller.profile_image || seller.logo || seller.profilePic || 'https://via.placeholder.com/150'}');`">
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p
-                                        class="font-semibold text-sm sm:text-base text-gray-800 dark:text-white truncate">
-                                        {{ seller.business_name || seller.name || 'Unknown Seller' }}
-                                    </p>
-                                    <a class="text-xs sm:text-sm text-primary hover:underline" href="#">View Shop</a>
-                                </div>
-                                <MessageButton :seller-id="product.seller_id || seller.uid || seller.id"
-                                    :seller-name="seller.business_name || seller.name || 'Seller'" variant="secondary"
-                                    size="sm" class="hidden sm:flex" />
-                            </div>
-                        </div>
+                        
 
                         <!-- ✅ Enhanced Go to Shop - Clickable seller card with visit button -->
                         <div v-if="showGoToShop && shopUsername && product" class="mt-4">
@@ -613,8 +619,7 @@ function closeSuccessModal() {
                                     <!-- Clickable Profile Picture - Use seller data if available, otherwise placeholder -->
                                     <div 
                                         class="h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 rounded-full bg-cover bg-center ring-2 ring-gray-200 dark:ring-gray-700 group-hover:ring-blue-500 transition-all duration-200"
-                                        :style="`background-image: url('${seller?.imageURL || seller?.logo || seller?.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(product.sellerName || 'Seller') + '&background=3b82f6&color=fff&size=128'}');`"
-                                    ></div>
+                                        :style="`background-image: url('${seller?.profilePic || seller?.profile_image || seller?.imageURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(product.sellerName || 'Seller') + '&background=3b82f6&color=fff&size=128'}');`"                                    ></div>
                                     
                                     <!-- Seller Info - Use product.sellerName (already loaded) -->
                                     <div class="flex-1 min-w-0">

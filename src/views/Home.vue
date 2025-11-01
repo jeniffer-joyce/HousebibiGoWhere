@@ -111,6 +111,14 @@ function goToBusinessPage(business) {
     router.push(`/shop-details/${businessUid}`)
 }
 
+// Navigate to product page
+function goToProductPage(product) {
+    if (!product || !product.id) {
+        console.error('No product ID provided')
+        return
+    }
+    router.push(`/product-details/${product.id}`)
+}
 // Check if content overflows horizontally
 function checkScrollable() {
     if (!scrollContainer.value) return;
@@ -274,10 +282,11 @@ function scrollCategoriesRight() {
                             Products ({{ searchResults.products.length }})
                         </h4>
                         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                            <div 
+                            <button 
                                 v-for="product in searchResults.products" 
                                 :key="product.id"
-                                class="group">
+                                @click="goToProductPage(product)"
+                                class="group cursor-pointer text-left w-full">
                                 <div class="relative overflow-hidden rounded-lg bg-background-light dark:bg-background-dark">
                                     <div 
                                         class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
@@ -297,7 +306,7 @@ function scrollCategoriesRight() {
                                         <span class="ml-1 text-xs text-slate-500">{{ product.rating }}/5</span>
                                     </div>
                                 </div>
-                            </div>
+                            </button>
                         </div>
                     </div>
                 </div>

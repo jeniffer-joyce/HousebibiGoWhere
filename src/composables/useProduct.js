@@ -89,33 +89,35 @@ export function useProduct(productId) {
 
     // Load product data
     async function loadProduct() {
-        try {
-            loading.value = true
-            productError.value = null
+    try {
+        loading.value = true
+        productError.value = null
 
-            // Fetch all products (you might want to optimize this to fetch single product)
-            const products = await getSellerProducts()
+        // Fetch all products (you might want to optimize this to fetch single product)
+        const products = await getSellerProducts()
 
-            // Find the specific product by ID
-            product.value = products.find(p => p.id === productId.value)
+        // Find the specific product by ID
+        product.value = products.find(p => p.id === productId.value)
 
-            if (!product.value) {
-                productError.value = 'Product not found'
-                return
-            }
-
-            if (product.value.sellerId) {
-                // Fetch seller information
-                seller.value = await getSellerInfo(product.value.sellerId)
-            }
-
-        } catch (err) {
-            console.error('Error loading product:', err)
-            productError.value = err.message || 'Failed to load product'
-        } finally {
-            loading.value = false
+        if (!product.value) {
+            productError.value = 'Product not found'
+            return
         }
+
+        // FIXED: Changed from sellerId to sellerID (uppercase ID)
+        if (product.value.sellerID) {
+            // Fetch seller information
+            seller.value = await getSellerInfo(product.value.sellerID)
+        }
+
+    } catch (err) {
+        console.error('Error loading product:', err)
+        productError.value = err.message || 'Failed to load product'
+    } finally {
+        loading.value = false
     }
+}
+
 
     // // Change selected image
     // function selectImage(index) {
