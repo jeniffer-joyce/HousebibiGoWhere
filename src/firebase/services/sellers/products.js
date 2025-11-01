@@ -1,6 +1,6 @@
 // src/firebase/services/sellers/products.js
 import { db } from '../../firebase_config.js';
-import { collection, query, getDocs, doc, getDoc, addDoc } from "firebase/firestore";
+import { collection, query, getDocs, doc, getDoc, addDoc , where} from "firebase/firestore";
 
 export async function getSellerProducts(sellerID) {
   console.log('🔍 Loading products from Firestore...');
@@ -47,18 +47,30 @@ export async function getSellerProducts(sellerID) {
 
 export async function getSellerInfo(sellerID) {
   try {
-    const docRef = doc(db, "sellers", sellerID);
-    const docSnap = await getDoc(docRef);
+    console.log('🔍 Looking for seller with UID:', sellerID);
     
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() };
+    // Query by uid field instead of document ID
+    const q = query(collection(db, "businesses"), where("uid", "==", sellerID));
+    const querySnapshot = await getDocs(q);
+    
+    console.log('📊 Query results - Found docs:', querySnapshot.size);
+    
+    if (!querySnapshot.empty) {
+      const docSnap = querySnapshot.docs[0];
+      const sellerData = { id: docSnap.id, ...docSnap.data() };
+      console.log('✅ Seller found:', sellerData);
+      console.log('🖼️ Seller profilePic:', sellerData.profilePic);
+      return sellerData;
     }
+    
+    console.log('❌ No seller found with UID:', sellerID);
     return null;
   } catch (error) {
-    console.error('Error loading seller info:', error);
+    console.error('❌ Error loading seller info:', error);
     throw error;
   }
 }
+
 
 export async function createProduct(productData) {
   console.log('📝 Creating new product in Firestore...');
