@@ -55,7 +55,7 @@
         <div class="col-span-1">Status</div>
         <div class="col-span-1">Countdown</div>
         <div class="col-span-2">Channel</div>
-        <div class="col-span-1 flex items-center justify-end">Actions</div>
+        <div class="col-span-1">Actions</div>
       </div>
 
       <div v-if="!filtered.length" class="px-6 py-12 text-center text-slate-500">No orders available</div>
@@ -73,6 +73,7 @@
                     No. of products: {{ (o.products || []).length }}
                   </span>
                 </div>
+
                 <div class="mt-0.5 text-xs text-slate-500">
                   Order #{{ o.id }} • Buyer: {{ o.buyer?.name || o.shippingAddress?.fullName || '—' }}
                 </div>
@@ -80,6 +81,9 @@
                 <button class="mt-1 text-xs text-blue-700 hover:underline" @click="toggleExpand(o.id)">
                   {{ expanded[o.id] ? 'Hide items' : `View items (${(o.products||[]).length})` }}
                 </button>
+                <div class="mt-1 text-xs text-slate-500">
+                  Order placed: {{ fmtDate(o.createdAt) }}
+                </div>
 
                 <div v-if="expanded[o.id]" class="mt-2 w-[640px] max-w-full rounded-lg border border-slate-200 bg-slate-50 p-2">
                   <table class="w-full table-fixed text-xs">
@@ -125,21 +129,21 @@
             </div>
           </div>
 
-          <!-- Total (left aligned) -->
+          <!-- Total -->
           <div class="col-span-2 font-medium">{{ money(total(o)) }}</div>
 
           <!-- Status -->
           <div class="col-span-1">
-            <div class="text-sm font-medium">{{ o.shipping?.dropoff?.completed ? 'Shipping' : 'To ship' }}</div>
+            <div class="text-sm font-medium">{{ o.shipping?.dropoff?.completed || o.shipping?.pickup?.completed ? 'Shipping' : 'To ship' }}</div>
           </div>
 
           <!-- Countdown -->
           <div class="col-span-1">
             <span
               class="inline-flex items-center rounded-full px-2 py-0.5 text-xs whitespace-nowrap"
-              :class="deadline(o).overdue ? 'bg-red-100 text-white-700' : 'bg-yellow-100 text-yellow-800'"
+              :class="deadline(o).overdue ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-800'"
             >
-              {{ o.shipping?.dropoff?.completed ? 'In transit' : deadline(o).label }}
+              {{ (o.shipping?.dropoff?.completed || o.shipping?.pickup?.completed) ? 'In transit' : deadline(o).label }}
             </span>
           </div>
 
@@ -150,75 +154,75 @@
             </span>
           </div>
 
-          <!-- Actions: 'View Actions' popover -->
+          <!-- Actions: 'View Actions' popover (flush, no gap) -->
           <div class="col-span-1 relative flex items-center justify-end">
-          <button
-            :class="[
-              'rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50 transition',
-              openActionsFor === o.id ? 'rounded-b-none border-b-0 bg-slate-50' : ''
-            ]"
-            @click="toggleActions(o.id)"
-          >
-            View Actions
-          </button>
+            <button
+              :class="[
+                'rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50 transition',
+                openActionsFor === o.id ? 'rounded-b-none border-b-0 bg-slate-50' : ''
+              ]"
+              @click="toggleActions(o.id)"
+            >
+              View Actions
+            </button>
 
-          <div
-            v-if="openActionsFor === o.id"
-            class="absolute right-0 top-[calc(100%-1px)] z-20 w-44 rounded-b-xl rounded-t-md
-                  border border-slate-200 bg-white shadow-lg"
-          >
-            <ul class="py-1 text-sm">
-              <!-- Not arranged yet -->
-              <li v-if="!o.shipping?.arranged">
-                <button class="w-full px-3 py-2 text-left hover:bg-slate-50" @click="openChooser(o)">
-                  Arrange Shipment
-                </button>
-              </li>
+            <div
+              v-if="openActionsFor === o.id"
+              class="absolute right-0 top-[calc(100%-1px)] z-20 w-44 rounded-b-xl rounded-t-md
+                     border border-slate-200 bg-white shadow-lg"
+            >
+              <ul class="py-1 text-sm">
+                <!-- Not arranged yet -->
+                <li v-if="!o.shipping?.arranged">
+                  <button class="w-full px-3 py-2 text-left hover:bg-slate-50" @click="openChooser(o)">
+                    Arrange Shipment
+                  </button>
+                </li>
 
-              <!-- Arranged: Drop-off path (not completed) -->
-              <template v-else-if="o.shipping?.method === 'dropoff' && !o.shipping?.dropoff?.completed">
-                <li>
-                  <button class="w-full px-3 py-2 text-left text-emerald-700 hover:bg-slate-50" @click="openConfirmHandover(o)">
-                    Drop-off Done
-                  </button>
-                </li>
-                <li>
-                  <button class="w-full px-3 py-2 text-left hover:bg-slate-50" @click="reprintWaybill(o)">
-                    Reprint Waybill
-                  </button>
-                </li>
-                <li>
-                  <button class="w-full px-3 py-2 text-left hover:bg-slate-50" @click="openDropoffLocations()">
-                    Locations
-                  </button>
-                </li>
-              </template>
+                <!-- Arranged: Drop-off path -->
+                <template v-else-if="o.shipping?.method === 'dropoff' && !o.shipping?.dropoff?.completed">
+                  <li>
+                    <button class="w-full px-3 py-2 text-left text-emerald-700 hover:bg-slate-50" @click="openConfirmHandover(o)">
+                      Drop-off Done
+                    </button>
+                  </li>
+                  <li>
+                    <button class="w-full px-3 py-2 text-left hover:bg-slate-50" @click="reprintWaybill(o)">
+                      Reprint Waybill
+                    </button>
+                  </li>
+                  <li>
+                    <button class="w-full px-3 py-2 text-left hover:bg-slate-50" @click="openDropoffLocations()">
+                      Locations
+                    </button>
+                  </li>
+                </template>
 
-              <!-- Arranged: Pickup path (not completed) -->
-              <template v-else-if="o.shipping?.method === 'pickup' && !o.shipping?.pickup?.completed">
-                <li>
-                  <button class="w-full px-3 py-2 text-left text-emerald-700 hover:bg-slate-50" @click="openConfirmHandover(o)">
-                    Pick-up Done
-                  </button>
-                </li>
-                <li>
-                  <button class="w-full px-3 py-2 text-left hover:bg-slate-50" @click="reprintWaybill(o)">
-                    Reprint Waybill
-                  </button>
-                </li>
-              </template>
+                <!-- Arranged: Pickup path -->
+                <template v-else-if="o.shipping?.method === 'pickup' && !o.shipping?.pickup?.completed">
+                  <li>
+                    <button class="w-full px-3 py-2 text-left text-emerald-700 hover:bg-slate-50" @click="openConfirmHandover(o)">
+                      Pick-up Done
+                    </button>
+                  </li>
+                  <li>
+                    <button class="w-full px-3 py-2 text-left hover:bg-slate-50" @click="reprintWaybill(o)">
+                      Reprint Waybill
+                    </button>
+                  </li>
+                </template>
 
-              <!-- Already completed handover -->
-              <template v-else>
-                <li>
-                  <button class="w-full px-3 py-2 text-left hover:bg-slate-50" @click="reprintWaybill(o)">
-                    Reprint Waybill
-                  </button>
-                </li>
-              </template>
-            </ul>
+                <!-- Already completed handover -->
+                <template v-else>
+                  <li>
+                    <button class="w-full px-3 py-2 text-left hover:bg-slate-50" @click="reprintWaybill(o)">
+                      Reprint Waybill
+                    </button>
+                  </li>
+                </template>
+              </ul>
+            </div>
           </div>
-        </div>
         </div>
       </div>
     </div>
@@ -295,8 +299,7 @@
         </div>
       </div>
 
-      <!-- Confirm Drop-off -->
-      <!-- Confirm Handover (drop-off or pickup) -->
+      <!-- Confirm handover (drop-off or pickup) -->
       <div
         v-if="confirmHandoverOpen"
         class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
@@ -347,7 +350,7 @@
             <button class="text-slate-500" @click="closeLocations">✕</button>
           </div>
 
-        <div class="space-y-3">
+          <div class="space-y-3">
             <div v-for="loc in LOCATIONS" :key="loc.id" class="rounded-lg border p-3">
               <div class="font-medium">{{ loc.name }}</div>
               <div class="text-sm text-slate-600">{{ loc.address }}</div>
@@ -360,7 +363,7 @@
         </div>
       </div>
 
-      <!-- Waybill Modal (instead of new tab) -->
+      <!-- Waybill Modal -->
       <div
         v-if="waybillOpen"
         class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
@@ -493,13 +496,13 @@ const statusOf = (o) => o?.status || (Array.isArray(o?.statusLog) && o.statusLog
 const tab = ref('to_process')
 const searchQuery = ref('')
 const expanded = reactive({})
-const openActionsFor = ref(null) // which row has the actions popover open
+const openActionsFor = ref(null)
 
 /* Rows */
 const base = computed(() =>
   orders.value
-  .filter(o => statusOf(o) === 'to_ship')
-  .map(o => ({ ...o, __processed: !!o?.shipping?.arranged }))
+    .filter(o => statusOf(o) === 'to_ship')
+    .map(o => ({ ...o, __processed: !!o?.shipping?.arranged }))
 )
 const counts = computed(() => ({
   to_process: base.value.filter(r => !r.__processed).length,
@@ -535,18 +538,13 @@ function deadline(o){
 function toggleExpand(id){ expanded[id] = !expanded[id] }
 function toggleActions(id){ openActionsFor.value = openActionsFor.value === id ? null : id }
 
-/* Modals (existing) */
+/* Modals/state */
 const chooserOpen = ref(false)
 const pickupOpen  = ref(false)
 const current = ref(null)
 const pickup = reactive({ date:'', slot:'9-12', remark:'' })
 const minDate = computed(()=>{ const d=new Date(); d.setDate(d.getDate()+1); return d.toISOString().split('T')[0] })
-
-/* New modals/state for Drop-off Done + Locations */
 const confirmHandoverOpen = ref(false)
-function openConfirmHandover(o){ current.value = o; confirmHandoverOpen.value = true; openActionsFor.value = null }
-function closeConfirmHandover(){ confirmHandoverOpen.value = false; confirming.value = false }
-const isPickup = (ordRef) => (ordRef?.value?.shipping?.method || ordRef?.shipping?.method) === 'pickup'
 const locationsOpen = ref(false)
 const confirming = ref(false)
 const LOCATIONS = [
@@ -559,9 +557,28 @@ function openChooser(o){ current.value=o; chooserOpen.value=true; openActionsFor
 function openPickup(o){ current.value=o; pickupOpen.value=true; openActionsFor.value=null }
 function openDropoffLocations(){ locationsOpen.value=true; openActionsFor.value=null }
 function closeLocations(){ locationsOpen.value=false }
+function openConfirmHandover(o){ current.value=o; confirmHandoverOpen.value = true; openActionsFor.value = null }
+function closeConfirmHandover(){ confirmHandoverOpen.value = false; confirming.value = false }
 function closeAll(){ chooserOpen.value=false; pickupOpen.value=false; current.value=null; pickup.date=''; pickup.slot='9-12'; pickup.remark='' }
 
-/* Waybill MODAL state */
+function genTrackingNumber(orderId) {
+  // HBBX-<last6OfOrderId>-<YYYYMMDD>-<4char>
+  const id = (orderId || '').slice(-6).toUpperCase();
+  const d  = new Date();
+  const y  = d.getFullYear();
+  const m  = String(d.getMonth()+1).padStart(2,'0');
+  const day= String(d.getDate()).padStart(2,'0');
+  const rnd= Math.random().toString(36).slice(-4).toUpperCase();
+  return `HBBX-${id}-${y}${m}${day}-${rnd}`;
+}
+
+function isPickup(orderLike) {
+  // works if you pass `current` (a ref) or a plain order object
+  const o = orderLike && 'value' in orderLike ? orderLike.value : orderLike
+  return (o?.shipping?.method || '') === 'pickup'
+}
+
+/* Waybill modal */
 const waybillOpen = ref(false)
 const waybillOrder = ref(null)
 const waybillOpts = ref(null)
@@ -572,31 +589,56 @@ const shipToName = (o)=> o?.shippingAddress?.fullName || o?.buyer?.name || 'Buye
 const shipToAddr = (o)=> o?.shippingAddress
   ? [o.shippingAddress.streetName, o.shippingAddress.unitNumber?`#${o.shippingAddress.unitNumber}`:'', o.shippingAddress.postalCode].filter(Boolean).join(', ')
   : '—'
-
 function openWaybillModal(order, opts){ waybillOrder.value = order; waybillOpts.value = opts || { method:'dropoff' }; waybillOpen.value = true }
 function closeWaybill(){ waybillOpen.value = false }
 function printCurrentWaybill(){ window.print() }
 
-/* Arrange shipment */
-async function confirm(method){
-  try{
-    if(!current.value) return
-    if(method==='pickup' && !pickup.date){ toastError('Please choose a pickup date.'); return }
-    await arrangeShipment(current.value, { method, pickup: method==='pickup' ? { ...pickup } : null })
-    success(method==='pickup' ? 'Pickup scheduled. Waybill prepared…' : 'Drop-off waybill prepared…')
-    closeAll()
-  }catch(e){ console.error(e); toastError('Failed to arrange shipment.') }
+function fmtDate(ts) {
+  if (!ts) return '—'
+  if (typeof ts?.toDate === 'function') {
+    return ts.toDate().toLocaleString('en-SG', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    })
+  }
+  try {
+    return new Date(ts).toLocaleString('en-SG', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    })
+  } catch {
+    return '—'
+  }
 }
 
+/* Arrange shipment — writes the recommended fields */
+/* Arrange shipment — single safe update (Option A) */
 async function arrangeShipment(order, opts){
   if(!order?.id) throw new Error('Order missing id')
   if(!opts?.method) throw new Error('Missing shipping method')
+
   const orderRef = doc(db,'orders',order.id)
-  const existing = order.shipping || {}
+  const existing  = order.shipping || {}
+  const tracking  = order.logistics?.trackingNumber
+     || `HBBX-${order.id.slice(-6).toUpperCase()}-${Date.now().toString().slice(-6)}`
+  const now = Timestamp.now()
+  const timelineSeed = {
+    key: 'arranged',
+    label: 'Shipment arranged',
+    text: opts.method === 'pickup'
+      ? 'Courier pick-up has been requested'
+      : 'Drop-off selected at HouseBiBi Express counter',
+    time: now
+  }
+  const trackingSeed = {
+    time: now,
+    text: opts.method === 'pickup'
+      ? 'Pickup scheduled with HouseBiBi Express'
+      : 'Drop-off method selected'
+  }
+
   await updateDoc(orderRef, {
-    status: 'to_ship',
     updatedAt: serverTimestamp(),
-    sellerId: order.sellerId || (Array.isArray(order.products) ? order.products[0]?.sellerId : null),
     shipping: {
       ...existing,
       channel: 'HouseBiBi Express',
@@ -604,44 +646,107 @@ async function arrangeShipment(order, opts){
       dts: existing.dts || 2,
       arranged: true,
       method: opts.method,
-      pickup: opts.method === 'pickup' ? { ...(opts.pickup || {}), windowDays: existing.pickup?.windowDays || 1 } : existing.pickup || null,
-      dropoff: opts.method === 'dropoff' ? { ...(existing.dropoff || {}), windowDays: existing.dropoff?.windowDays || 3 } : existing.dropoff || null,
+      pickup:  opts.method === 'pickup'
+                 ? { ...(opts.pickup || {}), windowDays: existing.pickup?.windowDays || 1 }
+                 : existing.pickup || null,
+      dropoff: opts.method === 'dropoff'
+                 ? { ...(existing.dropoff || {}), windowDays: existing.dropoff?.windowDays || 3 }
+                 : existing.dropoff || null,
       arrangedAt: serverTimestamp(),
+      // seed the timeline array if missing and also append this event
+      timeline: (order.shipping?.timeline || []).concat([timelineSeed])
+    },
+    logistics: {
+      ...(order.logistics || {}),
+      trackingNumber: tracking,
+      trackingHistory: (order.logistics?.trackingHistory || []).concat([trackingSeed])
     }
   })
-  // show waybill inside modal (no new tab, no auto-print)
+
   openWaybillModal(order, opts)
 }
 
-/* Drop-off Done */
+
+async function confirm(method) {
+  try {
+    if (!current.value) return
+    if (method === 'pickup' && !pickup.date) {
+      toastError('Please choose a pickup date.')
+      return
+    }
+
+    await arrangeShipment(current.value, {
+      method,
+      pickup: method === 'pickup' ? { ...pickup } : null
+    })
+
+    success(method === 'pickup'
+      ? 'Pickup scheduled. Waybill prepared…'
+      : 'Drop-off waybill prepared…')
+    closeAll()
+  } catch (e) {
+    console.error(e)
+    toastError('Failed to arrange shipment.')
+  }
+}
+
+/* Confirm handover — writes to_receive + timeline + tracking history */
 async function markHandoverDone(){
   if (!current.value?.id) return
   confirming.value = true
   try {
     const refDoc = doc(db, 'orders', current.value.id)
 
-    // decide which branch to complete
     const method = current.value?.shipping?.method === 'pickup' ? 'pickup' : 'dropoff'
     const completionField = method === 'pickup'
-      ? { 'shipping.pickup.completed': true, 'shipping.pickup.completedAt': serverTimestamp() }
+      ? { 'shipping.pickup.completed': true,  'shipping.pickup.completedAt': serverTimestamp() }
       : { 'shipping.dropoff.completed': true, 'shipping.dropoff.completedAt': serverTimestamp() }
+
+    // Build a tracking number only if none exists
+    const existingTrack = current.value?.logistics?.trackingNumber
+    const trackNo = existingTrack || genTrackingNumber(current.value.id)
+
+    const handoverText =
+      method === 'pickup'
+        ? 'Parcel picked up by courier'
+        : 'Parcel dropped off at partner counter'
+
+    const handoverLabel =
+      method === 'pickup' ? 'Parcel picked up' : 'Parcel dropped off'
 
     await updateDoc(refDoc, {
       status: 'to_receive',
       shippedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       ...completionField,
+
+      // status log grows
       statusLog: arrayUnion({
         status: 'to_receive',
         by: 'seller',
-        message: method === 'pickup'
-          ? 'Seller confirmed parcel picked up by courier'
-          : 'Seller confirmed parcel dropped off',
-        time: Timestamp.now(), // ✅ allowed inside arrayUnion
+        message: handoverText,
+        time: Timestamp.now(),
+      }),
+
+      // 🔐 tracking (standardised ID) + history event
+      ['logistics.trackingNumber']: trackNo,
+      ['logistics.trackingHistory']: arrayUnion({
+        time: Timestamp.now(),
+        text: handoverText
+      }),
+
+      // shipping timeline event
+      ['shipping.timeline']: arrayUnion({
+        key: 'handover',
+        label: handoverLabel,
+        text: handoverText,
+        time: Timestamp.now()
       }),
     })
 
-    success(method === 'pickup' ? 'Pick-up confirmed. Order moved to To Receive.' : 'Drop-off confirmed. Order moved to To Receive.')
+    success(method === 'pickup'
+      ? 'Pick-up confirmed. Tracking created. Order moved to To Receive.'
+      : 'Drop-off confirmed. Tracking created. Order moved to To Receive.')
     closeConfirmHandover()
   } catch (e) {
     console.error(e)
@@ -650,7 +755,9 @@ async function markHandoverDone(){
   }
 }
 
-function reprintWaybill(order){ openWaybillModal(order || current.value, { method:'dropoff' }) }
+function reprintWaybill(order){ openWaybillModal(order || current.value, { method: (order?.shipping?.method || 'dropoff') }) }
+
+/* Generic UI closers */
 </script>
 
 <style>
