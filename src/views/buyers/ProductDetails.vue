@@ -22,17 +22,72 @@ defineProps({
   productId: String
 })
 
-// NEW: Show "Go to Shop" button if navigated from products page
-const showGoToShop = route.query.fromProductsPage === 'true';
-const shopUsername = route.query.shop
+// Track navigation history
+const showGoToShop = computed(() => route.query.fromProductsPage === 'true')
+const shopUsername = computed(() => route.query.shop)
+const productsPage = computed(() => route.query.productsPage || 1)
+const fromShopPage = computed(() => route.query.fromShop === 'true') 
 
-// NEW: Function to go to the shop
+// Determine what the back button should do
+const backButtonConfig = computed(() => {
+  // If came from shop page, go back to shop
+  if (fromShopPage.value && shopUsername.value) {
+    return {
+      show: true,
+      label: 'Back to Shop',
+      icon: 'storefront',
+      action: () => router.push({
+        path: `/shop-details/${shopUsername.value}`,
+        query: route.query.productsPage ? { productsPage: route.query.productsPage } : {}
+      })
+    }
+  }
+  
+  // If came from products page, go back to products with page number
+  if (showGoToShop.value && productsPage.value) {
+    return {
+      show: true,
+      label: 'Back to Products',
+      icon: 'grid_view',
+      action: () => router.push({
+        name: 'Products',
+        query: { page: productsPage.value }  // Preserve page number
+      })
+    }
+  }
+  
+  // Default: no back button
+  return { show: false }
+})
+
+// Function to go to shop (with breadcrumb trail)
 function goToShop() {
-  if (shopUsername) {
-    router.push(`/shop-details/${shopUsername}`)
+  console.log('🚀 goToShop called:', {
+    shopUsername: shopUsername.value,
+    productId: route.params.id,
+    productsPage: productsPage.value
+  })
+  
+  if (shopUsername.value) {
+    router.push({
+      path: `/shop/${shopUsername.value}`,
+      query: {
+        fromProduct: route.params.id,
+        productsPage: productsPage.value
+      }
+    })
+  } else {
+    console.error('❌ No shopUsername available')
   }
 }
 
+console.log('🔍 Navigation Debug:', {
+  showGoToShop: showGoToShop.value,
+  shopUsername: shopUsername.value,
+  productsPage: productsPage.value,
+  fromShopPage: fromShopPage.value,
+  backButtonConfig: backButtonConfig.value
+})
 // Get product ID from route params
 const productId = computed(() => route.params.id)
 
@@ -434,6 +489,18 @@ function closeSuccessModal() {
     <AddToCartSuccessModal :show="showSuccessModal" :product-name="addedProductName" :quantity="addedQuantity"
         @close="closeSuccessModal" />
     <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-10 sm:px-6 lg:px-8">
+
+        <!-- ✅ Back Button (Breadcrumb Navigation) -->
+        <button
+        v-if="backButtonConfig.show"
+        @click="backButtonConfig.action"
+        class="mb-4 sm:mb-6 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+        <span class="material-symbols-outlined text-lg">arrow_back</span>
+        <span class="material-symbols-outlined text-lg">{{ backButtonConfig.icon }}</span>
+        <span>{{ backButtonConfig.label }}</span>
+        </button>
+
         <!-- Loading -->
         <div v-if="loading" class="flex justify-center items-center min-h-[320px]">
             <Loading />

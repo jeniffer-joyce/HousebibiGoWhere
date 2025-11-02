@@ -102,7 +102,9 @@ onAuthStateChanged(auth, async (firebaseUser) => {
 
         // Use seller's logo if available
         if (user.role === "seller" && data.logo) {
-          user.avatar = data.logo
+          user.avatar = data.profilePic
+        } else {
+          user.avatar = data.photoURL
         }
       } else {
         console.warn("⚠️ User document not found in Firestore after 5 retries, defaulting to buyer role")

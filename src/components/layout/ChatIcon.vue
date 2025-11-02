@@ -1,17 +1,22 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { auth } from '@/firebase/firebase_config';
 import { useMessages } from '@/composables/useMessages.js'
 import { user } from '@/store/user.js'
 
 const router = useRouter()
+const route = useRoute()
 const unreadCount = ref(0)
 const currentUserId = ref(null) // 🔹 CHANGED from currentBusinessId
 
-// Navigate to messages page
+// Navigate to respective messages based on user role
 function goToMessages() {
-  router.push('/buyer-messages')
+  if (user.role === 'seller') {
+    router.push('/seller-messages/')
+  } else {
+    router.push('/buyer-messages/')
+  }
 }
 
 // Fetch the currently logged-in user
@@ -38,14 +43,20 @@ onMounted(() => {
   }
 })
 
+// Computed property to determine if we should show the icon
+const showChatIcon = computed(() => {
+  const hiddenRoutes = ['/buyer-messages/', '/seller-messages/']
+  return user.isLoggedIn && !hiddenRoutes.includes(route.path)
+})
+
 </script>
 
 <template>
-  <div v-if="user.isLoggedIn" class="fixed bottom-6 right-6 z-[9999]">
+  <div v-if="showChatIcon" class="fixed bottom-6 right-6 z-[9999]">
     <button @click="goToMessages" class="relative p-4 bg-blue-500 rounded-full shadow-lg hover:bg-blue-600 transition">
       <!-- Chat icon SVG -->
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 3.866-3.582 7-8 7a8.964 8.964 0 01-4-.933L3 21l1.933-6.333A8.964 8.964 0 013 12c0-3.866 3.582-7 8-7s8 3.134 8 7z" />
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2.546 20.2A1 1 0 003.8 21.454l3.032-.892A9.957 9.957 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm-3 11a1 1 0 110-2 1 1 0 010 2zm3 0a1 1 0 110-2 1 1 0 010 2zm3 0a1 1 0 110-2 1 1 0 010 2z"/>
       </svg>
 
       <!-- Notification badge -->
@@ -55,7 +66,3 @@ onMounted(() => {
     </button>
   </div>
 </template>
-
-<style scoped>
-/* Optional: add a pulse animation for new messages */
-</style>
