@@ -83,6 +83,7 @@ const routes = [
   },
   {
     path: '/products/',
+    name: 'Products',
     component: Products
   },
   {
@@ -194,7 +195,7 @@ const routes = [
     path: '/product-details/:id',
     component: ProductDetails,
     name: "ProductDetails",
-    props: route => ({ productId: route.params.id })
+    props: true
   },
   {
     path: '/cart',

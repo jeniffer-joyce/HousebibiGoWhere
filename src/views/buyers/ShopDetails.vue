@@ -1,5 +1,23 @@
 <template>
   <main class="flex-grow w-full px-4 sm:px-6 lg:px-8 py-8">
+    <!-- BACK BUTTON from Shop Page ONLY -->
+    <button
+      v-if="route.query.fromProduct"
+      @click="router.push({
+        name: 'ProductDetails',
+        params: { id: route.query.fromProduct },
+        query: {
+          fromShop: 'true',
+          shop: uid,
+          productsPage: route.query.productsPage
+        }
+      })"
+      class="mb-4 sm:mb-6 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+    >
+      <span class="material-symbols-outlined text-xl">arrow_back</span>
+      <span class="material-symbols-outlined text-xl">shopping_bag</span>
+      <span>Back to Product</span>
+    </button>
     <!-- Loading -->
     <div v-if="loading" class="flex justify-center items-center min-h-[320px]">
       <Loading />
@@ -199,7 +217,15 @@
             <TransitionGroup tag="div" name="fade"
               v-if="(showAll ? filteredSortedProducts.length : topProducts.length) > 0"
               class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              <RouterLink :to="`/product-details/${product.productId}`"
+              <RouterLink   :to="{
+                  name: 'ProductDetails',
+                  params: { id: product.productId },
+                  query: {
+                    fromShop: 'true',
+                    shop: uid,
+                    productsPage: route.query.productsPage  // Pass through for chain navigation
+                  }
+                }"
                 v-for="(product, index) in showAll ? filteredSortedProducts : topProducts" :key="product.productId"
                 :style="{ '--delay': index }"
                 class="group flex flex-col rounded-lg overflow-hidden bg-white dark:bg-background-dark/50 shadow-sm transition-shadow hover:shadow-lg relative">

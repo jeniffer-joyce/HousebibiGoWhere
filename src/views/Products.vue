@@ -6,6 +6,10 @@ import { user } from '@/store/user.js'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import ToastNotification from '@/components/ToastNotification.vue' // Import toast
 import { RouterLink } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
 
 // Import useFavorites
 import { useFavorites } from '@/composables/useFavorites.js'
@@ -261,17 +265,47 @@ function prevPage() {
   if (currentPage.value > 1) currentPage.value--
 }
 
-// NEW: Example watcher to reset page if filters/sort change
-watch([selectedFilters, selectedSort], () => (currentPage.value = 1))
-
-// favoriteProducts from composable
+// ✅ CONSOLIDATED onMounted - Only ONE onMounted block
 onMounted(() => {
-  if (user.value?.uid) loadFavoriteProducts(user.value.uid)
+  document.addEventListener('click', handleClickOutside)
+  loadCategories()
+  
+  // Load favorites if user is logged in
+  if (user.value?.uid) {
+    loadFavoriteProducts(user.value.uid)
+  }
+  
+  // ✅ Restore page from URL query parameter
+  const pageFromQuery = parseInt(route.query.page)
+  if (pageFromQuery && pageFromQuery > 0) {
+    currentPage.value = pageFromQuery
+  }
 })
 
+watch(currentPage, (newPage) => {
+  router.replace({
+    name: 'Products',  // ✅ FIXED: Use correct route name
+    query: { page: newPage }
+  })
+})
+
+// Reset to page 1 when filters/sort change
+watch([selectedFilters, selectedSort], () => {
+  currentPage.value = 1
+})
+
+// Debug watcher
 watch(paginatedProducts, (products) => {
-  console.log('Product data sample:', products[0])
+  console.log('📄 Current page:', currentPage.value)
+  console.log('📦 Products on page:', products.length)
+  if (products[0]) {
+    console.log('First product:', products[0].item_name)
+  }
 }, { immediate: true })
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 
 </script>
 
@@ -369,7 +403,7 @@ watch(paginatedProducts, (products) => {
             :to="{
             name: 'ProductDetails',
             params: { id: item.id },
-            query: { fromProductsPage: true, shop: item.sellerID }
+            query: { fromProductsPage: true, shop: item.sellerID, productsPage: currentPage }
           }"
             class="block overflow-hidden rounded-lg bg-background-light dark:bg-background-dark"
           >
