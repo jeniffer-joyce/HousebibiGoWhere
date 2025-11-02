@@ -1,19 +1,25 @@
 <template>
   <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+    <!-- Sidebar (unchanged) -->
     <BuyerSideBar v-model:collapsed="isSidebarCollapsed" />
 
+    <!-- Main content is pushed by sidebar; no overlay -->
     <main
-      class="flex-1 p-6 sm:p-8 transition-all duration-300"
+      class="flex-1 transition-all duration-300
+             py-6 sm:py-8
+             pr-4 sm:pr-8
+             pl-3 sm:pl-5 md:pl-6"
       :class="isSidebarCollapsed ? 'ml-16' : 'ml-64'"
     >
-      <div class="mx-auto w-full max-w-6xl space-y-8">
+      <!-- Left-aligned container to remove gutter -->
+      <div class="w-full space-y-8">
         <!-- success banner -->
         <div v-if="banner.show" class="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
           {{ banner.msg }}
         </div>
 
         <!-- Title + Search -->
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-white">My Orders</h1>
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -21,7 +27,7 @@
             </p>
           </div>
 
-          <div class="w-full max-w-md">
+          <div class="w-full md:w-auto md:max-w-md">
             <div class="relative">
               <input
                 v-model="queryStr"
@@ -32,18 +38,13 @@
                        dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
               <svg
-                class="absolute left-3 top-2.5 h-5 w-5 text-slate-400"
+                class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"
-                />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
               </svg>
             </div>
           </div>
@@ -51,7 +52,7 @@
 
         <!-- Tabs -->
         <div class="rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800">
-          <div class="grid grid-cols-7 gap-2">
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
             <button
               v-for="t in tabs"
               :key="t.key"
@@ -98,12 +99,12 @@
             class="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
           >
             <!-- Header -->
-            <div class="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-700">
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-slate-100 p-4 dark:border-slate-700">
               <div class="flex flex-wrap items-center gap-3 text-sm">
                 <span class="text-slate-700 dark:text-slate-200">
                   <span class="font-medium">Order #:</span> {{ o.orderId }}
                 </span>
-                <span class="text-slate-300">•</span>
+                <span class="hidden md:inline text-slate-300">•</span>
                 <span class="text-slate-700 dark:text-slate-200">
                   <span class="font-medium">Shop:</span>
                   <span class="font-semibold">{{ o.products?.[0]?.shopName || '—' }}</span>
@@ -134,7 +135,7 @@
               <div
                 v-for="(it, idx) in o.products || []"
                 :key="idx"
-                class="flex items-start justify-between gap-4 p-4"
+                class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 p-4"
               >
                 <div class="flex items-start gap-3">
                   <img :src="it.img_url" class="h-16 w-16 rounded-md object-cover" />
@@ -153,7 +154,7 @@
                     </p>
                   </div>
                 </div>
-                <div class="text-right">
+                <div class="text-left md:text-right">
                   <p class="text-xs text-slate-500 dark:text-slate-400">Item total</p>
                   <p class="text-lg font-semibold text-slate-900 dark:text-white">
                     S${{ ((it.totalPrice ?? it.price * (it.quantity ?? 1)) || 0).toFixed(2) }}
@@ -290,10 +291,7 @@
       class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
       @click="showReceivedConfirm=false"
     >
-      <div
-        class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:mx-4 dark:bg-slate-800"
-        @click.stop
-      >
+      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:mx-4 dark:bg-slate-800" @click.stop>
         <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
           Confirm Order Received?
         </h3>
@@ -370,6 +368,7 @@
       @submitted="handleReviewSubmitted"
       @close="closeRateModal"
     />
+
     <ReviewDetailsModal
       v-if="showReviewDetails"
       :visible="true"
@@ -641,10 +640,6 @@ onMounted(() => {
   const stop = auth.onAuthStateChanged(async (u) => {
     if (!u) { loading.value = false; return }
 
-<<<<<<<<< Temporary merge branch 1
-    // live orders
-=========
->>>>>>>>> Temporary merge branch 2
     const q = fsQuery(collection(db, 'orders'), where('uid', '==', u.uid), orderBy('createdAt', 'desc'))
     unsub?.()
     unsub = onSnapshot(q, (snap) => {
@@ -745,10 +740,6 @@ async function confirmCancel() {
   orderToCancel.value = null
 }
 
-<<<<<<<<< Temporary merge branch 1
-/* Keep the original markReceived logic */
-=========
->>>>>>>>> Temporary merge branch 2
 async function markReceived(o) {
   try {
     await updateDoc(doc(db, 'orders', o.id), {
@@ -766,10 +757,6 @@ function rateOrder(o) {
   showRateModal.value = true
 }
 
-<<<<<<<<< Temporary merge branch 1
-/* Rate modal helpers */
-=========
->>>>>>>>> Temporary merge branch 2
 function closeRateModal() {
   showRateModal.value = false
   orderForRating.value = null
@@ -789,12 +776,8 @@ function handleReturnSubmitted(evt) {
   orderForReturn.value = null
   if (evt?.orderId) {
     const idx = orders.value.findIndex(o => o.orderId === evt.orderId)
-    if (idx !== -1) {
-      orders.value[idx].status = 'return_refund'
-    }
+    if (idx !== -1) orders.value[idx].status = 'return_refund'
   }
-
-  // ✅ Success toast
   showToast({
     type: 'success',
     title: 'Return/Refund submitted',
@@ -822,21 +805,15 @@ async function contactSeller(o) {
     const sellerUid = o?.products?.[0]?.sellerId
     if (!buyerUid || !sellerUid) return
 
-<<<<<<<<< Temporary merge branch 1
-    // find or create conversation
-=========
->>>>>>>>> Temporary merge branch 2
     const snap = await getDocs(
       fsQuery(collection(db, 'conversations'), where('participants', 'array-contains', buyerUid), limit(50))
     )
-
     let conversationId = null
     snap.forEach(d => {
       const parts = d.data()?.participants || []
       if (parts.includes(sellerUid)) conversationId = d.id
     })
 
->>>>>>>>> Temporary merge branch 2
     if (!conversationId) {
       const ref = await addDoc(collection(db, 'conversations'), {
         participants: [buyerUid, sellerUid],
@@ -850,33 +827,20 @@ async function contactSeller(o) {
       conversationId = ref.id
     }
 
->>>>>>>>> Temporary merge branch 2
     window.location.href = `/buyer-messages?conversation=${conversationId}`
   } catch (err) {
     console.error('contactSeller failed:', err)
   }
 }
 
-<<<<<<<<< Temporary merge branch 1
-/* Received confirm modal state */
-const showReceivedConfirm = ref(false)
-const orderToReceive = ref(null)
-const receiveProcessing = ref(false)
-
-=========
 /* Received flow */
 const showReceivedConfirm = ref(false)
 const orderToReceive = ref(null)
 const receiveProcessing = ref(false)
->>>>>>>>> Temporary merge branch 2
 function openReceivedConfirm(o) {
   orderToReceive.value = o
   showReceivedConfirm.value = true
 }
-<<<<<<<<< Temporary merge branch 1
-
-=========
->>>>>>>>> Temporary merge branch 2
 async function confirmReceived() {
   if (!orderToReceive.value) return
   receiveProcessing.value = true

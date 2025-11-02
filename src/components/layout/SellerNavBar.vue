@@ -3,13 +3,12 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { user } from '@/store/user.js'
 import { auth, db } from '@/firebase/firebase_config'
 import { signOut } from 'firebase/auth'
-/* 🔽 Firestore helpers */
-import { doc, getDoc, onSnapshot } from 'firebase/firestore' // ✅ added onSnapshot
+import { doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 const { success, error:toastError } = useToast()
 
-// ✅ Pull profilePic from seller_crud for initial load (unchanged from prior step)
+// seller_crud for initial profile pic/user data
 import { authReady, fetchSellerComposite } from '@/firebase/services/sellers/seller_crud.js'
 
 const router = useRouter()
@@ -17,10 +16,10 @@ const router = useRouter()
 /* ---------------------------------------
  * Name & Username used in navbar/links
  * --------------------------------------- */
-const displayName = ref('')     // shown text
-const username = ref('')        // used for /:username/ routing
+const displayName = ref('')
+const username = ref('')
 
-// ✅ hold Firestore/user profile pic (reactive)
+// reactive profile picture (users/{uid} first, fallback to businesses/{uid})
 const profilePicDb = ref('')
 
 const avatarUrl = computed(() => {
@@ -30,7 +29,6 @@ const avatarUrl = computed(() => {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff&size=200`
 })
 
-/* Robust loader: prefers Firestore, falls back to Auth */
 async function loadName () {
   try {
     const uid = user?.uid || auth.currentUser?.uid
@@ -57,7 +55,6 @@ async function loadName () {
   }
 }
 
-/* Initial one-shot load of profilePic (useful on first mount) */
 async function loadProfilePic () {
   try {
     await authReady()
@@ -68,33 +65,43 @@ async function loadProfilePic () {
   }
 }
 
-/* ✅ Realtime listener for profilePic updates */
+/* realtime listeners */
 let unsubUserPic = null
+let unsubBizPic = null
+function stopPicListeners() {
+  if (typeof unsubUserPic === 'function') { unsubUserPic(); unsubUserPic = null }
+  if (typeof unsubBizPic === 'function') { unsubBizPic(); unsubBizPic = null }
+}
 async function subscribeProfilePic() {
-  // Clean up existing sub if any
-  if (typeof unsubUserPic === 'function') {
-    unsubUserPic()
-    unsubUserPic = null
-  }
+  stopPicListeners()
   const uid = user?.uid || auth.currentUser?.uid
   if (!uid) return
 
-  // Listen to /users/{uid} changes and refresh avatar
-  const ref = doc(db, 'users', uid)
-  unsubUserPic = onSnapshot(ref, (snap) => {
+  const userRef = doc(db, 'users', uid)
+  unsubUserPic = onSnapshot(userRef, (snap) => {
     if (!snap.exists()) return
     const data = snap.data() || {}
     const nextPic = data.profilePic || data.photoURL || ''
-    // Only update if changed to avoid churn
-    if (nextPic !== profilePicDb.value) {
-      profilePicDb.value = nextPic
+    if (nextPic) {
+      if (nextPic !== profilePicDb.value) profilePicDb.value = nextPic
+      if (typeof unsubBizPic === 'function') { unsubBizPic(); unsubBizPic = null }
+    } else {
+      if (!unsubBizPic) {
+        const bizRef = doc(db, 'businesses', uid)
+        unsubBizPic = onSnapshot(bizRef, (bizSnap) => {
+          if (!bizSnap.exists()) return
+          const biz = bizSnap.data() || {}
+          const bizPic = biz.profilePic || ''
+          if (bizPic && bizPic !== profilePicDb.value) profilePicDb.value = bizPic
+        })
+      }
     }
   }, (err) => {
     console.error('User profile snapshot error:', err)
   })
 }
 
-/* ✅ ROUTE TO EDIT ACCOUNT: '/:username/edit-profile' */
+/* Route target for edit account */
 const profileTo = computed(() => {
   if (username.value) {
     return { name: 'edit-profile', params: { username: username.value } }
@@ -102,46 +109,35 @@ const profileTo = computed(() => {
   return '/complete-profile/'
 })
 
-//  🔵 seller messages tab 
+// seller messages tab
 import { useMessages } from '@/composables/useMessages';
 const currentUserId = computed(() => auth.currentUser?.uid);
 const { totalUnreadCount, loadConversations } = useMessages(currentUserId);
-
 watch(() => [user.isLoggedIn, user.uid], ([loggedIn, uid]) => {
-  if (loggedIn && uid) {
-    loadConversations();
-  }
+  if (loggedIn && uid) loadConversations();
 }, { immediate: true });
 
-/* ------------------------------
- * Theme (light/dark)
- * ------------------------------ */
+/* Theme */
 const isDark = ref(false)
-
 onMounted(async () => {
   const savedTheme = localStorage.getItem('theme')
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
   isDark.value = savedTheme ? savedTheme === 'dark' : prefersDark
   document.documentElement.classList.toggle('dark', isDark.value)
 
-  /* ensure name + username + avatar load on first mount */
   await authReady()
   loadName()
   await loadProfilePic()
-  await subscribeProfilePic() // ✅ start realtime subscription
+  await subscribeProfilePic()
 })
-
-/* refresh data when login state or uid changes */
 watch(() => [user.isLoggedIn, user.uid], async () => { 
   await authReady()
   loadName()
   await loadProfilePic()
-  await subscribeProfilePic() // ✅ re-subscribe for new uid
+  await subscribeProfilePic()
 })
-
-/* Also re-subscribe if Firebase auth.currentUser changes provider-wise */
 watch(() => auth.currentUser?.uid, async () => {
-  await subscribeProfilePic() // ✅ keep listener in sync with auth
+  await subscribeProfilePic()
 })
 
 const toggleDarkMode = () => {
@@ -150,14 +146,12 @@ const toggleDarkMode = () => {
   localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
 }
 
-/* Swap logo based on theme */
+/* Logos */
 const lightLogo = new URL('../../assets/housebibi_logo_light.svg', import.meta.url).href
 const darkLogo  = new URL('../../assets/housebibi_logo_dark.svg',  import.meta.url).href
 const logoSrc   = computed(() => (isDark.value ? darkLogo : lightLogo))
 
-/* ------------------------------
- * Profile dropdown
- * ------------------------------ */
+/* Profile dropdown */
 const showProfileDropdown = ref(false)
 
 async function handleLogout () {
@@ -172,7 +166,7 @@ async function handleLogout () {
   }
 }
 
-/* Close dropdown on outside click */
+/* Outside click to close */
 onMounted(() => {
   document.addEventListener('click', (e) => {
     const dropdown = document.querySelector('.profile-dropdown-container')
@@ -180,9 +174,7 @@ onMounted(() => {
   })
 })
 
-/* ------------------------------
- * Mobile nav (hamburger)
- * ------------------------------ */
+/* Mobile nav */
 const showMobileNav = ref(false)
 const toggleMobileNav = () => { showMobileNav.value = !showMobileNav.value }
 const closeMobileNav  = () => { showMobileNav.value = false }
@@ -224,24 +216,19 @@ const closeMobileNav  = () => { showMobileNav.value = false }
             class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary transition-colors">
             Analytics
           </RouterLink>
-          <RouterLink
-            to="/dashboard/"
-            class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary transition-colors">
-            Dashboard
-          </RouterLink>
         </nav>
       </div>
 
       <!-- RIGHT: Theme toggle + Profile (desktop) + Hamburger -->
       <div class="flex items-center gap-2">
-        <!-- Theme toggle (always visible) -->
+        <!-- Theme toggle -->
         <button
           @click="toggleDarkMode"
           class="relative inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
           :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <svg v-if="!isDark" class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 0 018 0z"/>
           </svg>
           <svg v-else class="h-5 w-5 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -264,7 +251,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
           </RouterLink>
         </div>
 
-        <!-- Profile (desktop >= md). It disappears on mobile (in hamburger menu instead). -->
+        <!-- Profile (desktop >= md) -->
         <div v-else-if="user.isLoggedIn && !user.loading" class="hidden md:block">
           <div class="relative profile-dropdown-container">
             <button
@@ -373,13 +360,6 @@ const closeMobileNav  = () => { showMobileNav.value = false }
               class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
               Analytics
             </RouterLink>
-            <RouterLink
-              to="/dashboard/"
-              @click="closeMobileNav"
-              class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
-              Dashboard
-            </RouterLink>
-
             <div v-if="!user.isLoggedIn" class="mt-2 grid grid-cols-2 gap-2">
               <RouterLink
                 to="/signup/"
@@ -396,6 +376,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
             </div>
 
             <div v-else-if="user.isLoggedIn && !user.loading" class="mt-2">
+              <!-- Avatar + name link (still routes to edit profile) -->
               <RouterLink
                 :to="profileTo"
                 @click="closeMobileNav"
@@ -411,6 +392,16 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                   <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ user.email }}</p>
                 </div>
               </RouterLink>
+
+              <!-- ✅ Explicit Edit Profile row for mobile -->
+              <RouterLink
+                :to="profileTo"
+                @click="closeMobileNav"
+                class="mt-1 flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <span class="material-symbols-outlined text-base leading-none">settings</span>
+                Edit Profile
+              </RouterLink>
+
               <button
                 @click="handleLogout"
                 class="mt-1 w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
