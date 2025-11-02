@@ -104,8 +104,9 @@
           </button>
 
           <div class="flex items-center gap-2">
+            <!-- was: v-if="lastStatus !== 'cancelled'" -->
             <button
-              v-if="lastStatus !== 'cancelled'"
+              v-if="lastStatus === 'return_refund'"
               class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
               @click="$emit('open-refund', order)"
             >
