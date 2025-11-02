@@ -353,6 +353,7 @@ async function submit() {
     }
 
     emit('submitted')
+    emit('close') 
   } catch (err) {
     console.error('⭐ Review submit error:', err)
   } finally {
