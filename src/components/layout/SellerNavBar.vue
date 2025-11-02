@@ -174,7 +174,7 @@ onMounted(() => {
   })
 })
 
-/* Mobile nav */
+/* Mobile navigation */
 const showMobileNav = ref(false)
 const toggleMobileNav = () => { showMobileNav.value = !showMobileNav.value }
 const closeMobileNav  = () => { showMobileNav.value = false }
