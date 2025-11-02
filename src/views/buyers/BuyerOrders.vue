@@ -640,7 +640,10 @@ onMounted(() => {
   const stop = auth.onAuthStateChanged(async (u) => {
     if (!u) { loading.value = false; return }
 
-    // live orders (unchanged)
+<<<<<<<<< Temporary merge branch 1
+    // live orders
+=========
+>>>>>>>>> Temporary merge branch 2
     const q = fsQuery(collection(db, 'orders'), where('uid', '==', u.uid), orderBy('createdAt', 'desc'))
     unsub?.()
     unsub = onSnapshot(q, (snap) => {
@@ -741,7 +744,10 @@ async function confirmCancel() {
   orderToCancel.value = null
 }
 
-/* ✅ Wrap markReceived with try/catch and show toast errors */
+<<<<<<<<< Temporary merge branch 1
+/* Keep the original markReceived logic */
+=========
+>>>>>>>>> Temporary merge branch 2
 async function markReceived(o) {
   try {
     await updateDoc(doc(db, 'orders', o.id), {
@@ -759,7 +765,10 @@ function rateOrder(o) {
   showRateModal.value = true
 }
 
-// close helper
+<<<<<<<<< Temporary merge branch 1
+/* Rate modal helpers */
+=========
+>>>>>>>>> Temporary merge branch 2
 function closeRateModal() {
   showRateModal.value = false
   orderForRating.value = null
@@ -812,8 +821,10 @@ async function contactSeller(o) {
     const sellerUid = o?.products?.[0]?.sellerId
     if (!buyerUid || !sellerUid) return
 
-    // Look for an existing conversation that includes the buyer,
-    // then pick the one that also has the seller.
+<<<<<<<<< Temporary merge branch 1
+    // find or create conversation
+=========
+>>>>>>>>> Temporary merge branch 2
     const snap = await getDocs(
       fsQuery(collection(db, 'conversations'), where('participants', 'array-contains', buyerUid), limit(50))
     )
@@ -823,7 +834,7 @@ async function contactSeller(o) {
       if (parts.includes(sellerUid)) conversationId = d.id
     })
 
-    // Create if not found
+>>>>>>>>> Temporary merge branch 2
     if (!conversationId) {
       const ref = await addDoc(collection(db, 'conversations'), {
         participants: [buyerUid, sellerUid],
@@ -837,25 +848,33 @@ async function contactSeller(o) {
       conversationId = ref.id
     }
 
-    // Go to Buyer Messages with the conversation id
+>>>>>>>>> Temporary merge branch 2
     window.location.href = `/buyer-messages?conversation=${conversationId}`
   } catch (err) {
     console.error('contactSeller failed:', err)
   }
 }
 
-// NEW state for the received-confirm modal
+<<<<<<<<< Temporary merge branch 1
+/* Received confirm modal state */
 const showReceivedConfirm = ref(false)
 const orderToReceive = ref(null)
 const receiveProcessing = ref(false)
 
-// Open the modal with the selected order
+=========
+/* Received flow */
+const showReceivedConfirm = ref(false)
+const orderToReceive = ref(null)
+const receiveProcessing = ref(false)
+>>>>>>>>> Temporary merge branch 2
 function openReceivedConfirm(o) {
   orderToReceive.value = o
   showReceivedConfirm.value = true
 }
+<<<<<<<<< Temporary merge branch 1
 
-// Confirm action → call existing markReceived, handle toast & UI
+=========
+>>>>>>>>> Temporary merge branch 2
 async function confirmReceived() {
   if (!orderToReceive.value) return
   receiveProcessing.value = true
