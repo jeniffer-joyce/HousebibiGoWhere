@@ -608,7 +608,15 @@ function closeRateModal() {
   editExistingReviews.value = []
   editMode.value = 'create'
 }
-
+function handleReviewSubmitted() {
+  showToast({
+    type: 'success',
+    title: 'Review submitted',
+    message: 'Thanks for rating your order!',
+    duration: 2500
+  })
+  // child will also emit('close'), so the modal closes via closeRateModal
+}
 // when the modal emits "submitted"
 function handleReturnSubmitted(evt) {
   // evt may contain { orderId, message } etc. depending on your modal setup

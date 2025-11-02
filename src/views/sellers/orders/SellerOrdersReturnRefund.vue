@@ -605,7 +605,6 @@ import {
 } from 'firebase/firestore'
 import ToastNotification from '@/components/ToastNotification.vue'
 
-console.debug('[Storage bucket]', getStorage().bucket || '(default app bucket)')
 
 /* ------------ UI state ------------ */
 const loading = ref(true)
@@ -634,6 +633,7 @@ function showToast(o){
 
 /** Make sure the signed-in seller actually owns the order before uploading evidence */
 async function verifySellerBeforeUpload(row) {
+  
   const sellerUid = auth.currentUser?.uid || ''
   if (!sellerUid) throw new Error('Not signed in.')
 
@@ -718,7 +718,6 @@ function solutionLabel(sol){
   if (s.includes('return')) return 'Return'
   return 'Refund'
 }
-
 /** Support:
  *  - top table: pass only the order row → pick first product
  *  - buyer details list: pass (row, productId) → find the specific product
@@ -782,7 +781,6 @@ const filtered = computed(() => {
   })
 })
 
-/** Guess a safe image MIME (prevents storage/unauthorized when rules check image/*) */
 function guessImageMime(file) {
   if (file?.type && file.type.startsWith('image/')) return file.type
   const name = (file?.name || '').toLowerCase()
@@ -791,6 +789,7 @@ function guessImageMime(file) {
   if (name.endsWith('.gif'))  return 'image/gif'
   if (name.endsWith('.bmp'))  return 'image/bmp'
   if (name.endsWith('.svg'))  return 'image/svg+xml'
+  if (name.endsWith('.jfif')) return 'image/jpeg'  // 👈 add this line
   return 'image/jpeg'
 }
 
@@ -882,30 +881,72 @@ async function submitDecline() {
   confirm.value.visible = false
 
   try {
-    await verifySellerBeforeUpload(row) // pre-flight safety check
+    await verifySellerBeforeUpload(row) // ensure order belongs to seller
 
+    // ✅ define sellerUid at the start
     const sellerUid = auth.currentUser?.uid
     if (!sellerUid) throw new Error('Not signed in.')
 
+    // 🧭 Step 1: Storage debug toast (actual bucket + intended path + MIME + size)
+    const st = getStorage()
+    const bucketName = st.app?.options?.storageBucket || '(no bucket in app.options)'
+
+    if (declineFiles.value.length) {
+      const firstFile = declineFiles.value[0]
+      const debugInfo = [
+        `Bucket: ${bucketName}`,
+        `Path: decline_evidence/${row.id}/${sellerUid}/${firstFile?.name || 'file'}`,
+        `Type: ${guessImageMime(firstFile)}`,
+        `Size: ${((firstFile?.size || 0) / 1048576).toFixed(2)} MB`
+      ].join('\n')
+
+      showToast({
+        type: 'info',
+        title: 'Storage Debug',
+        message: debugInfo,
+        duration: 7000
+      })
+    }
+
+    // 🔎 Preflight toast (MIME confirmation)
+    if (declineFiles.value.length) {
+      showToast({
+        type: 'info',
+        title: 'Uploading…',
+        message: `Using contentType: ${guessImageMime(declineFiles.value[0])}`,
+        duration: 3000
+      })
+    }
+
     const uploadedUrls = []
+    const MAX_MB = 5 // matches your current Storage rule isValidSize(5)
 
     for (const f of declineFiles.value) {
+      // 🔒 Size guard to avoid Storage 403 from size rule
+      if (f.size > MAX_MB * 1024 * 1024) {
+        throw new Error(`"${f.name}" is ${(f.size / 1048576).toFixed(2)} MB. Max allowed is ${MAX_MB} MB.`)
+      }
+
       const safeName = `${Date.now()}_${(f.name || 'evidence').replace(/[^\w.\-]/g, '_')}`
-      // IMPORTANT: path uses the **signed-in seller UID**
       const path = `decline_evidence/${row.id}/${sellerUid}/${safeName}`
       const fileRef = storageRef(storage, path)
 
-      const metadata = {
-        contentType: guessImageMime(f),
-        cacheControl: 'public,max-age=31536000'
-      }
+      // ✅ enforce a valid image MIME (fixes .jfif / empty type)
+      const forcedType = guessImageMime(f) // ensure this handles .jfif → image/jpeg
+      const fileToSend =
+        f.type && f.type.startsWith('image/')
+          ? f
+          : new File([f], f.name || 'evidence.jpg', { type: forcedType })
 
-      console.debug('[DeclineUpload] path:', path, 'contentType:', metadata.contentType)
-      await uploadBytes(fileRef, f, metadata)
+      const metadata = { contentType: forcedType, cacheControl: 'public,max-age=31536000' }
+
+      console.debug('[DeclineUpload]', { path, forcedType, size: fileToSend.size })
+      await uploadBytes(fileRef, fileToSend, metadata)
       const url = await getDownloadURL(fileRef)
       uploadedUrls.push(url)
     }
 
+    // ✅ save to Firestore
     await updateDoc(doc(db, 'orders', row.id), {
       returnRequestSummary: {
         ...row.returnRequestSummary,
@@ -930,22 +971,19 @@ async function submitDecline() {
     console.error('Decline failed (Storage/Firestore):', err)
     let msg = err?.message || 'Unexpected error.'
     if (err?.code === 'storage/unauthorized') {
-      msg = 'Upload was blocked by Storage Rules. Common causes: file is not detected as an image (contentType), or upload path does not match your UID bucket rules.'
+      msg = 'Upload blocked by Storage Rules. Likely wrong contentType or path mismatch.'
     }
     if (err?.code === 'storage/forbidden') {
-      msg = 'Forbidden by bucket or token. Check Storage rules deployment and authentication.'
+      msg = 'Forbidden by bucket or token. Check rules or authentication.'
     }
-    showToast({
-      type: 'error',
-      title: 'Decline Failed',
-      message: msg
-    })
+    showToast({ type: 'error', title: 'Decline Failed', message: msg, duration: 7000 })
   } finally {
     declineReason.value = ''
     declineFiles.value = []
     declineEvidencePreviews.value = []
   }
 }
+
 </script>
 
 <style scoped>
