@@ -56,20 +56,30 @@ function fmtMinute(t) {
 const isPlaced    = (e) => (e.label || e.text || '').toLowerCase().startsWith('order placed')
 const isPreparing = (e) => (e.label || e.text || '').toLowerCase().startsWith('seller is preparing')
 
+/* Group events into semantic kinds to collapse duplicates written to both
+   shipping.timeline and logistics.trackingHistory in the same minute. */
+function eventKind(lbl = '', txt = '') {
+  const s = (lbl || txt || '').toLowerCase()
+  if (s.startsWith('order placed'))                 return 'placed'
+  if (s.startsWith('seller is preparing'))         return 'preparing'
+  if (s.includes('pickup scheduled'))              return 'pickup_scheduled'
+  if (s.includes('shipment arranged') || s.includes('arranged')) return 'arranged'
+  if (s.includes('picked up'))                     return 'picked_up'
+  if (s.includes('drop-off done') || s.includes('dropped off'))  return 'dropped_off'
+  return 'other'
+}
+
 /* ---------- synthesize buyer-side events ---------- */
 const baseEvents = computed(() => {
   const out = []
 
-  // "Order placed" — try meta.createdAt first
+  // "Order placed"
   const placed =
     props.meta?.createdAt ||
     props.logistics?.orderedAt ||
     props.shipping?.orderedAt ||
     null
-
-  if (placed) {
-    out.push({ time: placed, label: 'Order placed', text: 'Order placed' })
-  }
+  if (placed) out.push({ time: placed, label: 'Order placed', text: 'Order placed' })
 
   // "Seller is preparing to ship"
   const arrangedAt = props.shipping?.arrangedAt
@@ -83,42 +93,63 @@ const baseEvents = computed(() => {
       text:  'Seller is preparing to pack your order'
     })
   }
-
   return out
 })
 
-/* ---------- merge all sources, sort NEWEST → OLDEST, then pin bottom two ---------- */
+/* ---------- merge all sources, collapse dupes, sort NEWEST → OLDEST, then pin bottom two ---------- */
 const orderedEvents = computed(() => {
   const a = (props.shipping?.timeline || []).map(e => ({ ...e }))
   const b = (props.logistics?.trackingHistory || []).map(e => ({ ...e }))
 
-  // Merge and keep only items with time
+  // 1) Merge and keep only timed events
   const merged = [...a, ...b, ...baseEvents.value].filter(e => !!e?.time)
 
-  // Sort DESC by time (newest first)
+  // 2) Sort newest → oldest initially
   merged.sort((x, y) => toMs(y.time) - toMs(x.time))
 
-  // De-dupe by (label/text + minute)
+  // 3) Collapse semantic duplicates by (kind + minute)
+  const bucket = new Map()
+  for (const e of merged) {
+    const minute = fmtMinute(e.time)
+    const kind   = eventKind(e.label, e.text)
+    const key    = `${kind}|${minute}`
+
+    if (!bucket.has(key)) {
+      bucket.set(key, { ...e })
+    } else {
+      const cur = bucket.get(key)
+      // prefer having a distinct label
+      if ((!cur.label || cur.label === cur.text) && e.label) cur.label = e.label
+      // keep the most descriptive text
+      if ((e.text || '').length > (cur.text || '').length) cur.text = e.text
+      // preserve the latest exact timestamp
+      if (toMs(e.time) > toMs(cur.time)) cur.time = e.time
+      bucket.set(key, cur)
+    }
+  }
+  const collapsed = Array.from(bucket.values())
+
+  // 4) De-dupe any remaining exact label+minute pairs (safety)
   const seen = new Set()
   const deduped = []
-  for (const e of merged) {
+  for (const e of collapsed) {
     const key = `${(e.label || e.text || '').toLowerCase()}|${fmtMinute(e.time)}`
     if (seen.has(key)) continue
     seen.add(key)
     deduped.push(e)
   }
 
-  // ---- Pin bottom order: [ ...others(newest→oldest), "Seller is preparing...", "Order placed" ]
-  // Pick ONE preparing & ONE placed (prefer earliest of each to match chronology)
+  // 5) Pin bottom order: “…preparing…” then “Order placed”
+  //    Pick earliest occurrence of each, remove from list, append in pinned order.
   const preparingCandidates = deduped.filter(isPreparing).sort((x,y)=>toMs(x.time)-toMs(y.time))
   const placedCandidates    = deduped.filter(isPlaced).sort((x,y)=>toMs(x.time)-toMs(y.time))
   const preparingPinned = preparingCandidates[0] || null
   const placedPinned    = placedCandidates[0]    || null
 
-  // Remove any preparing/placed from the list first
-  const rest = deduped.filter(e => !(isPreparing(e) || isPlaced(e)))
+  const rest = deduped
+    .filter(e => !(isPreparing(e) || isPlaced(e)))
+    .sort((x, y) => toMs(y.time) - toMs(x.time)) // newest → oldest
 
-  // Append pinned ones so bottom is "Order placed", second-from-bottom is "Seller is preparing…"
   if (preparingPinned) rest.push(preparingPinned)
   if (placedPinned)    rest.push(placedPinned)
 
