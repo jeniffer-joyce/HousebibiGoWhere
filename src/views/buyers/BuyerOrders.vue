@@ -140,7 +140,6 @@
                 <div class="flex items-start gap-3">
                   <img :src="it.img_url" class="h-16 w-16 rounded-md object-cover" />
                   <div>
-                    <!-- 🔗 Product name navigates to product details -->
                     <RouterLink
                       :to="`/product-details/${it.productId}`"
                       class="font-medium text-slate-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400 transition"
@@ -174,7 +173,25 @@
               </div>
 
               <div class="flex flex-wrap items-center justify-end gap-2">
-                <!-- Buttons -->
+                <!-- View Order (to_pay, to_ship, to_receive, completed) -->
+                <button
+                  v-if="['to_pay','to_ship','to_receive','completed'].includes(statusOf(o))"
+                  @click="viewOrderDetails(o)"
+                  class="rounded-lg bg-blue-500/90 px-4 py-2 text-white hover:bg-blue-600"
+                >
+                  View Order
+                </button>
+
+                <!-- View Shipping Details: show for to_ship, to_receive, completed -->
+                <button
+                  v-if="['to_ship','to_receive','completed'].includes(statusOf(o))"
+                  @click="openShippingDetails(o)"
+                  class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-blue-700 hover:bg-blue-100"
+                >
+                  View Shipping Details
+                </button>
+
+                <!-- Existing logic -->
                 <template v-if="statusOf(o) === 'to_receive'">
                   <button
                     @click="openReceivedConfirm(o)"
@@ -199,8 +216,6 @@
                   >
                     View Rating
                   </button>
-
-                  <!-- ⬇️ Only show this if NOT reviewed -->
                   <button
                     v-if="!hasReview(o)"
                     @click="openReturnModal(o)"
@@ -311,7 +326,7 @@
       </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Existing modals -->
     <CancelledDetailsModal
       v-if="!!selectedCancelled"
       :visible="true"
@@ -361,8 +376,119 @@
       @close="showReviewDetails=false; orderForReviewDetails=null"
       @edit="editReviewsForOrder"
     />
+    <ShippingDetailsModal
+      v-if="showShippingDetails"
+      :visible="showShippingDetails"
+      :order="orderForShipping"
+      @close="showShippingDetails = false; orderForShipping = null"
+    />
 
-    <!-- Toast (wired to `toast`) -->
+    <!-- Shipping Details Modal -->
+    <div
+      v-if="shippingModal.show"
+      class="fixed inset-0 z-[75] flex items-center justify-center bg-black/40"
+      @click="closeShipping"
+    >
+      <div
+        class="w-full max-w-5xl rounded-2xl bg-white p-6 shadow-2xl sm:mx-4 dark:bg-slate-800"
+        @click.stop
+      >
+        <!-- Header -->
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Shipping Details</h3>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Order <span class="font-medium">#{{ shippingOrder?.orderId }}</span>
+              · Placed {{ formatDate(shippingOrder?.createdAt) }}
+            </p>
+          </div>
+          <button class="rounded-lg border px-3 py-1.5 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200" @click="closeShipping">Close</button>
+        </div>
+
+        <!-- Progress -->
+        <div class="mt-6 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+          <div class="grid grid-cols-4 gap-4">
+            <div v-for="(s, i) in shippingSteps" :key="s.key" class="flex items-center gap-3">
+              <div
+                class="flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold"
+                :class="s.done ? 'bg-green-600 text-white' : 'bg-slate-200 text-slate-600'"
+                :title="s.timeStr"
+              >
+                {{ i+1 }}
+              </div>
+              <div>
+                <div class="text-sm font-medium" :class="s.done ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'">
+                  {{ s.label }}
+                </div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">{{ s.timeStr || '—' }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="relative mt-4 h-1 rounded bg-slate-200">
+            <div class="absolute inset-y-0 left-0 rounded bg-green-600" :style="{ width: progressPct + '%' }"></div>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div class="mt-6 grid gap-6 md:grid-cols-12">
+          <section class="md:col-span-5 space-y-3">
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+              <div class="text-sm text-slate-600 dark:text-slate-300">Channel</div>
+              <div class="mt-1">
+                <span class="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+                  {{ channel(shippingOrder) }}
+                </span>
+              </div>
+              <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <div class="text-slate-500 dark:text-slate-400">Method</div>
+                  <div class="font-medium">{{ (shippingOrder?.shipping?.method || '—').toUpperCase() }}</div>
+                </div>
+                <div>
+                  <div class="text-slate-500 dark:text-slate-400">Tracking No.</div>
+                  <div class="font-medium break-all">{{ trackingNo(shippingOrder) || '—' }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-if="shippingOrder?.shipping?.arranged && statusOf(shippingOrder) === 'to_ship'"
+              class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
+            >
+              The seller has started shipping preparations. For operational reasons,
+              cancellations are no longer available at this stage.
+              Please contact the seller if you need assistance.
+            </div>
+          </section>
+
+          <section class="md:col-span-7">
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+              <div class="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Tracking Updates</div>
+              <ol class="space-y-3 max-h-80 overflow-auto pr-2">
+                <li
+                  v-for="(e,i) in shippingEvents"
+                  :key="i"
+                  class="flex items-start gap-3"
+                >
+                  <div class="mt-1 h-2 w-2 shrink-0 rounded-full" :class="i===0 ? 'bg-green-600' : 'bg-slate-300'"></div>
+                  <div class="min-w-0">
+                    <div class="text-sm text-slate-900 dark:text-white break-words">
+                      {{ e.text }}
+                    </div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400">
+                      {{ e.timeStr }}
+                    </div>
+                  </div>
+                </li>
+                <li v-if="shippingEvents.length===0" class="text-sm text-slate-500">No carrier events yet.</li>
+              </ol>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
     <ToastNotification
       v-if="toast.show"
       :show="toast.show"
@@ -394,6 +520,7 @@ import ReturnRequestModal from '@/components/orders/ReturnRequestModal.vue'
 import ReturnRequestDetailsModal from '@/components/orders/ReturnRequestDetailsModal.vue'
 import RateOrderModal from '@/components/orders/RateOrderModal.vue'
 import ReviewDetailsModal from '@/components/orders/ReviewDetailsModal.vue'
+import ShippingDetailsModal from '@/components/orders/ShippingDetailsModal.vue'
 
 /* UI states */
 const banner = ref({ show:false, msg:'' })
@@ -417,6 +544,8 @@ const showReviewDetails = ref(false)
 const orderForReviewDetails = ref(null)
 const editExistingReviews = ref([])
 const editMode = ref('create')
+const showShippingDetails = ref(false)
+const orderForShipping = ref(null)
 
 /* Toast */
 const toast = ref({
@@ -471,6 +600,11 @@ const tabCounts = computed(() => {
   return c
 })
 
+function openShippingDetails(o) {
+  orderForShipping.value = o
+  showShippingDetails.value = true
+}
+
 /* Search and filter */
 const visibleOrders = computed(() => {
   const q = queryStr.value.trim().toLowerCase()
@@ -506,7 +640,6 @@ onMounted(() => {
   const stop = auth.onAuthStateChanged(async (u) => {
     if (!u) { loading.value = false; return }
 
-    // live orders
     const q = fsQuery(collection(db, 'orders'), where('uid', '==', u.uid), orderBy('createdAt', 'desc'))
     unsub?.()
     unsub = onSnapshot(q, (snap) => {
@@ -560,6 +693,19 @@ function payNow(o) { /* integrate your gateway */ }
 function changePayment(o) { /* open change payment UI */ }
 
 function openCancelConfirm(o) {
+  // If seller already arranged shipment, do not allow cancel; show info
+  if (statusOf(o) === 'to_ship' && o?.shipping?.arranged) {
+    showToast({
+      type: 'info',
+      title: 'Cancellation unavailable',
+      message: 'The seller has started shipping with HouseBiBi Express. Once handover begins, cancellation is no longer possible. If there’s an issue, wait for delivery and request a return/refund.',
+      duration: 5000
+    })
+    // (optional) also open shipping details so buyer sees progress:
+    orderForShipping.value = o
+    showShippingDetails.value = true
+    return
+  }
   orderToCancel.value = o
   showCancelConfirm.value = true
 }
@@ -569,9 +715,23 @@ function openReturnModal(o) {
   orderForReturn.value = o
   showReturnModal.value = true
 }
+
 async function confirmCancel() {
   if (!orderToCancel.value) return
   const o = orderToCancel.value
+
+  // Double guard
+  if (o?.shipping?.arranged) {
+    showCancelConfirm.value = false
+    showToast({
+      type: 'warning',
+      title: 'Cannot cancel now',
+      message: 'The seller has begun fulfilment and the parcel is queued for dispatch.',
+      duration: 3500
+    })
+    return
+  }
+
   showCancelConfirm.value = false
   await updateDoc(doc(db, 'orders', o.id), {
     status: 'cancelled',
@@ -580,7 +740,6 @@ async function confirmCancel() {
   orderToCancel.value = null
 }
 
-/* Keep the original markReceived logic */
 async function markReceived(o) {
   try {
     await updateDoc(doc(db, 'orders', o.id), {
@@ -598,7 +757,6 @@ function rateOrder(o) {
   showRateModal.value = true
 }
 
-/* Rate modal helpers */
 function closeRateModal() {
   showRateModal.value = false
   orderForRating.value = null
@@ -618,14 +776,12 @@ function handleReturnSubmitted(evt) {
   orderForReturn.value = null
   if (evt?.orderId) {
     const idx = orders.value.findIndex(o => o.orderId === evt.orderId)
-    if (idx !== -1) {
-      orders.value[idx].status = 'return_refund'
-    }
+    if (idx !== -1) orders.value[idx].status = 'return_refund'
   }
   showToast({
     type: 'success',
     title: 'Return/Refund submitted',
-    message: 'Your return or refund request has been successfully sent.',
+    message: 'Your request has been sent.',
     duration: 3000
   })
 }
@@ -637,7 +793,6 @@ function viewReturnDetails(o) {
   showReturnDetails.value = true
 }
 
-/* Relay from ReturnRequestDetails -> OrderDetails */
 function openOrderFromRefund(o) {
   showReturnDetails.value = false
   orderForReturnDetails.value = null
@@ -650,7 +805,6 @@ async function contactSeller(o) {
     const sellerUid = o?.products?.[0]?.sellerId
     if (!buyerUid || !sellerUid) return
 
-    // find or create conversation
     const snap = await getDocs(
       fsQuery(collection(db, 'conversations'), where('participants', 'array-contains', buyerUid), limit(50))
     )
@@ -659,6 +813,7 @@ async function contactSeller(o) {
       const parts = d.data()?.participants || []
       if (parts.includes(sellerUid)) conversationId = d.id
     })
+
     if (!conversationId) {
       const ref = await addDoc(collection(db, 'conversations'), {
         participants: [buyerUid, sellerUid],
@@ -671,26 +826,21 @@ async function contactSeller(o) {
       })
       conversationId = ref.id
     }
+
     window.location.href = `/buyer-messages?conversation=${conversationId}`
   } catch (err) {
     console.error('contactSeller failed:', err)
   }
 }
-function openRateModal(o) {
-  orderForRating.value = o
-  showRateModal.value = true
-}
 
-/* Received confirm modal state */
+/* Received flow */
 const showReceivedConfirm = ref(false)
 const orderToReceive = ref(null)
 const receiveProcessing = ref(false)
-
 function openReceivedConfirm(o) {
   orderToReceive.value = o
   showReceivedConfirm.value = true
 }
-
 async function confirmReceived() {
   if (!orderToReceive.value) return
   receiveProcessing.value = true
@@ -715,6 +865,177 @@ async function confirmReceived() {
   } finally {
     receiveProcessing.value = false
   }
+}
+
+/* -------------------- Shipping modal builders -------------------- */
+const shippingModal = ref({ show: false })
+const shippingOrder = ref(null)
+const shippingSteps = ref([])
+const shippingEvents = ref([])
+const progressPct = ref(0)
+
+function channel(o) {
+  return o?.shipping?.channel || o?.logistics?.shipper || 'HouseBiBi Express'
+}
+function trackingNo(o) {
+  return o?.totals?.trackingNumber || o?.logistics?.trackingNumber || o?.trackingNumber || ''
+}
+function tsToDate(ts) {
+  if (!ts) return null
+  if (typeof ts?.toDate === 'function') return ts.toDate()
+  try { return new Date(ts) } catch { return null }
+}
+function fmt(ts) {
+  const d = tsToDate(ts)
+  return d ? d.toLocaleString('en-SG', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : ''
+}
+
+function buildShippingView(o) {
+  // ---- step timestamps ----
+  const placedAt    = o?.createdAt || null
+  const preparingAt =
+    o?.shipping?.arrangedAt ||
+    (o?.statusLog || []).find(x => x.status === 'to_ship')?.time ||
+    null
+  const inTransitAt =
+    o?.shippedAt ||
+    o?.shipping?.dropoff?.completedAt ||
+    o?.shipping?.pickup?.completedAt ||
+    (o?.statusLog || []).find(x => x.status === 'to_receive')?.time ||
+    null
+  const deliveredAt =
+    (o?.statusLog || []).find(x => x.status === 'completed')?.time || null
+
+  // ---- 4-step header ----
+  const stepList = [
+    { key: 'placed',    label: 'Order Placed',       time: placedAt },
+    { key: 'preparing', label: 'Preparing to Ship',  time: preparingAt },
+    { key: 'transit',   label: 'In Transit',         time: inTransitAt },
+    { key: 'delivered', label: 'Delivered',          time: deliveredAt }
+  ]
+
+  shippingSteps.value = stepList.map(s => ({
+    ...s,
+    done: !!s.time,
+    timeStr: fmt(s.time)
+  }))
+
+  const doneCount = shippingSteps.value.filter(s => s.done).length
+  // progress spans 0% (only placed) → 100% (delivered)
+  progressPct.value = Math.min(
+    100,
+    Math.max(0, (doneCount - 1) / (shippingSteps.value.length - 1) * 100)
+  )
+
+  // ---- timeline body (events on the right) ----
+  const ev = []
+
+  // (1) Seller-written shipping.timeline
+  if (Array.isArray(o?.shipping?.timeline) && o.shipping.timeline.length) {
+    for (const t of [...o.shipping.timeline]
+      .sort((a, b) => tsToDate(b.time) - tsToDate(a.time))) {
+      ev.push({
+        time: t.time,
+        timeStr: fmt(t.time),
+        title: t.label || t.key || 'Shipment update',
+        text:  t.text  || t.label || t.key,
+        subtitle: t.text && t.label ? t.text : ''
+      })
+    }
+  }
+
+  // (2) Seller-written logistics.trackingHistory
+  if (Array.isArray(o?.logistics?.trackingHistory) && o.logistics.trackingHistory.length) {
+    for (const h of [...o.logistics.trackingHistory]
+      .sort((a, b) => tsToDate(b.time) - tsToDate(a.time))) {
+      ev.push({
+        time: h.time,
+        timeStr: fmt(h.time),
+        title: h.title || h.text || 'Tracking update',
+        text:  h.text  || '',
+        subtitle: h.subtitle || ''
+      })
+    }
+  }
+
+  // (3) Synthetic base events
+  if (placedAt) {
+    ev.push({
+      time: placedAt,
+      timeStr: fmt(placedAt),
+      title: 'Order placed',
+      text:  'Order placed'
+    })
+  }
+  if (preparingAt) {
+    ev.push({
+      time: preparingAt,
+      timeStr: fmt(preparingAt),
+      title: 'Seller is preparing to ship',
+      text:  'Seller is preparing to pack your order'
+    })
+  }
+
+  // (4) Fallback from statusLog (if nothing else exists)
+  if (ev.length === 0 && Array.isArray(o?.statusLog)) {
+    for (const s of [...o.statusLog].reverse()) {
+      const label =
+        s.status === 'to_ship'    ? 'Seller is preparing to ship'
+      : s.status === 'to_receive' ? 'Parcel handed to courier'
+      : s.status === 'completed'  ? 'Delivered to buyer'
+      : s.status === 'cancelled'  ? 'Order cancelled'
+      : `Status: ${s.status}`
+
+      ev.push({
+        time: s.time,
+        timeStr: fmt(s.time),
+        title: label,
+        text:  ''
+      })
+    }
+  }
+
+  // (5) Sort DESC + de-dupe by (title + minute) to avoid overlapping dots
+  const seen = new Set();
+  const rank = (title = '') => {
+    const t = title.toLowerCase();
+    if (t.startsWith('order placed')) return 1;
+    if (t.startsWith('seller is preparing')) return 2;
+    return 3;
+  };
+
+  shippingEvents.value = ev
+    .filter(e => e.time)
+    .sort((a, b) => {
+      const da = tsToDate(a.time)?.getTime() ?? 0;
+      const db = tsToDate(b.time)?.getTime() ?? 0;
+      if (da !== db) return da - db;      // ASC
+      return rank(a.title) - rank(b.title); // tie-breaker
+    })
+    .filter(e => {
+      const key = `${e.title}|${fmt(e.time)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+/* helper: stringify timestamp rounded to the minute (prevents stacked dots) */
+function roundToMinuteStr(ts) {
+  const d = tsToDate(ts)
+  if (!d) return ''
+  d.setSeconds(0, 0)
+  return d.toISOString()
+}
+
+function openShipping(o) {
+  shippingOrder.value = o
+  buildShippingView(o)
+  shippingModal.value.show = true
+}
+function closeShipping() {
+  shippingModal.value.show = false
+  shippingOrder.value = null
 }
 </script>
 
