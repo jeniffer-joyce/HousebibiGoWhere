@@ -43,8 +43,6 @@
           <span class="material-symbols-outlined text-lg text-yellow-500">star</span>
           <span class="font-medium">{{ displayRating }} / 5.0</span>
           <span class="text-gray-400 dark:text-gray-600">·</span>
-          <span>{{ followingCount }} Following</span>
-          <span class="text-gray-400 dark:text-gray-600">·</span>
           <span>{{ followersCount }} Followers</span>
         </div>
 
