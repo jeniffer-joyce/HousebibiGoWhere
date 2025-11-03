@@ -179,8 +179,8 @@
                     </RouterLink>
 
                     <p class="text-sm text-slate-500 dark:text-slate-400">
-                      <span v-if="it.size">Size: {{ it.size }}</span>
-                      <span v-if="it.size && (it.quantity ?? 1)"> • </span>
+                      <span v-if="getItemSize(it)">Variation: {{ getItemSize(it) }}</span>
+                      <span v-if="getItemSize(it) && (it.quantity ?? 1)"> • </span>
                       Qty: {{ it.quantity ?? 1 }}
                     </p>
                   </div>
@@ -545,7 +545,7 @@ import { auth, db } from '@/firebase/firebase_config'
 import {
   collection, query as fsQuery, where, orderBy, onSnapshot,
   doc, updateDoc, arrayUnion, Timestamp,
-  getDocs, addDoc, serverTimestamp, limit
+  getDocs, getDoc, addDoc, serverTimestamp, limit
 } from 'firebase/firestore'
 
 import CancelledDetailsModal from '@/components/orders/CancelledDetailsModal.vue'
@@ -571,6 +571,7 @@ const orderForReturn = ref(null)
 const showReturnDetails = ref(false)
 const orderForReturnDetails = ref(null)
 const orders = ref([])
+const productSizesCache = ref({}) // Cache for product sizes: { productId: { sizes: [...], fetched: true } }
 const showRateModal = ref(false)
 const orderForRating = ref(null)
 const reviewedOrders = ref(new Set())
@@ -671,6 +672,49 @@ function orderGrand(o) {
     0
   )
   return Number(sum.toFixed(2))
+}
+
+/* Fetch product sizes from Firestore if not cached */
+async function fetchProductSizes(productId) {
+  if (productSizesCache.value[productId]?.fetched) {
+    return productSizesCache.value[productId].sizes
+  }
+  
+  try {
+    const productDoc = await getDoc(doc(db, 'products', productId))
+    if (productDoc.exists()) {
+      const productData = productDoc.data()
+      const sizes = productData.sizes || productData.availableSizes || []
+      productSizesCache.value[productId] = { sizes, fetched: true }
+      return sizes
+    }
+  } catch (error) {
+    console.error('Error fetching product sizes:', error)
+  }
+  
+  productSizesCache.value[productId] = { sizes: [], fetched: true }
+  return []
+}
+
+/* Helper to get size/variation from item */
+function getItemSize(item) {
+  // First try the direct size field
+  if (item.size) return item.size
+  
+  // If size is null but sizeIndex exists, look it up from cache
+  if (item.sizeIndex !== null && item.sizeIndex !== undefined && item.productId) {
+    const cached = productSizesCache.value[item.productId]
+    if (cached?.fetched && cached.sizes?.length > 0) {
+      return cached.sizes[item.sizeIndex] || null
+    }
+    
+    // Trigger async fetch (this will update cache and cause re-render)
+    fetchProductSizes(item.productId)
+    return '...' // Loading indicator
+  }
+  
+  // Fallback to other possible property names
+  return item.selectedSize || item.variation || item.variant || null
 }
 
 /* Firestore live query */

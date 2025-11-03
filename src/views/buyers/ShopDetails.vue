@@ -1,17 +1,9 @@
 <template>
   <main class="flex-grow w-full px-4 sm:px-6 lg:px-8 py-8">
-    <!-- BACK BUTTON from Shop Page ONLY -->
+    <!-- BACK BUTTON -->
     <button
       v-if="route.query.fromProduct"
-      @click="router.push({
-        name: 'ProductDetails',
-        params: { id: route.query.fromProduct },
-        query: {
-          fromShop: 'true',
-          shop: uid,
-          productsPage: route.query.productsPage
-        }
-      })"
+      @click="goBackToProduct"
       class="mb-4 sm:mb-6 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
     >
       <span class="material-symbols-outlined text-xl">arrow_back</span>
@@ -512,12 +504,11 @@ html {
 <script setup>
 import { getBusinesses } from '@/firebase/services/home/business.js';
 import { onMounted, onUnmounted, ref, computed, reactive, onBeforeUnmount } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import Loading from '@/components/status/Loading.vue';
 import MessageButton from '@/components/messageButton.vue';
 import defaultProfilePic from '@/assets/defaultBusinessLogo.png'
 import { getSellerProductsSortedBySales } from '@/composables/productUtils.js';
-
 import { useFavorites } from '@/composables/useFavorites.js'
 import { user } from '@/store/user.js'
 
@@ -530,6 +521,7 @@ const sidebarOpen = ref(false);
 const activeSection = ref('about');
 
 const route = useRoute();
+const router = useRouter();
 const uid = route.params.id;
 
 const business = ref(null);
@@ -930,4 +922,28 @@ function getMaxPrice(p) {
   const prices = Array.isArray(p.price) ? p.price : [p.price]
   return Math.max(...prices.map(Number).filter(n => !isNaN(n)))
 }
+
+function goBackToProduct() {
+  console.log('🔙 Back to Product clicked')
+  console.log('📍 fromProduct:', route.query.fromProduct)
+  console.log('🏪 shop:', uid)
+  console.log('📄 productsPage:', route.query.productsPage)
+  
+  if (!route.query.fromProduct) {
+    console.error('❌ No fromProduct in query params')
+    return
+  }
+  
+  router.push({
+    name: 'ProductDetails',
+    params: { id: route.query.fromProduct },
+    query: {
+      fromProductsPage: 'true',  // ✅ KEEP this so it knows to show "Back to Products"
+      shop: uid,
+      productsPage: route.query.productsPage
+      // ❌ Don't add fromShop here - we want it to show "Back to Products" button
+    }
+  })
+}
+
 </script>

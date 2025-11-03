@@ -70,7 +70,7 @@ function goToShop() {
   
   if (shopUsername.value) {
     router.push({
-      path: `/shop/${shopUsername.value}`,
+      path: `/shop-details/${shopUsername.value}`,
       query: {
         fromProduct: route.params.id,
         productsPage: productsPage.value
