@@ -94,7 +94,7 @@ onMounted(async () => {
         img_url: item.img_url,
         price: item.price,
         quantity: item.quantity,
-        size: item.selectedSize || null,
+        size: item.size || (item.availableSizes && item.sizeIndex !== null && item.sizeIndex !== undefined ? item.availableSizes[item.sizeIndex] : null),
         sizeIndex: item.sizeIndex !== undefined ? item.sizeIndex : null,
         sellerId: item.sellerId,
         sellerUsername: item.sellerUsername,
