@@ -206,13 +206,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, onActivated } from 'vue'
+import { ref, computed, onMounted, watch, onActivated, onBeforeUnmount } from 'vue'
 import { user } from '@/store/user.js'
 import Loading from '@/components/status/Loading.vue'
 import AddProductModal from '@/components/modals/AddProductModal.vue'
 import { useToast } from '@/composables/useToast'
 import { authReady, fetchSellerComposite } from '@/firebase/services/sellers/seller_crud.js'
-import { getSellerProducts, createProduct, getMyProduct, updateMyProduct } from '@/firebase/services/sellers/seller_product.js'
+import { getSellerProducts, createProduct, getMyProduct, updateMyProduct, /* ⬇️ added */ initInventoryAuthBridge } from '@/firebase/services/sellers/seller_product.js'
 
 const { success, error: toastError } = useToast()
 
@@ -260,6 +260,40 @@ async function loadSellerData() {
 onMounted(loadSellerData)
 onActivated(loadSellerData)
 watch(() => user.avatar, loadSellerData, { deep: true })
+
+/* ==========================================================
+   🧩 INVENTORY WATCHER (non-destructive, idempotent)
+   ========================================================== */
+let __stopInventoryWatcher = null
+
+onMounted(() => {
+  try {
+    if (!__stopInventoryWatcher && typeof initInventoryAuthBridge === 'function') {
+      __stopInventoryWatcher = initInventoryAuthBridge()
+    }
+  } catch (e) {
+    console.warn('[BusinessHomepage] initInventoryAuthBridge failed:', e)
+  }
+})
+
+onActivated(() => {
+  try {
+    if (!__stopInventoryWatcher && typeof initInventoryAuthBridge === 'function') {
+      __stopInventoryWatcher = initInventoryAuthBridge()
+    }
+  } catch (e) {
+    console.warn('[BusinessHomepage] re-init inventory bridge failed:', e)
+  }
+})
+
+onBeforeUnmount(() => {
+  try {
+    if (typeof __stopInventoryWatcher === 'function') {
+      __stopInventoryWatcher()
+    }
+  } catch {}
+  __stopInventoryWatcher = null
+})
 
 /* ==========================================================
    📈 RATING + FOLLOWERS

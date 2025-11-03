@@ -30,7 +30,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted  } from 'vue'
 import { user } from "@/store/user.js"
 import Navbar from '@/components/layout/Navbar.vue'
 import SellersNavbar from '@/components/layout/SellerNavBar.vue'
@@ -39,6 +39,11 @@ import OnboardingModal from '@/components/modals/OnboardingModal.vue'
 import { useToast } from '@/composables/useToast'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ChatIcon from '@/components/layout/ChatIcon.vue'
+import { initInventoryAuthBridge } from '@/firebase/services/sellers/seller_product'
+
+onMounted(() => {
+  initInventoryAuthBridge()
+})
 
 const { toastState, close } = useToast()
 
