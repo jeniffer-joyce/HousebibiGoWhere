@@ -12,8 +12,9 @@ import { useCart } from '@/composables/useCart'
 import { useFavorites } from '@/composables/useFavorites.js'  // ✅ Add this
 
 import Loading from '@/components/status/Loading.vue'
-import { useToast } from '@/composables/useToast.js'
 import AddToCartSuccessModal from '@/components/modals/AddToCartSuccessModal.vue'
+import { useToast } from '@/composables/useToast.js'
+
 
 
 const route = useRoute()
@@ -257,18 +258,27 @@ const selectedStockStatus = computed(() => {
 
 // Ensure userQuantity stays within stock and handles out-of-stock
 watch([userQuantity, selectedQuantity], () => {
-    if (selectedQuantity.value <= 0) {
-        // Out of stock → force to 0
-        userQuantity.value = 0
-    } else {
-        // Clamp between 1 and available stock
-        if (userQuantity.value < 1) {
-            userQuantity.value = 1
-        } else if (userQuantity.value > selectedQuantity.value) {
-            userQuantity.value = selectedQuantity.value
-        }
+  if (selectedQuantity.value <= 0) {
+    userQuantity.value = 0
+  } else {
+    if (userQuantity.value < 1) {
+      userQuantity.value = 1
+    } else if (userQuantity.value >= selectedQuantity.value) {
+      warning(`Maximum ${selectedQuantity.value} item(s) available`, 'Limit Reached')
+      userQuantity.value = selectedQuantity.value
     }
+  }
 })
+
+watch(selectedSize, (newSize) => {
+  console.log('🔍 Size changed to:', newSize)
+  
+  if (selectedQuantity.value <= 0) {
+    error('This variation is out of stock', 'Out of Stock')
+  }
+})
+
+
 
 /* ====== PRODUCT REVIEWS (UI + Data) ====== */
 // Get productId & make sure your composable already loaded product/seller
@@ -474,47 +484,35 @@ const { error, warning } = useToast()
 // Add to cart
 const { adding, addToCart } = useCart()
 
+
 // Add to cart handler
 async function handleAddToCart() {
+  if (selectedQuantity.value <= 0) {
+    error('This item is out of stock', 'Out of Stock')
+    return
+  }
 
-    if (selectedQuantity.value <= 0) {
-        warning("This item is out of stock", "Out of stock")
-        return
+  if (userQuantity.value <= 0) {
+    warning('Please select a quantity', 'Invalid Quantity')
+    return
+  }
+
+  try {
+    const productData = {
+      id: productId.value,
+      ...toRaw(product.value)
     }
-
-    try {
-        // Prepare product data with id
-        const productData = {
-            id: productId.value,
-            ...toRaw(product.value)
-        }
-
-        await addToCart(productData, userQuantity.value, selectedSize.value)
-
-        // Store data for modal
-        addedProductName.value = productData.item_name
-        addedQuantity.value = userQuantity.value
-
-        // Show success modal
-        showSuccessModal.value = true
-
-        console.log('Product data being sent to cart:', {
-            id: productData.id,
-            sellerId: productData.sellerId,
-            item_name: productData.item_name,
-            price: productData.price,
-            quantity: productData.quantity,
-            size: productData.size,
-            selectedSize: selectedSize.value,
-            userQuantity: userQuantity.value
-        })
-
-  
-        // router.push('/cart')
-    } catch (err) {
-        warning('Please log in to manage cart.', 'Login Required')
-        console.error(err)
-    }
+    await addToCart(productData, userQuantity.value, selectedSize.value)
+    
+    addedProductName.value = productData.item_name || productData.name
+    addedQuantity.value = userQuantity.value
+    showSuccessModal.value = true
+    success('Added to cart!', 'Success')
+    
+  } catch (err) {
+    error('Please log in to manage cart.', 'Login Required')
+    console.error(err)
+  }
 }
 function closeSuccessModal() {
     showSuccessModal.value = false
