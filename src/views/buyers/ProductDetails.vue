@@ -238,18 +238,21 @@ const selectedQuantity = computed(() => {
 
 
 // Format Availability status
+// Format Availability status
 const selectedStockStatus = computed(() => {
   // Wait until product data is actually loaded
-  if (!product.value || product.value.quantity == null) {
+  if (!product.value || product.value.quantity === null) {
     return { text: 'Loading...', color: 'text-gray-400' }
   }
 
-  if (product.value.quantity <= 0) {
+  // ✅ Check selectedQuantity (which already handles size-based quantities)
+  if (selectedQuantity.value <= 0) {
     return { text: 'Out of Stock', color: 'text-red-600' }
   }
 
   return { text: 'In Stock', color: 'text-green-600' }
 })
+
 
 
 // Ensure userQuantity stays within stock and handles out-of-stock
