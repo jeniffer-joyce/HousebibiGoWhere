@@ -19,6 +19,9 @@ const loading = ref(true)
 const shopProfilePics = ref({})
 const stockWarnings = ref(new Map()) // Map of cartItemId to actual available stock
 
+// Shipping fee constant
+const SHIPPING_FEE = 1.99
+
 // Payment processing state
 const processingPayment = ref(false)
 
@@ -188,7 +191,7 @@ const itemsBySeller = computed(() => {
     selectedCartItems.value.forEach(item => {
         if (!grouped[item.sellerId]) {
             grouped[item.sellerId] = {
-                sellerName: item.sellerName,
+                sellerName: item.sellerName || item.shopName || item.businessName || 'Unknown Shop',
                 items: []
             }
         }
@@ -204,11 +207,16 @@ function getSellerSubtotal(sellerId) {
     return seller.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 }
 
-// Calculate total
-const orderTotal = computed(() => {
+// Calculate subtotal (items only, before shipping)
+const orderSubtotal = computed(() => {
     return selectedCartItems.value.reduce((sum, item) => {
         return sum + (item.price * item.quantity)
     }, 0)
+})
+
+// Calculate total (subtotal + shipping)
+const orderTotal = computed(() => {
+    return orderSubtotal.value + SHIPPING_FEE
 })
 
 // Get selected address
@@ -371,13 +379,39 @@ async function proceedToPayment() {
     processingPayment.value = true
 
     try {
-        // Prepare items for Stripe
-        const items = selectedCartItems.value.map(item => ({
-            name: item.item_name,
-            price: item.price,
-            quantity: item.quantity,
-            image: item.img_url || null
-        }))
+        // Prepare items for Stripe with proper size extraction
+        const items = selectedCartItems.value.map(item => {
+            // Get the actual size name from availableSizes array using sizeIndex
+            let sizeName = item.size || null
+            if (!sizeName && item.sizeIndex !== null && item.sizeIndex !== undefined && item.availableSizes && item.availableSizes.length > 0) {
+                sizeName = item.availableSizes[item.sizeIndex] || null
+            }
+            
+            return {
+                name: item.item_name,
+                price: item.price,
+                quantity: item.quantity,
+                image: item.img_url || null,
+                size: sizeName,
+                sizeIndex: item.sizeIndex !== undefined ? item.sizeIndex : null,
+                productId: item.productId,
+                sellerId: item.sellerId,
+                shopName: item.shopName || item.sellerName || item.businessName || null
+            }
+        })
+
+        // Calculate total including shipping
+        const itemsTotal = selectedCartItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+        const grandTotal = itemsTotal + SHIPPING_FEE
+
+        console.log('🛒 Checkout Data:', {
+            items: items,
+            itemsTotal: itemsTotal,
+            shippingFee: SHIPPING_FEE,
+            grandTotal: grandTotal,
+            itemsWithSize: items.filter(i => i.size).length,
+            deliveryAddress: selectedAddress.value
+        })
 
         // Get current URL for success/cancel redirects
         const baseUrl = window.location.origin
@@ -396,6 +430,9 @@ async function proceedToPayment() {
             },
             body: JSON.stringify({
                 items: items,
+                shippingFee: SHIPPING_FEE,
+                totalAmount: grandTotal,  // Include calculated total
+                deliveryAddress: selectedAddress.value,  // Include delivery address
                 successUrl: `${baseUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
                 cancelUrl: `${baseUrl}/checkout`
             })
@@ -533,9 +570,9 @@ onBeforeUnmount(() => {
                             class="h-10 w-10 rounded-full object-cover" />
                         <div v-else
                             class="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-                            {{ seller.sellerName.charAt(0) }}
+                            {{ seller.sellerName?.charAt(0) || '?' }}
                         </div>
-                        <h3 class="font-bold text-lg text-slate-900 dark:text-white">{{ seller.sellerName }}</h3>
+                        <h3 class="font-bold text-lg text-slate-900 dark:text-white">{{ seller.sellerName || 'Unknown Shop' }}</h3>
                     </div>
 
                     <div class="space-y-4">
@@ -594,12 +631,12 @@ onBeforeUnmount(() => {
 
                     <div class="space-y-3 mb-6">
                         <div class="flex justify-between text-slate-600 dark:text-slate-400">
-                            <span>Items ({{ selectedCartItems.length }})</span>
-                            <span>${{ orderTotal.toFixed(2) }}</span>
+                            <span>Subtotal ({{ selectedCartItems.length }} items)</span>
+                            <span>${{ orderSubtotal.toFixed(2) }}</span>
                         </div>
                         <div class="flex justify-between text-slate-600 dark:text-slate-400">
                             <span>Shipping</span>
-                            <span class="text-green-600 dark:text-green-400">FREE</span>
+                            <span>${{ SHIPPING_FEE.toFixed(2) }}</span>
                         </div>
                         <div class="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-between">
                             <span class="font-bold text-lg text-slate-900 dark:text-white">Total</span>
