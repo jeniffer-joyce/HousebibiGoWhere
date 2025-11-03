@@ -1,6 +1,13 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue';
+import { auth, db } from '@/firebase/firebase_config';
+import { collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
+import { useMessages } from '@/composables/useMessages';
+import { useFavorites } from '@/composables/useFavorites';
+
+const router = useRouter();
 
 // Sidebar collapsed state
 const isSidebarCollapsed = ref(false);
@@ -9,44 +16,141 @@ function handleSidebarToggle(collapsed) {
     isSidebarCollapsed.value = collapsed;
 }
 
-// Mock data for recent orders
-const recentOrders = ref([
-    {
-        id: 1,
-        title: 'Delicious homemade meals',
-        date: 'July 10',
-        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'
-    },
-    {
-        id: 2,
-        title: 'Handcrafted clothing',
-        date: 'July 5',
-        image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400&h=300&fit=crop'
-    },
-    {
-        id: 3,
-        title: 'Unique handmade crafts',
-        date: 'June 28',
-        image: 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=400&h=300&fit=crop'
+// Loading states
+const loadingOrders = ref(true);
+
+// Dynamic data
+const recentOrders = ref([]);
+
+// Get current user ID
+const currentUserIdRef = computed(() => auth.currentUser?.uid);
+
+// Initialize messaging composable (same as BuyerMessages)
+const messaging = useMessages(currentUserIdRef);
+
+// Initialize favorites composable (same as Favourites.vue)
+const favoritesComposable = useFavorites();
+
+// Get favorite businesses (first 6)
+const favoriteBusinesses = computed(() => {
+    if (!Array.isArray(favoritesComposable.favorites.value)) return [];
+    return favoritesComposable.favorites.value.slice(0, 6);
+});
+
+// Get unread messages from the composable
+const unreadMessages = computed(() => {
+    // Filter conversations that have unread messages and take only first 3
+    return messaging.conversations.value
+        .filter(conv => {
+            const unread = conv.unreadCount || 0;
+            return unread > 0;
+        })
+        .slice(0, 3)
+        .map(conv => ({
+            id: conv.id,
+            business: conv.otherUser?.name || 'Business',
+            message: conv.lastMessage || 'New message',
+            avatar: conv.otherUser?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(conv.otherUser?.name || 'Business')}&background=FF9B7A&color=fff&size=50`,
+            timestamp: conv.lastMessageTime,
+            otherUserId: conv.otherUserId
+        }));
+});
+
+// Loading state for messages from composable
+const loadingMessages = computed(() => messaging.loading.value);
+
+// Loading state for favorites (assuming the composable has a loading state)
+const loadingFavorites = computed(() => false); // Will update if useFavorites has a loading state
+
+// Stats
+const stats = computed(() => ({
+    totalOrders: recentOrders.value.length,
+    pendingOrders: recentOrders.value.filter(o => o.status === 'to_ship' || o.status === 'pending').length,
+    unreadCount: unreadMessages.value.length,
+    favoriteCount: favoriteBusinesses.value.length
+}));
+
+// Fetch recent orders (last 3)
+async function fetchRecentOrders() {
+    try {
+        loadingOrders.value = true;
+        const userId = auth.currentUser?.uid;
+        if (!userId) {
+            recentOrders.value = [];
+            return;
+        }
+
+        const ordersRef = collection(db, 'orders');
+        // Using 'uid' field as per Firestore rules (buyer's uid)
+        const q = query(
+            ordersRef,
+            where('uid', '==', userId),
+            orderBy('createdAt', 'desc'),
+            limit(3)
+        );
+
+        const snapshot = await getDocs(q);
+        recentOrders.value = snapshot.docs.map(doc => {
+            const data = doc.data();
+            const firstProduct = data.products?.[0] || {};
+            
+            return {
+                id: doc.id,
+                orderId: data.orderId || doc.id.slice(-6).toUpperCase(),
+                title: firstProduct.item_name || 'Order',
+                date: formatDate(data.createdAt),
+                image: firstProduct.img_url || 'https://via.placeholder.com/400x300?text=Product',
+                status: data.status || 'pending',
+                shopName: firstProduct.shopName || 'Shop',
+                sellerId: firstProduct.sellerId || data.sellerId || ''
+            };
+        });
+    } catch (error) {
+        console.error('Error fetching orders:', error);
+        recentOrders.value = [];
+    } finally {
+        loadingOrders.value = false;
     }
-]);
+}
 
-// Mock data for favorite businesses
-const favoriteBusinesses = ref([
-    { id: 1, name: 'The Cozy Kitchen', image: 'https://ui-avatars.com/api/?name=The+Cozy+Kitchen&background=FFD7BA&color=8B4513&size=100' },
-    { id: 2, name: 'Crafty Corner', image: 'https://ui-avatars.com/api/?name=Crafty+Corner&background=FFD7BA&color=8B4513&size=100' },
-    { id: 3, name: 'Fashion Finds', image: 'https://ui-avatars.com/api/?name=Fashion+Finds&background=FFD7BA&color=8B4513&size=100' }
-]);
+// Format date helper
+function formatDate(timestamp) {
+    if (!timestamp) return 'N/A';
+    
+    try {
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        const options = { month: 'short', day: 'numeric' };
+        return date.toLocaleDateString('en-US', options);
+    } catch (error) {
+        return 'N/A';
+    }
+}
 
-// Mock data for unread messages
-const unreadMessages = ref([
-    { id: 1, business: 'The Cozy Kitchen', message: 'Hi Sarah, your order is ready for...', avatar: 'https://ui-avatars.com/api/?name=The+Cozy+Kitchen&background=FF9B7A&color=fff&size=50' },
-    { id: 2, business: 'Crafty Corner', message: 'Thanks for your review!', avatar: 'https://ui-avatars.com/api/?name=Crafty+Corner&background=90C8AC&color=fff&size=50' }
-]);
+// Navigation helpers
+function goToOrder(orderId) {
+    router.push('/buyer-orders/');
+}
+
+function goToMessage(conversationId) {
+    router.push(`/buyer-messages/?conversation=${conversationId}`);
+}
+
+function goToShop(businessId) {
+    if (businessId) {
+        router.push(`/shop-details/${businessId}`);
+    }
+}
+
+// Initialize data on mount
+onMounted(() => {
+    fetchRecentOrders();
+    messaging.loadConversations(); // Load conversations using the composable
+    // Favorites are auto-loaded by the composable via watch on user
+});
 </script>
 
 <template>
-    <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div class="flex min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
         <!-- Sidebar Navigation -->
         <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
 
@@ -54,95 +158,257 @@ const unreadMessages = ref([
         <main 
             class="flex-1 p-8 transition-all duration-300"
             :class="isSidebarCollapsed ? 'ml-20' : 'ml-64'">
+            
             <!-- Header -->
-            <div class="flex items-center justify-between mb-8">
-                <div>
-                    <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
-                </div>
-                <div class="flex items-center gap-4">
-                    <!-- Search -->
-                    <div class="relative">
-                        <input
-                            type="text"
-                            placeholder="Search"
-                            class="w-64 pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
-                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
+            <div class="mb-8">
+                <h1 class="text-4xl font-bold text-slate-900 dark:text-white mb-2">Dashboard</h1>
+                <p class="text-slate-600 dark:text-slate-400">Welcome back! Here's what's happening with your account.</p>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Total Orders -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-shadow border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                            <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                            </svg>
+                        </div>
                     </div>
-                    <!-- Notifications -->
-                    <button class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                        </svg>
-                    </button>
-                    <!-- Profile -->
-                    <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="Profile" class="h-10 w-10 rounded-full border-2 border-primary" />
+                    <p class="text-3xl font-bold text-slate-900 dark:text-white">{{ stats.totalOrders }}</p>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Total Orders</p>
+                </div>
+
+                <!-- Pending Orders -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-shadow border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-xl">
+                            <svg class="h-6 w-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-3xl font-bold text-slate-900 dark:text-white">{{ stats.pendingOrders }}</p>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Pending Orders</p>
+                </div>
+
+                <!-- Unread Messages -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-shadow border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl">
+                            <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-3xl font-bold text-slate-900 dark:text-white">{{ stats.unreadCount }}</p>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Unread Messages</p>
+                </div>
+
+                <!-- Favorites -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-shadow border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-red-100 dark:bg-red-900/30 rounded-xl">
+                            <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-3xl font-bold text-slate-900 dark:text-white">{{ stats.favoriteCount }}</p>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Favorite Shops</p>
                 </div>
             </div>
 
             <!-- Dashboard Content -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <!-- Recent Orders Section -->
-                <div class="lg:col-span-2">
-                    <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Recent Orders</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Recent Orders</h2>
+                        <RouterLink to="/buyer-orders/" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1">
+                            View All
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </RouterLink>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div v-if="loadingOrders" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div v-for="i in 3" :key="i" class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden animate-pulse border border-slate-200 dark:border-slate-700">
+                            <div class="h-40 bg-slate-200 dark:bg-slate-700"></div>
+                            <div class="p-4 space-y-3">
+                                <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-2/3"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Orders Grid -->
+                    <div v-else-if="recentOrders.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div
                             v-for="order in recentOrders"
                             :key="order.id"
-                            class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                            <img :src="order.image" :alt="order.title" class="w-full h-40 object-cover" />
+                            @click="goToOrder(order.id)"
+                            class="group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500">
+                            <div class="relative overflow-hidden">
+                                <img :src="order.image" :alt="order.title" class="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300" />
+                                <div class="absolute top-3 right-3">
+                                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-white/90 backdrop-blur-sm text-slate-700">
+                                        {{ order.status === 'to_ship' ? 'Processing' : order.status === 'to_receive' ? 'Shipped' : 'Pending' }}
+                                    </span>
+                                </div>
+                            </div>
                             <div class="p-4">
-                                <h3 class="font-semibold text-slate-900 dark:text-white mb-1">{{ order.title }}</h3>
-                                <p class="text-sm text-slate-500 dark:text-slate-400">Order placed on {{ order.date }}</p>
+                                <h3 class="font-semibold text-slate-900 dark:text-white mb-1 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                    {{ order.title }}
+                                </h3>
+                                <p class="text-sm text-slate-500 dark:text-slate-400">Order #{{ order.orderId }}</p>
+                                <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Placed on {{ order.date }}</p>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div v-else class="bg-white dark:bg-slate-800 rounded-2xl p-12 text-center border border-slate-200 dark:border-slate-700">
+                        <svg class="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                        </svg>
+                        <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">No orders yet</h3>
+                        <p class="text-slate-600 dark:text-slate-400 mb-4">Start shopping to see your orders here</p>
+                        <RouterLink to="/products/">
+                            <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                Browse Products
+                            </button>
+                        </RouterLink>
                     </div>
 
                     <!-- Favorite Businesses Section -->
                     <div class="mt-8">
-                        <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Favorite Businesses</h2>
-                        <div class="grid grid-cols-3 gap-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Favorite Businesses</h2>
+                            <RouterLink to="/buyer-favourites/" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1">
+                                View All
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </RouterLink>
+                        </div>
+
+                        <!-- Loading State -->
+                        <div v-if="loadingFavorites" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div v-for="i in 6" :key="i" class="flex flex-col items-center">
+                                <div class="w-20 h-20 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse mb-3"></div>
+                                <div class="h-3 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                            </div>
+                        </div>
+
+                        <!-- Favorites Grid -->
+                        <div v-else-if="favoriteBusinesses.length > 0" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                             <div
                                 v-for="business in favoriteBusinesses"
                                 :key="business.id"
+                                @click="goToShop(business.id)"
                                 class="flex flex-col items-center cursor-pointer group">
-                                <div class="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
-                                    <img :src="business.image" :alt="business.name" class="w-20 h-20 rounded-full" />
+                                <div class="relative w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 border-2 border-transparent group-hover:border-blue-500">
+                                    <img :src="business.image" :alt="business.name" class="w-16 h-16 rounded-full object-cover" />
                                 </div>
-                                <p class="text-sm font-medium text-slate-900 dark:text-white text-center">{{ business.name }}</p>
+                                <p class="text-sm font-medium text-slate-900 dark:text-white text-center group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                    {{ business.name }}
+                                </p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 text-center mt-1">
+                                    {{ business.category }}
+                                </p>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Recommendations Section -->
-                    <div class="mt-8">
-                        <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Recommendations For You</h2>
-                        <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
-                            <p class="text-slate-600 dark:text-slate-400">Discover new businesses tailored to your preferences...</p>
+                        <!-- Empty State -->
+                        <div v-else class="bg-white dark:bg-slate-800 rounded-2xl p-8 text-center border border-slate-200 dark:border-slate-700">
+                            <svg class="h-12 w-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                            </svg>
+                            <p class="text-slate-600 dark:text-slate-400">No favorite businesses yet</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Unread Messages Section -->
                 <div class="lg:col-span-1">
-                    <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Unread Messages</h2>
-                    <div class="space-y-3">
-                        <div
-                            v-for="message in unreadMessages"
-                            :key="message.id"
-                            class="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Unread Messages</h2>
+                        <RouterLink to="/buyer-messages/" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1">
+                            View All
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </RouterLink>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div v-if="loadingMessages" class="space-y-3">
+                        <div v-for="i in 3" :key="i" class="bg-white dark:bg-slate-800 rounded-2xl p-4 animate-pulse border border-slate-200 dark:border-slate-700">
                             <div class="flex items-start gap-3">
-                                <img :src="message.avatar" :alt="message.business" class="w-12 h-12 rounded-full" />
-                                <div class="flex-1 min-w-0">
-                                    <h3 class="font-semibold text-slate-900 dark:text-white mb-1">{{ message.business }}</h3>
-                                    <p class="text-sm text-slate-500 dark:text-slate-400 truncate">{{ message.message }}</p>
+                                <div class="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+                                <div class="flex-1 space-y-2">
+                                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                    <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Messages List -->
+                    <div v-else-if="unreadMessages.length > 0" class="space-y-3">
+                        <div
+                            v-for="message in unreadMessages"
+                            :key="message.id"
+                            @click="goToMessage(message.id)"
+                            class="group bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500">
+                            <div class="flex items-start gap-3">
+                                <img :src="message.avatar" :alt="message.business" class="w-12 h-12 rounded-full flex-shrink-0 ring-2 ring-transparent group-hover:ring-blue-500 transition-all" />
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-semibold text-slate-900 dark:text-white mb-1 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                        {{ message.business }}
+                                    </h3>
+                                    <p class="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{{ message.message }}</p>
+                                    <div class="flex items-center gap-2 mt-2">
+                                        <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                                            <span class="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 animate-pulse"></span>
+                                            New
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div v-else class="bg-white dark:bg-slate-800 rounded-2xl p-8 text-center border border-slate-200 dark:border-slate-700">
+                        <svg class="h-12 w-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                        </svg>
+                        <p class="text-slate-600 dark:text-slate-400 text-sm">No new messages</p>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 </template>
+
+<style scoped>
+/* Smooth animations */
+* {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+</style>
