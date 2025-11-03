@@ -7,7 +7,11 @@
 //   - createProduct(productData)
 //   - getMyProduct(productId)
 //   - updateMyProduct(productId, patch)
-//   - deleteMyProduct(productId)              ← NEW
+//   - deleteMyProduct(productId)
+//   - initInventoryAuthBridge()                 ← NEW (opt-in)
+//   - ensureInventoryWatcher()                  ← NEW (idempotent)
+//   - startInventoryWatcherForCurrentSeller()   ← NEW (advanced)
+//   - stopInventoryWatcher()                    ← NEW
 //
 // Notes:
 //   • Seller info is read from /businesses/{uid}
@@ -16,6 +20,8 @@
 //     - We merge primary img_url + additional_images when saving
 //     - We also read legacy shapes (img_url string/array, images[], additional_images[])
 //   • Timestamps normalized to ISO strings on reads
+//   • Inventory bridge is LAZY-LOADED from ./inventory_management.js to avoid
+//     circular imports and blank screens. No auto side-effects.
 // ============================================================================
 
 import { auth, db } from '@/firebase/firebase_config'
@@ -288,4 +294,107 @@ export async function deleteMyProduct(productId) {
   const { ref } = await ensureOwnedProduct(productId)
   await deleteDoc(ref)
   return true
+}
+
+// ============================================================================
+// Inventory bridge (LAZY-LOADED, opt-in, no auto side-effects)
+// ============================================================================
+
+let _invModuleLoaded = false
+let _invUnsub = null
+let _attachFn = null
+let _detachFn = null
+
+async function _ensureInventoryModule() {
+  if (_invModuleLoaded) return true
+  try {
+    // IMPORTANT: relative path from THIS file. No top-level import to avoid cycles.
+    const mod = await import('./inventory_management.js')
+    _attachFn = mod?.attachInventoryWatcher ?? null
+    _detachFn = mod?.detachInventoryWatcher ?? null
+    _invModuleLoaded = true
+    if (!_attachFn) {
+      console.warn('[seller_product] inventory_management.js loaded but attachInventoryWatcher missing')
+    }
+    return true
+  } catch (e) {
+    console.warn('[seller_product] Could not load inventory_management.js:', e)
+    _invModuleLoaded = false
+    return false
+  }
+}
+
+/**
+ * Start live inventory watcher for the current seller (idempotent).
+ * Safe no-op if module missing or already running.
+ */
+export async function startInventoryWatcherForCurrentSeller() {
+  try {
+    const user = auth?.currentUser
+    if (!user?.uid) return
+    if (_invUnsub) return // already attached
+
+    const ok = await _ensureInventoryModule()
+    if (!ok || !_attachFn) return
+
+    _invUnsub = _attachFn({ db, auth, sellerId: user.uid })
+    console.log('[seller_product] Inventory watcher attached for', user.uid)
+  } catch (e) {
+    console.error('[seller_product] startInventoryWatcherForCurrentSeller failed:', e)
+  }
+}
+
+/** Stop the live inventory watcher (idempotent). */
+export function stopInventoryWatcher() {
+  try {
+    if (_invUnsub) {
+      try { _invUnsub() } catch {}
+      _invUnsub = null
+    }
+    if (_detachFn) {
+      try { _detachFn() } catch {}
+    }
+    console.log('[seller_product] Inventory watcher detached')
+  } catch (e) {
+    console.error('[seller_product] stopInventoryWatcher failed:', e)
+  }
+}
+
+/**
+ * Bridge auth → watcher. Call once (e.g., in a page’s onMounted).
+ *
+ * Usage in your Vue:
+ *   import { initInventoryAuthBridge } from '@/firebase/services/sellers/seller_product'
+ *   onMounted(() => { initInventoryAuthBridge() })
+ *
+ * Returns an unsubscribe to clean up manually if you want.
+ */
+export function initInventoryAuthBridge() {
+  if (!auth) {
+    console.warn('[seller_product] initInventoryAuthBridge called before auth ready.')
+    return () => {}
+  }
+
+  // Detach any previous watcher (useful during HMR)
+  stopInventoryWatcher()
+
+  const unsub = onAuthStateChanged(auth, async (user) => {
+    stopInventoryWatcher()
+    if (user?.uid) {
+      await startInventoryWatcherForCurrentSeller()
+    }
+  })
+
+  return () => {
+    try { unsub?.() } catch {}
+    stopInventoryWatcher()
+  }
+}
+
+/** Ensure watcher is running for the current user (idempotent). */
+export async function ensureInventoryWatcher() {
+  const user = auth?.currentUser
+  if (!user?.uid) return
+  if (_invUnsub) return
+  await startInventoryWatcherForCurrentSeller()
 }
