@@ -2,8 +2,9 @@
 import { ref, computed, onMounted } from 'vue'
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
 import { useFavorites } from '@/composables/useFavorites.js'
+import { useToast } from '@/composables/useToast.js'
 import { auth, db } from '@/firebase/firebase_config'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 
 const followedBusinesses = ref([])
@@ -11,17 +12,13 @@ const loadingBusinesses = ref(true)
 
 const {
   isSidebarCollapsed,
-  favorites,
   favoriteProducts,
   handleSidebarToggle,
-  toggleFavorite,
   toggleProductFavorite
 } = useFavorites()
 
-// Search input
 const searchQuery = ref('')
 
-// Filtered favorites for products
 const filteredProducts = computed(() => {
   if (!Array.isArray(favoriteProducts.value)) return []
   
@@ -31,7 +28,6 @@ const filteredProducts = computed(() => {
   )
 })
 
-// Filtered favorites for businesses
 const filteredBusinesses = computed(() => {
   if (!Array.isArray(followedBusinesses.value)) return []
   
@@ -47,100 +43,94 @@ const filteredBusinesses = computed(() => {
 })
 
 async function loadFollowedBusinesses(userId) {
-  console.log('🔍 loadFollowedBusinesses called with userId:', userId)
-  
   if (!userId) {
-    console.log('❌ No userId provided')
     loadingBusinesses.value = false
     return
   }
   
   try {
-    // Get user's favoriteBusinesses array
     const userDoc = await getDoc(doc(db, 'users', userId))
-    console.log('📄 userDoc exists?', userDoc.exists())
     
     if (!userDoc.exists()) {
-      console.log('❌ User document does not exist')
       followedBusinesses.value = []
       loadingBusinesses.value = false
       return
     }
     
     const userData = userDoc.data()
-    console.log('📊 Full userData:', userData)
-    
     const favoriteBusinessIds = userData.favoriteBusinesses || []
-    console.log('⭐ favoriteBusinessIds:', favoriteBusinessIds)
-    console.log('⭐ Count:', favoriteBusinessIds.length)
     
     if (favoriteBusinessIds.length === 0) {
-      console.log('⚠️ No favorite businesses found')
       followedBusinesses.value = []
       loadingBusinesses.value = false
       return
     }
     
-    // Fetch all followed businesses
-    console.log('📡 Fetching', favoriteBusinessIds.length, 'businesses...')
     const businessPromises = favoriteBusinessIds.map(id => 
       getDoc(doc(db, 'businesses', id))
     )
     
     const businessDocs = await Promise.all(businessPromises)
-    console.log('📦 Received', businessDocs.length, 'business documents')
     
-    const validBusinesses = businessDocs
-      .filter(doc => {
-        const exists = doc.exists()
-        if (!exists) {
-          console.log('⚠️ Business document not found:', doc.id)
-        }
-        return exists
-      })
-      .map(doc => {
-        const data = doc.data()
-        console.log('✅ Loaded business:', doc.id, '-', data.name || data.businessName)
-        return {
-          id: doc.id,
-          ...data,
-          isFavorite: true
-        }
-      })
-    
-    followedBusinesses.value = validBusinesses
-    console.log('✅ Final followedBusinesses count:', followedBusinesses.value.length)
+    followedBusinesses.value = businessDocs
+      .filter(doc => doc.exists())
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        isFavorite: true
+      }))
     
   } catch (error) {
-    console.error('❌ Error loading followed businesses:', error)
+    console.error('Error loading followed businesses:', error)
     followedBusinesses.value = []
   } finally {
     loadingBusinesses.value = false
   }
 }
 
-// ✅ Use Firebase Auth directly (most reliable approach)
-onMounted(() => {
-  console.log('🎬 Component mounted - setting up auth listener')
+async function unfollowBusiness(businessId, businessName) {
+  if (!auth.currentUser) {
+    useToast.error('Please log in to manage favorites')
+    return
+  }
   
-  // Listen for auth state changes
-  onAuthStateChanged(auth, async (firebaseUser) => {
-    console.log('🔥 Auth state changed')
-    console.log('   User:', firebaseUser ? firebaseUser.uid : 'null')
+  try {
+    const userRef = doc(db, 'users', auth.currentUser.uid)
+    const businessRef = doc(db, 'businesses', businessId)
     
+    await updateDoc(userRef, {
+      favoriteBusinesses: arrayRemove(businessId)
+    })
+    
+    const businessDoc = await getDoc(businessRef)
+    if (businessDoc.exists()) {
+      const currentFollowers = businessDoc.data().followers || 0
+      await updateDoc(businessRef, {
+        followers: Math.max(0, currentFollowers - 1)
+      })
+    }
+    
+    followedBusinesses.value = followedBusinesses.value.filter(b => b.id !== businessId)
+    
+    useToast.success(`Unfollowed ${businessName}`)
+    
+  } catch (error) {
+    console.error('Error unfollowing business:', error)
+    useToast.error('Failed to unfollow business')
+  }
+}
+
+onMounted(() => {
+  onAuthStateChanged(auth, async (firebaseUser) => {
     if (firebaseUser) {
-      console.log('✅ User is authenticated, loading favorite businesses...')
       await loadFollowedBusinesses(firebaseUser.uid)
     } else {
-      console.log('⚠️ No authenticated user')
       followedBusinesses.value = []
       loadingBusinesses.value = false
     }
   })
 })
 </script>
-
-
 
 <template>
   <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -193,8 +183,11 @@ onMounted(() => {
                class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
             <div class="relative w-full h-48 sm:h-56 md:h-48 lg:h-52">
               <img :src="product.img_url" :alt="product.item_name" class="w-full h-full object-cover" />
-              <button @click="toggleProductFavorite(product)"
-                      class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
+              <button 
+                @click="toggleProductFavorite(product)"
+                title="Unfavourite this product"
+                class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors"
+              >
                 <svg :class="['h-6 w-6 transition-colors', product.isFavorite ? 'text-red-500 fill-current' : 'text-slate-400']"
                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -246,44 +239,44 @@ onMounted(() => {
         </p>
       </div>
 
-      <!-- ✅ FIXED: Favorites Grid for Businesses -->
+      <!-- Favorites Grid for Businesses -->
       <div v-if="filteredBusinesses.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <div v-for="business in filteredBusinesses" :key="business.id"
              class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
-          <!-- ✅ FIXED: Use profilePic instead of image -->
           <div class="relative w-full h-48 sm:h-56 md:h-48 lg:h-52">
             <img 
               :src="business.profilePic || 'https://via.placeholder.com/400x300?text=No+Image'" 
               :alt="business.name" 
               class="w-full h-full object-cover" 
             />
-            <button @click="toggleFavorite(business.id)"
-                    class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
-              <svg :class="['h-6 w-6 transition-colors', business.isFavorite ? 'text-red-500 fill-current' : 'text-slate-400']"
-                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+            
+            <!-- Heart button with native tooltip -->
+            <button 
+              @click="unfollowBusiness(business.id, business.name)"
+              title="Unfavourite this business"
+              class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 hover:scale-110 transition-all duration-200 shadow-md z-10"
+              type="button"
+            >
+              <svg class="h-6 w-6 text-red-500 fill-current"
+                   viewBox="0 0 24 24">
+                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
               </svg>
             </button>
           </div>
 
           <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between">
-            <!-- Category Badge -->
             <div class="mb-2">
               <span class="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">
                 {{ business.category || 'Business' }}
               </span>
             </div>
             
-            <!-- Business Name -->
             <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">{{ business.name }}</h3>
             
-            <!-- ✅ FIXED: Use bio or description -->
-            <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-4 line-clamp-2">
               {{ business.bio || business.description || 'No description available' }}
             </p>
 
-            <!-- ✅ FIXED: Rating without reviews count (since it doesn't exist in Firestore) -->
             <div class="flex items-center gap-2 mb-4">
               <div class="flex items-center">
                 <svg class="h-5 w-5 text-yellow-400 fill-current" viewBox="0 0 24 24">
@@ -293,13 +286,11 @@ onMounted(() => {
                   {{ business.rating ? business.rating.toFixed(1) : 'N/A' }}
                 </span>
               </div>
-              <!-- ✅ Show followers instead of reviews -->
               <span class="text-sm text-slate-500 dark:text-slate-400">
                 {{ business.followers || 0 }} followers
               </span>
             </div>
 
-            <!-- Action Buttons -->
             <div class="flex flex-col sm:flex-row gap-2">
               <RouterLink 
                 :to="{ name: 'ShopDetails', params: { id: business.id || business.uid } }" 

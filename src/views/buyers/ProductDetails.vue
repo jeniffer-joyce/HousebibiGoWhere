@@ -3,17 +3,18 @@ import { ref, reactive, computed, onMounted, watch, onBeforeUnmount, toRaw } fro
 import { useRoute, useRouter } from 'vue-router'
 import { useProduct } from '@/composables/useProduct'
 import MessageButton from '@/components/messageButton.vue'
-import { db } from "@/firebase/firebase_config"
+import { db, auth } from "@/firebase/firebase_config"  // ✅ Add auth here
 import { collection, query, where, orderBy, onSnapshot, getDoc, doc } from "firebase/firestore"
+import { onAuthStateChanged } from 'firebase/auth'  // ✅ Add this
 
 import { useImageZoom } from '@/composables/useImageZoom'
 import { useCart } from '@/composables/useCart'
+import { useFavorites } from '@/composables/useFavorites.js'  // ✅ Add this
 
-import Loading from '@/components/status/Loading.vue';
-
-import { useToast } from '@/composables/useToast.js' // Import toast
-
+import Loading from '@/components/status/Loading.vue'
+import { useToast } from '@/composables/useToast.js'
 import AddToCartSuccessModal from '@/components/modals/AddToCartSuccessModal.vue'
+
 
 const route = useRoute()
 const router = useRouter()
@@ -21,6 +22,38 @@ const router = useRouter()
 defineProps({
   productId: String
 })
+
+// ✅ Add favorites functionality
+const { favoriteProducts, toggleProductFavorite, loadFavoriteProducts } = useFavorites()
+
+// Check if current product is favorited
+const isProductFavorited = computed(() => {
+  if (!product.value?.id && !productId.value) return false
+  const pid = product.value?.id || productId.value
+  return favoriteProducts.value.some(p => p.id === pid)
+})
+
+// Toggle favorite function
+async function toggleFavorite() {
+  if (!auth.currentUser) {
+    useToast.error('Please log in to add favorites')
+    return
+  }
+  
+  if (!product.value) return
+  
+  const productData = {
+    id: productId.value,
+    item_name: product.value.name,
+    img_url: product.value.imageUrl,
+    sellerName: product.value.sellerName || 'Unknown Seller',
+    sizes: product.value.sizes || [],
+    isFavorite: isProductFavorited.value
+  }
+  
+  await toggleProductFavorite(productData)
+}
+
 
 // Track navigation history
 const showGoToShop = computed(() => route.query.fromProductsPage === 'true')
@@ -109,13 +142,28 @@ const {
 onMounted(async () => {
   await loadProduct()
   
-  // Debug logs
-  console.log('Product loaded:', product.value)
-  console.log('Product sellerId:', product.value?.sellerId)  // Add this
-  console.log('Product sellerID:', product.value?.sellerID)  // Check both casings
-  console.log('Seller loaded:', seller.value)
-  console.log('Seller profilePic:', seller.value?.profilePic)
+  // ✅ Add this: Load user favorites
+  onAuthStateChanged(auth, async (firebaseUser) => {
+    if (firebaseUser) {
+      await loadFavoriteProducts(firebaseUser.uid)
+    }
+  })
+  
+  // ... rest of your existing onMounted code
+  if (productId.value && route.query.shop) {
+    try {
+      const sellerDoc = await getDoc(doc(db, 'businesses', route.query.shop))
+      if (sellerDoc.exists()) {
+        seller.value = sellerDoc.data()
+      }
+    } catch (err) {
+      console.error('Error fetching seller:', err)
+    }
+  }
+
+  // ... rest of your code
 })
+
 
 
 
@@ -519,17 +567,37 @@ function closeSuccessModal() {
                 <!-- Left Column - Images -->
                 <!-- Mobile: Horizontal Scroll -->
                 <div class="lg:hidden">
-                    <!-- Horizontal scrollable container -->
-                    <div class="relative">
-                        <div @scroll="handleImageScroll"
-                            class="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4"
-                            style="scroll-behavior: smooth; -webkit-overflow-scrolling: touch;">
-                            <div v-for="(image, index) in productImages" :key="index"
-                                class="flex-shrink-0 w-full snap-center">
-                                <!-- Image - clickable with better cursor and hover effect -->
-                                <div class="h-64 sm:h-80 rounded-lg bg-cover bg-center bg-no-repeat cursor-zoom-in hover:opacity-95 hover:shadow-xl transition-all duration-300"
-                                    :style="`background-image: url('${image}');`" @click="openImageModal(image)">
-                                </div>
+                <!-- Horizontal scrollable container -->
+                <div class="relative">
+                    <div @scroll="handleImageScroll"
+                        class="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4"
+                        style="scroll-behavior: smooth; -webkit-overflow-scrolling: touch;">
+                    <div v-for="(image, index) in productImages" :key="index"
+                        class="flex-shrink-0 w-full snap-center relative">
+                        <!-- Image - clickable with better cursor and hover effect -->
+                        <div class="h-64 sm:h-80 rounded-lg bg-cover bg-center bg-no-repeat cursor-zoom-in hover:opacity-95 hover:shadow-xl transition-all duration-300"
+                            :style="`background-image: url('${image}');`" @click="openImageModal(image)">
+                        </div>
+                        
+                        <!-- ✅ ADD THIS: Heart Button (only on first image) -->
+                        <button 
+                        v-if="index === 0"
+                        @click.stop="toggleFavorite"
+                        title="Add to favorites"
+                        class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 hover:scale-110 transition-all duration-200 shadow-md z-10"
+                        type="button"
+                        >
+                        <svg 
+                            :class="['h-6 w-6 transition-colors', isProductFavorited ? 'text-red-500 fill-current' : 'text-gray-400']"
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                        </svg>
+                        </button>
+
 
                                 <!-- Disclaimer below image -->
                                 <div v-if="image.includes('unsplash.com')"
@@ -550,13 +618,35 @@ function closeSuccessModal() {
                     </div>
                 </div>
 
-                <!-- Desktop: Vertical Scroll (original behavior) -->
+                <!-- Desktop Vertical Scroll original behavior -->
                 <div class="hidden lg:flex flex-col gap-3 sm:gap-4">
-                    <div v-for="(image, index) in productImages" :key="index">
-                        <!-- Image - clickable with better cursor and hover effect -->
-                        <div class="h-64 sm:h-80 lg:h-96 rounded-lg bg-cover bg-center bg-no-repeat cursor-zoom-in hover:opacity-95 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
-                            :style="`background-image: url('${image}');`" @click="openImageModal(image)">
-                        </div>
+                <div v-for="(image, index) in productImages" :key="index" class="relative">
+                    <!-- Image - clickable with better cursor and hover effect -->
+                    <div class="h-64 sm:h-80 lg:h-96 rounded-lg bg-cover bg-center bg-no-repeat cursor-zoom-in hover:opacity-95 hover:shadow-xl transition-all duration-300 transform hover:scale-1.02"
+                        :style="`background-image: url('${image}');`"
+                        @click="openImageModal(image)">
+                    </div>
+                    
+                    <!-- ✅ ADD THIS: Heart Button (only on first image) -->
+                    <button 
+                    v-if="index === 0"
+                    @click.stop="toggleFavorite"
+                    title="Add to favorites"
+                    class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 hover:scale-110 transition-all duration-200 shadow-md z-10"
+                    type="button"
+                    >
+                    <svg 
+                        :class="['h-6 w-6 transition-colors', isProductFavorited ? 'text-red-500 fill-current' : 'text-gray-400']"
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                    </button>
+
+                        
 
                         <!-- Disclaimer below image -->
                         <div v-if="image.includes('unsplash.com')"
