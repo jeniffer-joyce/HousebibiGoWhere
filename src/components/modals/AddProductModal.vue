@@ -25,7 +25,7 @@
               class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
               aria-label="Close"
             >
-              <span class="material-symbols-outlined text-gray-500">close</span>
+              <span class="material-symbols-outlined text-gray-500 dark:text-gray-400">close</span>
             </button>
           </div>
 
@@ -44,7 +44,9 @@
                   required
                   placeholder="e.g., Handmade Ceramic Mug"
                   class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40"
+                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                         placeholder:text-gray-400 dark:placeholder:text-gray-500
+                         focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
 
@@ -59,7 +61,9 @@
                   rows="3"
                   placeholder="Describe your product..."
                   class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40 resize-none"
+                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                         placeholder:text-gray-400 dark:placeholder:text-gray-500
+                         focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
                 ></textarea>
               </div>
 
@@ -87,7 +91,7 @@
                     Price (SGD) <span class="text-red-500">*</span>
                   </label>
                   <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                     <input
                       v-model.number="form.price"
                       type="number"
@@ -95,7 +99,9 @@
                       min="0"
                       required
                       class="w-full pl-8 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 
-                             bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40"
+                             bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                             placeholder:text-gray-400 dark:placeholder:text-gray-500
+                             focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
                 </div>
@@ -109,7 +115,9 @@
                     min="0"
                     required
                     class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 
-                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/40"
+                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                           placeholder:text-gray-400 dark:placeholder:text-gray-500
+                           focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                 </div>
               </div>
@@ -125,18 +133,23 @@
                     + Add Size
                   </button>
                 </div>
-                <div v-for="(size, idx) in form.sizes" :key="idx" 
-                     class="flex gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <div
+                  v-for="(size, idx) in form.sizes"
+                  :key="idx" 
+                  class="flex gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
+                >
                   <input
                     v-model="size.name"
                     type="text"
                     placeholder="Size"
                     required
                     class="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 
-                           bg-white dark:bg-gray-800 text-sm"
+                           bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white
+                           placeholder:text-gray-400 dark:placeholder:text-gray-500
+                           focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                   <div class="relative">
-                    <span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">$</span>
+                    <span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">$</span>
                     <input
                       v-model.number="size.price"
                       type="number"
@@ -145,7 +158,9 @@
                       placeholder="Price"
                       required
                       class="w-24 pl-6 pr-2 py-2 rounded-lg border border-gray-300 dark:border-gray-700 
-                             bg-white dark:bg-gray-800 text-sm"
+                             bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white
+                             placeholder:text-gray-400 dark:placeholder:text-gray-500
+                             focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
                   <input
@@ -155,13 +170,17 @@
                     placeholder="Qty"
                     required
                     class="w-20 px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-700 
-                           bg-white dark:bg-gray-800 text-sm"
+                           bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white
+                           placeholder:text-gray-400 dark:placeholder:text-gray-500
+                           focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                   <button
                     v-if="form.sizes.length > 1"
                     type="button"
                     @click="removeSize(idx)"
-                    class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
+                    class="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                    aria-label="Remove size"
+                  >
                     <span class="material-symbols-outlined text-base">delete</span>
                   </button>
                 </div>
@@ -172,7 +191,7 @@
                 <div class="flex items-center justify-between mb-2">
                   <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Product Images <span class="text-red-500">*</span>
-                    <span class="text-xs text-gray-500 ml-1">({{ productImages.length }}/5)</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">({{ productImages.length }}/5)</span>
                   </label>
                   <button
                     v-if="productImages.length < 5"
@@ -200,17 +219,21 @@
                     <button
                       type="button"
                       @click="removeImage(idx)"
-                      class="absolute top-2 right-2 p-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 
+                      class="absolute top-2 right-2 p-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 
                              transition-colors opacity-0 group-hover:opacity-100"
-                      title="Remove image">
+                      title="Remove image"
+                      aria-label="Remove image"
+                    >
                       <span class="material-symbols-outlined text-sm leading-none">close</span>
                     </button>
                     <button
                       v-if="idx !== 0"
                       type="button"
                       @click="setAsPrimary(idx)"
-                      class="absolute bottom-2 left-2 right-2 px-2 py-1 bg-white/90 dark:bg-gray-800/90 text-xs 
-                             font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      class="absolute bottom-2 left-2 right-2 px-2 py-1 bg-white/90 dark:bg-gray-800/90
+                             text-xs font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity
+                             text-gray-800 dark:text-gray-200"
+                    >
                       Set as Primary
                     </button>
                   </div>
@@ -221,7 +244,8 @@
                   v-else
                   @click="showImagePicker = true"
                   class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center 
-                         cursor-pointer hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                         cursor-pointer hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                >
                   <div class="flex flex-col items-center gap-3">
                     <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                       <span class="text-3xl">🖼️</span>
@@ -405,11 +429,11 @@ watch(
       if (hasSizesArr) {
         const prices = Array.isArray(product.price) ? product.price : []
         const qtys = Array.isArray(product.quantity) ? product.quantity : []
-        form.sizes = product.size.map((name, i) => ({
+        form.sizes = product.size.map((name, i) => ([
           name,
-          price: Number(prices[i]) || 0,
-          quantity: Number(qtys[i]) || 0
-        }))
+          Number(prices[i]) || 0,
+          Number(qtys[i]) || 0
+        ])).map(([name, price, quantity]) => ({ name, price, quantity }))
       } else {
         const p = Array.isArray(product.price) ? product.price[0] : product.price
         const q = Array.isArray(product.quantity) ? product.quantity[0] : product.quantity
@@ -581,5 +605,15 @@ async function confirmDelete() {
 }
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* Scrollbar (works in both themes) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background-color: rgba(100,116,139,0.35); /* slate-500/35 */
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100,116,139,0.55); /* slate-500/55 */
 }
 </style>

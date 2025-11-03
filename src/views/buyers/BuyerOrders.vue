@@ -1,7 +1,7 @@
 <template>
   <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
     <!-- Sidebar (unchanged) -->
-    <BuyerSideBar v-model:collapsed="isSidebarCollapsed" />
+    <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
 
     <!-- Main content is pushed by sidebar; no overlay -->
     <main
@@ -14,39 +14,68 @@
       <!-- Left-aligned container to remove gutter -->
       <div class="w-full space-y-8">
         <!-- success banner -->
-        <div v-if="banner.show" class="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+        <div
+          v-if="banner.show"
+          class="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800"
+        >
           {{ banner.msg }}
         </div>
 
-        <!-- Title + Search -->
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">My Orders</h1>
+        <!-- Title + Search (UX-polished, responsive; logic unchanged) -->
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 flex-wrap">
+          <!-- Title -->
+          <div class="flex flex-col flex-1 min-w-[180px]">
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white truncate">
+              My Orders
+            </h1>
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Track, manage and review your purchases
             </p>
           </div>
 
-          <div class="w-full md:w-auto md:max-w-md">
-            <div class="relative">
-              <input
-                v-model="queryStr"
-                type="text"
-                placeholder="Search by product, order #, or shop"
-                class="w-full rounded-xl border border-slate-300 bg-white px-10 py-2.5 text-sm
-                       shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500
-                       dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
-              <svg
-                class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+          <!-- Search -->
+          <div class="relative w-full sm:w-auto flex-1 md:flex-none md:w-80 lg:w-96">
+            <input
+              v-model="queryStr"
+              type="text"
+              placeholder="Search by product, order #, or shop"
+              class="peer w-full rounded-xl border border-slate-300 bg-white px-10 py-2.5 text-sm
+                     shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500
+                     dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              aria-label="Search orders"
+            />
+            <!-- Search icon -->
+            <svg
+              class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 peer-focus:text-blue-500 transition-colors"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+            </svg>
+            <!-- Loading spinner while typing (optional visual feedback) -->
+            <svg
+              v-if="loading && queryStr"
+              class="absolute right-9 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-blue-500"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
+            </svg>
+            <!-- Clear button -->
+            <button
+              v-if="queryStr"
+              @click="queryStr = ''"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+              aria-label="Clear search"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </div>
+            </button>
           </div>
         </div>
 
@@ -99,7 +128,9 @@
             class="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
           >
             <!-- Header -->
-            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-slate-100 p-4 dark:border-slate-700">
+            <div
+              class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-slate-100 p-4 dark:border-slate-700"
+            >
               <div class="flex flex-wrap items-center gap-3 text-sm">
                 <span class="text-slate-700 dark:text-slate-200">
                   <span class="font-medium">Order #:</span> {{ o.orderId }}
@@ -164,7 +195,9 @@
             </div>
 
             <!-- Footer -->
-            <div class="flex flex-col gap-3 border-t border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700">
+            <div
+              class="flex flex-col gap-3 border-t border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700"
+            >
               <div>
                 <p class="text-sm text-slate-500 dark:text-slate-400">Order Total</p>
                 <p class="text-xl font-bold text-slate-900 dark:text-white">
@@ -376,6 +409,7 @@
       @close="showReviewDetails=false; orderForReviewDetails=null"
       @edit="editReviewsForOrder"
     />
+
     <ShippingDetailsModal
       v-if="showShippingDetails"
       :visible="showShippingDetails"
@@ -407,7 +441,7 @@
 
         <!-- Progress -->
         <div class="mt-6 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-          <div class="grid grid-cols-4 gap-4">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div v-for="(s, i) in shippingSteps" :key="s.key" class="flex items-center gap-3">
               <div
                 class="flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold"
@@ -416,8 +450,8 @@
               >
                 {{ i+1 }}
               </div>
-              <div>
-                <div class="text-sm font-medium" :class="s.done ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'">
+              <div class="min-w-0">
+                <div class="text-sm font-medium truncate" :class="s.done ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'">
                   {{ s.label }}
                 </div>
                 <div class="text-xs text-slate-500 dark:text-slate-400">{{ s.timeStr || '—' }}</div>
@@ -557,6 +591,11 @@ const toast = ref({
 })
 function showToast({ type='success', title='', message='', duration=3000 }) {
   toast.value = { show: true, type, title, message, duration }
+}
+
+// Sidebar state
+function handleSidebarToggle(collapsed) {
+    isSidebarCollapsed.value = collapsed
 }
 
 /* Tabs */
@@ -891,7 +930,6 @@ function fmt(ts) {
 }
 
 function buildShippingView(o) {
-  // ---- step timestamps ----
   const placedAt    = o?.createdAt || null
   const preparingAt =
     o?.shipping?.arrangedAt ||
@@ -906,7 +944,6 @@ function buildShippingView(o) {
   const deliveredAt =
     (o?.statusLog || []).find(x => x.status === 'completed')?.time || null
 
-  // ---- 4-step header ----
   const stepList = [
     { key: 'placed',    label: 'Order Placed',       time: placedAt },
     { key: 'preparing', label: 'Preparing to Ship',  time: preparingAt },
@@ -921,16 +958,13 @@ function buildShippingView(o) {
   }))
 
   const doneCount = shippingSteps.value.filter(s => s.done).length
-  // progress spans 0% (only placed) → 100% (delivered)
   progressPct.value = Math.min(
     100,
     Math.max(0, (doneCount - 1) / (shippingSteps.value.length - 1) * 100)
   )
 
-  // ---- timeline body (events on the right) ----
   const ev = []
 
-  // (1) Seller-written shipping.timeline
   if (Array.isArray(o?.shipping?.timeline) && o.shipping.timeline.length) {
     for (const t of [...o.shipping.timeline]
       .sort((a, b) => tsToDate(b.time) - tsToDate(a.time))) {
@@ -944,7 +978,6 @@ function buildShippingView(o) {
     }
   }
 
-  // (2) Seller-written logistics.trackingHistory
   if (Array.isArray(o?.logistics?.trackingHistory) && o.logistics.trackingHistory.length) {
     for (const h of [...o.logistics.trackingHistory]
       .sort((a, b) => tsToDate(b.time) - tsToDate(a.time))) {
@@ -958,7 +991,6 @@ function buildShippingView(o) {
     }
   }
 
-  // (3) Synthetic base events
   if (placedAt) {
     ev.push({
       time: placedAt,
@@ -976,7 +1008,6 @@ function buildShippingView(o) {
     })
   }
 
-  // (4) Fallback from statusLog (if nothing else exists)
   if (ev.length === 0 && Array.isArray(o?.statusLog)) {
     for (const s of [...o.statusLog].reverse()) {
       const label =
@@ -995,7 +1026,6 @@ function buildShippingView(o) {
     }
   }
 
-  // (5) Sort DESC + de-dupe by (title + minute) to avoid overlapping dots
   const seen = new Set();
   const rank = (title = '') => {
     const t = title.toLowerCase();
@@ -1018,14 +1048,6 @@ function buildShippingView(o) {
       seen.add(key);
       return true;
     });
-}
-
-/* helper: stringify timestamp rounded to the minute (prevents stacked dots) */
-function roundToMinuteStr(ts) {
-  const d = tsToDate(ts)
-  if (!d) return ''
-  d.setSeconds(0, 0)
-  return d.toISOString()
 }
 
 function openShipping(o) {
