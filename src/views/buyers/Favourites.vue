@@ -3,8 +3,13 @@ import { ref, computed } from 'vue'
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
 import { useFavorites } from '@/composables/useFavorites.js'
 import { user } from '@/store/user.js'
+import { db } from '@/firebase/firebase_config'
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'
 
 console.log(user.avatar)
+
+const followedBusinesses = ref([])
+const loadingBusinesses = ref(true)
 
 const {
   isSidebarCollapsed,
@@ -30,15 +35,62 @@ const filteredProducts = computed(() => {
 })
 
 const filteredBusinesses = computed(() => {
-  if (!Array.isArray(favorites.value)) return []
+  if (!Array.isArray(followedBusinesses.value)) return []
   
-  if (!searchQuery.value) return favorites.value
-  return favorites.value.filter(b =>
+  if (!searchQuery.value) return followedBusinesses.value
+  return followedBusinesses.value.filter(b =>
     b.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
     b.category.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 })
 
+async function loadFollowedBusinesses() {
+  if (!user.value?.uid) {
+    loadingBusinesses.value = false
+    return
+  }
+  
+  try {
+    // Get user's favoriteBusinesses array
+    const userDoc = await getDoc(doc(db, 'users', user.value.uid))
+    if (!userDoc.exists()) {
+      loadingBusinesses.value = false
+      return
+    }
+    
+    const userData = userDoc.data()
+    const favoriteBusinessIds = userData.favoriteBusinesses || []
+    
+    if (favoriteBusinessIds.length === 0) {
+      followedBusinesses.value = []
+      loadingBusinesses.value = false
+      return
+    }
+    
+    // Fetch all followed businesses
+    const businessPromises = favoriteBusinessIds.map(id => 
+      getDoc(doc(db, 'businesses', id))
+    )
+    
+    const businessDocs = await Promise.all(businessPromises)
+    followedBusinesses.value = businessDocs
+      .filter(doc => doc.exists())
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        isFavorite: true
+      }))
+    
+    loadingBusinesses.value = false
+  } catch (error) {
+    console.error('Error loading followed businesses:', error)
+    loadingBusinesses.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadFollowedBusinesses()
+})
 </script>
 
 <template>
@@ -141,12 +193,12 @@ const filteredBusinesses = computed(() => {
       <!-- Favorites Count for Businesses -->
       <div class="mb-6">
         <p class="text-slate-600 dark:text-slate-400">
-          You have <span class="font-semibold text-primary">{{ favorites.length }}</span> favorite businesses
+          You have <span class="font-semibold text-primary">{{ followedBusinesses.length }}</span> favorite businesses
         </p>
       </div>
 
       <!-- Favorites Grid -->
-      <div v-if="favorites.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div v-if="followedBusinesses.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <div v-for="business in favorites" :key="business.id"
              class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
           <div class="relative w-full h-48 sm:h-56 md:h-48 lg:h-52">
