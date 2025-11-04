@@ -45,11 +45,12 @@
     <!-- Table -->
     <div class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
       <!-- Header row (grid = 5 / 1 / 1 / 2 / 2 / 1) -->
-      <div
+     <div
         class="grid grid-cols-12 gap-3 border-b px-4 py-3 text-sm font-semibold
                text-slate-700 dark:text-slate-200
                bg-slate-50 dark:bg-slate-800/60
-               border-slate-200 dark:border-slate-700">
+               border-slate-200 dark:border-slate-700
+               rounded-t-2xl">
         <div class="col-span-5">Product(s)</div>
         <div class="col-span-1">Total</div>
         <div class="col-span-1">Status</div>
@@ -65,7 +66,7 @@
       <!-- Rows -->
       <div v-else class="divide-y divide-slate-100 dark:divide-slate-800">
         <div
-          v-for="o in sortedRows" :key="o.id"
+         v-for="o in paged" :key="o.id"
           class="grid grid-cols-12 gap-3 px-4 py-4"
         >
           <!-- Product(s) -->
@@ -180,7 +181,7 @@
                        dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
                 @click="openShipping(o)"
               >
-                Check Details
+                Check Shipping Details
               </button>
 
               <!-- Start Delivery (opens confirm modal) -->
@@ -224,6 +225,36 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div
+      v-if="sortedRows.length > 0"
+      class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+    >
+      <p>
+        Showing {{ page }} of {{ totalPages || 1 }} – 
+        <span class="font-medium">{{ pageStart }}</span>–<span class="font-medium">{{ pageEnd }}</span> of
+        <span class="font-medium">{{ sortedRows.length }}</span> results
+      </p>
+      <div class="flex gap-2">
+        <button
+          :disabled="page === 1"
+          @click="page--"
+          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+        >
+          Previous
+        </button>
+        <button
+          :disabled="page === totalPages || totalPages === 0"
+          @click="page++"
+          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+        >
+          Next
+        </button>
       </div>
     </div>
 
@@ -387,7 +418,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import ShippingDetailsModal from '@/components/orders/ShippingDetailsModal.vue'
 
 /* ✅ Toasts: minimal add */
@@ -458,6 +489,16 @@ const total = o => (o?.products||[]).reduce((s,p)=>s + (p.price||0) * (p.quantit
 const titleLine = o => (o.products?.[0]?.item_name || o.products?.[0]?.name || '—')
 const thumbnail = o => o.products?.[0]?.img_url || o.products?.[0]?.image || 'https://via.placeholder.com/48x48?text=%20'
 const tracking = (o) => o?.logistics?.trackingNumber || o?.shipping?.trackingNumber || ''
+
+const pageSize = 10
+const page = ref(1)
+const totalPages = computed(() => Math.ceil(sortedRows.value.length / pageSize))  
+const paged = computed(() => sortedRows.value.slice((page.value-1)*pageSize, page.value*pageSize)) 
+const pageStart = computed(() => sortedRows.value.length ? (page.value-1)*pageSize+1 : 0)  
+const pageEnd = computed(() => Math.min(page.value*pageSize, sortedRows.value.length))  
+watch([searchStr, sortMode], () => {  // Also watch searchStr instead of just sortMode
+  page.value = 1
+})
 
 // --- SLA helpers: end of day in SGT + overdue check ---
 function endOfDayMs(dateLike) {
