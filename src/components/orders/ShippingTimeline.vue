@@ -13,6 +13,27 @@
       <div v-if="ev.text && ev.text !== ev.label" class="text-sm text-slate-600">
         {{ ev.text }}
       </div>
+
+      <!-- ✅ Show proof button directly below the Delivered text -->
+      <div
+        v-if="(ev.key === 'delivered' || ev.label?.toLowerCase()?.includes('delivered')) && delivery?.proofUrl"
+        class="mt-2 flex items-center gap-3"
+      >
+        <a
+          :href="delivery.proofUrl"
+          target="_blank"
+          rel="noopener"
+          class="inline-flex items-center rounded-lg bg-emerald-50 px-3 py-1.5 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100"
+        >
+          View proof photo
+        </a>
+        <img
+          :src="delivery.proofUrl"
+          alt="Proof thumbnail"
+          class="h-10 w-10 rounded-md object-cover ring-1 ring-slate-200"
+        />
+      </div>
+
       <div v-if="ev.note" class="text-xs text-slate-500">{{ ev.note }}</div>
     </div>
 
@@ -28,7 +49,8 @@ import { computed } from 'vue'
 const props = defineProps({
   shipping:  { type: Object, default: () => ({}) },
   logistics: { type: Object, default: () => ({}) },
-  meta:      { type: Object, default: () => ({ createdAt: null, statusLog: [] }) }
+  meta:      { type: Object, default: () => ({ createdAt: null, statusLog: [] }) },
+  delivery:  { type: Object, default: null } // ✅ added
 })
 
 /* ---------- utils ---------- */
@@ -50,28 +72,33 @@ function fmt(t) {
 function fmtMinute(t) {
   try {
     const d = t && typeof t.toDate === 'function' ? t.toDate() : new Date(t)
-    return d.toISOString().slice(0, 16) // yyyy-mm-ddThh:mm
+    return d.toISOString().slice(0, 16)
   } catch { return '' }
 }
 const isPlaced    = (e) => (e.label || e.text || '').toLowerCase().startsWith('order placed')
 const isPreparing = (e) => (e.label || e.text || '').toLowerCase().startsWith('seller is preparing')
 
+function eventKind(lbl = '', txt = '') {
+  const s = (lbl || txt || '').toLowerCase()
+  if (s.startsWith('order placed'))                 return 'placed'
+  if (s.startsWith('seller is preparing'))         return 'preparing'
+  if (s.includes('pickup scheduled'))              return 'pickup_scheduled'
+  if (s.includes('shipment arranged') || s.includes('arranged')) return 'arranged'
+  if (s.includes('picked up'))                     return 'picked_up'
+  if (s.includes('drop-off done') || s.includes('dropped off'))  return 'dropped_off'
+  return 'other'
+}
+
 /* ---------- synthesize buyer-side events ---------- */
 const baseEvents = computed(() => {
   const out = []
-
-  // "Order placed" — try meta.createdAt first
   const placed =
     props.meta?.createdAt ||
     props.logistics?.orderedAt ||
     props.shipping?.orderedAt ||
     null
+  if (placed) out.push({ time: placed, label: 'Order placed', text: 'Order placed' })
 
-  if (placed) {
-    out.push({ time: placed, label: 'Order placed', text: 'Order placed' })
-  }
-
-  // "Seller is preparing to ship"
   const arrangedAt = props.shipping?.arrangedAt
   const statusLog  = Array.isArray(props.meta?.statusLog) ? props.meta.statusLog : []
   const toShipLog  = statusLog.find(s => s?.status === 'to_ship')
@@ -83,45 +110,50 @@ const baseEvents = computed(() => {
       text:  'Seller is preparing to pack your order'
     })
   }
-
   return out
 })
 
-/* ---------- merge all sources, sort NEWEST → OLDEST, then pin bottom two ---------- */
+/* ---------- merge, collapse, order ---------- */
 const orderedEvents = computed(() => {
   const a = (props.shipping?.timeline || []).map(e => ({ ...e }))
   const b = (props.logistics?.trackingHistory || []).map(e => ({ ...e }))
-
-  // Merge and keep only items with time
   const merged = [...a, ...b, ...baseEvents.value].filter(e => !!e?.time)
 
-  // Sort DESC by time (newest first)
   merged.sort((x, y) => toMs(y.time) - toMs(x.time))
 
-  // De-dupe by (label/text + minute)
+  const bucket = new Map()
+  for (const e of merged) {
+    const minute = fmtMinute(e.time)
+    const kind   = eventKind(e.label, e.text)
+    const key    = `${kind}|${minute}`
+
+    if (!bucket.has(key)) bucket.set(key, { ...e })
+    else {
+      const cur = bucket.get(key)
+      if ((!cur.label || cur.label === cur.text) && e.label) cur.label = e.label
+      if ((e.text || '').length > (cur.text || '').length) cur.text = e.text
+      if (toMs(e.time) > toMs(cur.time)) cur.time = e.time
+      bucket.set(key, cur)
+    }
+  }
+
+  const collapsed = Array.from(bucket.values())
   const seen = new Set()
   const deduped = []
-  for (const e of merged) {
+  for (const e of collapsed) {
     const key = `${(e.label || e.text || '').toLowerCase()}|${fmtMinute(e.time)}`
     if (seen.has(key)) continue
     seen.add(key)
     deduped.push(e)
   }
 
-  // ---- Pin bottom order: [ ...others(newest→oldest), "Seller is preparing...", "Order placed" ]
-  // Pick ONE preparing & ONE placed (prefer earliest of each to match chronology)
-  const preparingCandidates = deduped.filter(isPreparing).sort((x,y)=>toMs(x.time)-toMs(y.time))
-  const placedCandidates    = deduped.filter(isPlaced).sort((x,y)=>toMs(x.time)-toMs(y.time))
-  const preparingPinned = preparingCandidates[0] || null
-  const placedPinned    = placedCandidates[0]    || null
-
-  // Remove any preparing/placed from the list first
-  const rest = deduped.filter(e => !(isPreparing(e) || isPlaced(e)))
-
-  // Append pinned ones so bottom is "Order placed", second-from-bottom is "Seller is preparing…"
+  const preparingPinned = deduped.find(isPreparing)
+  const placedPinned    = deduped.find(isPlaced)
+  const rest = deduped
+    .filter(e => !(isPreparing(e) || isPlaced(e)))
+    .sort((x, y) => toMs(y.time) - toMs(x.time))
   if (preparingPinned) rest.push(preparingPinned)
   if (placedPinned)    rest.push(placedPinned)
-
   return rest
 })
 </script>

@@ -17,6 +17,7 @@
           Order #{{ order?.orderId }} • Placed {{ fmt(order?.createdAt) }}
         </p>
 
+
         <!-- Cancellation banner (if cancelled) -->
         <div
           v-if="lastStatus === 'cancelled'"
@@ -26,6 +27,9 @@
             Order cancelled on {{ fmt(lastStatusTime) }}
           </p>
           <p class="text-xs opacity-80">Cancelled by {{ cancelledBy }}</p>
+          <p v-if="cancelReason" class="mt-1 text-xs opacity-80">
+            Cancelled reason: {{ cancelReasonText }}
+          </p>
         </div>
 
         <!-- Items -->
@@ -159,10 +163,33 @@ const lastEntry = computed(() => {
   return log.length ? log[log.length - 1] : null
 })
 const lastStatus = computed(() => lastEntry.value?.status || props.order?.status)
-const lastStatusTime = computed(() => lastEntry.value?.time || props.order?.updatedAt || props.order?.createdAt)
+const lastStatusTime = computed(() => {
+  if (lastStatus.value === 'cancelled') {
+    return props.order?.cancelledAt || lastEntry.value?.time || props.order?.updatedAt || props.order?.createdAt
+  }
+  return lastEntry.value?.time || props.order?.updatedAt || props.order?.createdAt
+})
 const cancelledBy = computed(() => {
   if (lastStatus.value !== 'cancelled') return '—'
   return lastEntry.value?.by === 'seller' ? 'seller' : 'you'
+})
+
+// Raw cancel reason code from Firestore (e.g., "overdue_no_start")
+const cancelReason = computed(() => props.order?.cancelReason || '')
+
+// Human-readable cancel reason text (fallbacks to statusLog.message or code)
+const cancelReasonText = computed(() => {
+  const code = cancelReason.value
+  const map = {
+    overdue_no_start: 'Overdue — delivery was not started in time',
+    stock_unavailable: 'Stock unavailable',
+    address_issue: 'Invalid or unreachable shipping address',
+    seller_request: 'Cancelled by seller request'
+  }
+  if (code && map[code]) return map[code]
+  // Fallback: use the seller’s message in the last log entry if present
+  return lastEntry.value?.message || code || '—'
+
 })
 
 /* ✅ NEW: map of refunded quantities per product when refund is approved */
