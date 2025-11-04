@@ -31,10 +31,111 @@ const messaging = useMessages(currentUserIdRef);
 // Initialize favorites composable (same as Favourites.vue)
 const favoritesComposable = useFavorites();
 
-// Get favorite businesses (first 6)
+// Custom fetch for favorite businesses since the composable fetches from wrong collection
+const customFavoriteBusinesses = ref([]);
+const loadingFavorites = ref(false);
+
+async function fetchFavoriteBusinessesCustom() {
+    try {
+        loadingFavorites.value = true;
+        const userId = auth.currentUser?.uid;
+        if (!userId) {
+            customFavoriteBusinesses.value = [];
+            return;
+        }
+
+        // Fetch user document
+        const userDocRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (!userDoc.exists()) {
+            customFavoriteBusinesses.value = [];
+            return;
+        }
+
+        // Get favoriteBusinesses array (note: without 'u')
+        const favBizIds = userDoc.data().favoriteBusinesses || [];
+        
+        if (favBizIds.length === 0) {
+            customFavoriteBusinesses.value = [];
+            return;
+        }
+
+        // Fetch each business from businesses collection (not users)
+        const businessPromises = favBizIds.slice(0, 6).map(async (businessOwnerId) => {
+            try {
+                // First, get the business owner's user data for display name
+                const ownerDocRef = doc(db, 'users', businessOwnerId);
+                const ownerDoc = await getDoc(ownerDocRef);
+                
+                let ownerName = 'Business Owner';
+                if (ownerDoc.exists()) {
+                    const ownerData = ownerDoc.data();
+                    ownerName = ownerData.displayName || ownerData.name || ownerData.businessName || 'Business Owner';
+                }
+                
+                // Then get the actual business from businesses collection
+                const bizDocRef = doc(db, 'businesses', businessOwnerId);
+                const bizDoc = await getDoc(bizDocRef);
+                
+                if (bizDoc.exists()) {
+                    const data = bizDoc.data();
+                    // Get business name and image from businesses collection
+                    const businessName = data.name || data.businessName || 'Unnamed Business';
+                    const businessImage = data.profilePic || data.profileImage || data.image || data.logo;
+                    const category = data.category || 'General';
+                    
+                    return {
+                        id: businessOwnerId,
+                        name: businessName, // Actual business name
+                        ownerName: ownerName, // Owner's display name (instead of category)
+                        category: category, // Keep original category as fallback
+                        description: data.description || data.bio || '',
+                        rating: data.rating || 0,
+                        reviews: data.reviews || data.reviewCount || 0,
+                        image: businessImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(businessName)}&background=FFD7BA&color=8B4513&size=200&bold=true`,
+                        isFavorite: true
+                    };
+                } else {
+                    // If no business document exists, fall back to user data
+                    if (ownerDoc.exists()) {
+                        const ownerData = ownerDoc.data();
+                        const businessName = ownerData.businessName || ownerData.name || 'Business';
+                        return {
+                            id: businessOwnerId,
+                            name: businessName,
+                            ownerName: ownerName,
+                            category: ownerData.category || 'General',
+                            description: ownerData.description || '',
+                            rating: ownerData.rating || 0,
+                            reviews: ownerData.reviews || 0,
+                            image: ownerData.avatar || ownerData.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(businessName)}&background=FFD7BA&color=8B4513&size=200&bold=true`,
+                            isFavorite: true
+                        };
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching business:', err);
+            }
+            return null;
+        });
+
+        const businesses = await Promise.all(businessPromises);
+        customFavoriteBusinesses.value = businesses.filter(b => b !== null);
+        
+        // Debug log to see what we're getting
+        console.log('Fetched favorite businesses:', customFavoriteBusinesses.value);
+    } catch (error) {
+        console.error('Error fetching favorite businesses:', error);
+        customFavoriteBusinesses.value = [];
+    } finally {
+        loadingFavorites.value = false;
+    }
+}
+
+// Get favorite businesses (use custom fetch instead of composable for now)
 const favoriteBusinesses = computed(() => {
-    if (!Array.isArray(favoritesComposable.favorites.value)) return [];
-    return favoritesComposable.favorites.value.slice(0, 6);
+    return customFavoriteBusinesses.value;
 });
 
 // Get unread messages from the composable
@@ -58,9 +159,6 @@ const unreadMessages = computed(() => {
 
 // Loading state for messages from composable
 const loadingMessages = computed(() => messaging.loading.value);
-
-// Loading state for favorites (assuming the composable has a loading state)
-const loadingFavorites = computed(() => false); // Will update if useFavorites has a loading state
 
 // Stats
 const stats = computed(() => ({
@@ -145,7 +243,7 @@ function goToShop(businessId) {
 onMounted(() => {
     fetchRecentOrders();
     messaging.loadConversations(); // Load conversations using the composable
-    // Favorites are auto-loaded by the composable via watch on user
+    fetchFavoriteBusinessesCustom(); // Custom fetch for favorites
 });
 </script>
 
@@ -311,14 +409,14 @@ onMounted(() => {
                                 :key="business.id"
                                 @click="goToShop(business.id)"
                                 class="flex flex-col items-center cursor-pointer group">
-                                <div class="relative w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 border-2 border-transparent group-hover:border-blue-500">
-                                    <img :src="business.image" :alt="business.name" class="w-16 h-16 rounded-full object-cover" />
+                                <div class="relative w-20 h-20 rounded-full overflow-hidden mb-3 group-hover:scale-110 transition-transform duration-300 ring-2 ring-transparent group-hover:ring-blue-500 shadow-md">
+                                    <img :src="business.image" :alt="business.name" class="w-full h-full object-cover" />
                                 </div>
-                                <p class="text-sm font-medium text-slate-900 dark:text-white text-center group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                <p class="text-sm font-medium text-slate-900 dark:text-white text-center group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 px-1">
                                     {{ business.name }}
                                 </p>
                                 <p class="text-xs text-slate-500 dark:text-slate-400 text-center mt-1">
-                                    {{ business.category }}
+                                    {{ business.ownerName }}
                                 </p>
                             </div>
                         </div>
