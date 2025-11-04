@@ -77,9 +77,6 @@
                 </svg>
               </button>
             </div>
-
-            <p v-if="error" class="text-sm text-red-700 dark:text-red-300">{{ error }}</p>
-            <p v-if="success" class="text-sm text-emerald-700 dark:text-emerald-300">{{ success }}</p>
           </div>
 
           <div class="flex items-end">
@@ -113,6 +110,10 @@ import {
   setDoc,
   serverTimestamp,
 } from 'firebase/firestore'
+import { useToast } from '@/composables/useToast'
+
+// Add this right after imports, before other const declarations
+const { error: showError, success: showSuccess } = useToast()
 
 const router = useRouter()
 
@@ -133,7 +134,7 @@ async function onDelete() {
   success.value = ''
   const u = auth.currentUser
   if (!u) {
-    error.value = 'You are not signed in.'
+    showError('You are not signed in')
     return
   }
 
@@ -146,7 +147,7 @@ async function onDelete() {
       await reauthenticateWithCredential(u, cred)
     } else {
       if (confirmInput.value !== 'DELETE') {
-        error.value = 'Please type DELETE to confirm.'
+        showError('Please type DELETE to confirm')
         deleting.value = false
         return
       }
@@ -165,14 +166,17 @@ async function onDelete() {
     // Delete Firebase Auth user
     await deleteUser(u)
 
-    success.value = 'Account deleted. Redirecting…'
-    setTimeout(() => router.push('/login/'), 800)
+    showSuccess('Account deleted successfully. Redirecting...')
+    setTimeout(() => router.push('/login/'), 1500)
   } catch (e) {
     console.error(e)
-    if (e.code === 'auth/wrong-password') error.value = 'Incorrect password.'
-    else if (e.code === 'auth/requires-recent-login')
-      error.value = 'Please sign in again and retry.'
-    else error.value = 'Failed to delete account.'
+    if (e.code === 'auth/wrong-password') {
+      showError('Incorrect password. Please try again.')
+    } else if (e.code === 'auth/requires-recent-login') {
+      showError('Please sign in again and retry deletion.')
+    } else {
+      showError('Failed to delete account. Please try again.')
+    }
   } finally {
     deleting.value = false
   }

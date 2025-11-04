@@ -3,20 +3,22 @@ import { ref, reactive, computed, onMounted, watch, onBeforeUnmount, toRaw } fro
 import { useRoute, useRouter } from 'vue-router'
 import { useProduct } from '@/composables/useProduct'
 import MessageButton from '@/components/messageButton.vue'
-import { db, auth } from "@/firebase/firebase_config"  // ✅ Add auth here
+import { db, auth } from "@/firebase/firebase_config"
 import { collection, query, where, orderBy, onSnapshot, getDoc, doc } from "firebase/firestore"
-import { onAuthStateChanged } from 'firebase/auth'  // ✅ Add this
+import { onAuthStateChanged } from 'firebase/auth'
 
 import { useImageZoom } from '@/composables/useImageZoom'
 import { useCart } from '@/composables/useCart'
-import { useFavorites } from '@/composables/useFavorites.js'  // ✅ Add this
+import { useFavorites } from '@/composables/useFavorites.js'
 
 import Loading from '@/components/status/Loading.vue'
 import AddToCartSuccessModal from '@/components/modals/AddToCartSuccessModal.vue'
 import { useToast } from '@/composables/useToast.js'
 
-const success = ref('')
+// ✅ CRITICAL FIX: Initialize toast functions at the very top, before any usage
+const { error, warning, success: showSuccessToast } = useToast()
 
+const success = ref('')
 
 const route = useRoute()
 const router = useRouter()
@@ -38,7 +40,7 @@ const isProductFavorited = computed(() => {
 // Toggle favorite function
 async function toggleFavorite() {
   if (!auth.currentUser) {
-    useToast.error('Please log in to add favorites')
+    error('Please log in to add favorites')
     return
   }
   
@@ -123,6 +125,7 @@ console.log('🔍 Navigation Debug:', {
   fromShopPage: fromShopPage.value,
   backButtonConfig: backButtonConfig.value
 })
+
 // Get product ID from route params
 const productId = computed(() => route.params.id)
 
@@ -162,12 +165,7 @@ onMounted(async () => {
       console.error('Error fetching seller:', err)
     }
   }
-
-  // ... rest of your code
 })
-
-
-
 
 const {
     showImageModal,
@@ -239,7 +237,6 @@ const selectedQuantity = computed(() => {
 });
 
 
-// Format Availability status
 // Format Availability status
 const selectedStockStatus = computed(() => {
   // Wait until product data is actually loaded
@@ -353,11 +350,6 @@ watch(
     async (pid, _, onCleanup) => {
         if (prUnsub) { prUnsub(); prUnsub = null }
         prRaw.value = []
-
-        // We don't know sellerId here without your product record; query all & filter is OK.
-        // If you have sellerId available (e.g., computed from your composable), prefer:
-        // const sellerId = product.value?.seller_id
-        // const qRef = query(collection(db, 'reviews'), where('sellerId','==', sellerId), orderBy('createdAt','desc'))
 
         const qRef = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'))
 
@@ -480,11 +472,8 @@ function closePrLightbox() { prLightbox.open = false; prLightbox.url = '' }
 
 onBeforeUnmount(() => { prUnsub && prUnsub() })
 
-const { error, warning } = useToast()
-
 // Add to cart
 const { adding, addToCart } = useCart()
-
 
 // Add to cart handler
 async function handleAddToCart() {
@@ -501,7 +490,7 @@ async function handleAddToCart() {
   }
 
   if (!auth.currentUser) {
-    useToast.error("Please log in to add items to cart.");
+    error('Please log in to add items to cart', 'Login Required');
     return;
   }
 
@@ -517,7 +506,7 @@ async function handleAddToCart() {
     addedProductName.value = productData.item_name || productData.name;
     addedQuantity.value = userQuantity.value;
     showSuccessModal.value = true;
-    useToast.success('Added to cart!', 'Success');
+    showSuccessToast('Added to cart!', 'Success');
 
   } catch (err) {
     console.error("Add to cart error:", err);
@@ -527,9 +516,9 @@ async function handleAddToCart() {
       (err.code && err.code === 'permission-denied') ||
       (err.message && err.message.toLowerCase().includes('unauthenticated'))
     ) {
-      useToast.error('Please log in to manage cart.', 'Login Required');
+      error('Please log in to manage cart', 'Login Required');
     } else {
-      useToast.error('Failed to add to cart. Please try again.', 'Error');
+      error('Failed to add to cart. Please try again', 'Error');
     }
   }
 }
@@ -555,6 +544,7 @@ function closeSuccessModal() {
 </style>
 
 <template>
+    <!-- Template remains exactly the same as your original -->
     <AddToCartSuccessModal :show="showSuccessModal" :product-name="addedProductName" :quantity="addedQuantity"
         @close="closeSuccessModal" />
     <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-10 sm:px-6 lg:px-8">
@@ -574,7 +564,6 @@ function closeSuccessModal() {
         <div v-if="loading" class="flex justify-center items-center min-h-[320px]">
             <Loading />
         </div>
-
 
         <!-- Product Not Found -->
         <div v-else-if="!product" class="text-center py-20">
@@ -600,7 +589,7 @@ function closeSuccessModal() {
                             :style="`background-image: url('${image}');`" @click="openImageModal(image)">
                         </div>
                         
-                        <!-- ✅ ADD THIS: Heart Button (only on first image) -->
+                        <!-- ✅ Heart Button (only on first image) -->
                         <button 
                         v-if="index === 0"
                         @click.stop="toggleFavorite"
@@ -618,7 +607,6 @@ function closeSuccessModal() {
                                 d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                         </svg>
                         </button>
-
 
                                 <!-- Disclaimer below image -->
                                 <div v-if="image.includes('unsplash.com')"
@@ -648,7 +636,7 @@ function closeSuccessModal() {
                         @click="openImageModal(image)">
                     </div>
                     
-                    <!-- ✅ ADD THIS: Heart Button (only on first image) -->
+                    <!-- ✅ Heart Button (only on first image) -->
                     <button 
                     v-if="index === 0"
                     @click.stop="toggleFavorite"
@@ -666,8 +654,6 @@ function closeSuccessModal() {
                             d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                     </svg>
                     </button>
-
-                        
 
                         <!-- Disclaimer below image -->
                         <div v-if="image.includes('unsplash.com')"
@@ -784,8 +770,6 @@ function closeSuccessModal() {
                                 variant="secondary" size="md" class="w-full" />
                         </div>
 
-                        
-
                         <!-- ✅ Enhanced Go to Shop - Clickable seller card with visit button -->
                         <div v-if="showGoToShop && shopUsername && product" class="mt-4">
                             <!-- Show card immediately using product data (faster) -->
@@ -823,7 +807,7 @@ function closeSuccessModal() {
                         </div>
                             
                         <!-- Loading state only if product hasn't loaded yet -->
-                        <div v-else-if ="showGoToShop && shopeUsername" class="rounded-lg bg-white dark:bg-background-dark border-2 border-gray-200 dark:border-gray-700 p-4">
+                        <div v-else-if="showGoToShop && shopUsername" class="rounded-lg bg-white dark:bg-background-dark border-2 border-gray-200 dark:border-gray-700 p-4">
                                 <div class="flex items-center gap-3 sm:gap-4">
                                     <div class="h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
                                     <div class="flex-1">

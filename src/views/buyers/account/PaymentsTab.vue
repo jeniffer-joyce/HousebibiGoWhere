@@ -228,6 +228,48 @@
         </div>
       </div>
     </transition>
+      <!-- Delete Confirmation Modal -->
+    <transition name="fade">
+      <div
+        v-if="showDeleteModal"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="cancelDelete">
+        <div class="absolute inset-0 bg-black/50"></div>
+        
+        <div class="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900">
+          <div class="mb-4 flex items-center gap-3">
+            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+              <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-bold text-slate-900 dark:text-white">Delete Payment Method</h3>
+              <p class="text-sm text-slate-600 dark:text-slate-400">This action cannot be undone</p>
+            </div>
+          </div>
+
+          <div v-if="cardToDelete" class="mb-6 rounded-lg bg-slate-50 p-4 dark:bg-slate-800">
+            <p class="text-sm text-slate-600 dark:text-slate-400">Card ending in</p>
+            <p class="text-lg font-semibold text-slate-900 dark:text-white">•••• •••• •••• {{ cardToDelete.last4 }}</p>
+            <p class="text-sm text-slate-600 dark:text-slate-400">{{ cardToDelete.cardholderName }}</p>
+          </div>
+
+          <div class="flex gap-3">
+            <button
+              @click="confirmDelete"
+              class="flex-1 rounded-lg bg-red-600 px-6 py-2.5 font-semibold text-white hover:bg-red-700">
+              Delete Card
+            </button>
+            <button
+              @click="cancelDelete"
+              class="rounded-lg border border-slate-300 px-6 py-2.5 font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </section>
 </template>
 
@@ -237,6 +279,11 @@ import { auth, db } from '@/firebase/firebase_config'
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, getDocs, serverTimestamp, query, orderBy
 } from 'firebase/firestore'
+import { useToast } from '@/composables/useToast'
+
+// Add this right after imports
+const { success: showSuccess, error: showError } = useToast()
+
 
 /* ---------- utils ---------- */
 const two = (n) => String(n).padStart(2, '0')
@@ -270,6 +317,9 @@ const showForm = ref(false)
 const editingId = ref(null)
 const error = ref('')
 const success = ref('')
+
+const showDeleteModal = ref(false)
+const cardToDelete = ref(null)
 
 const form = ref({
   cardholderName: '',
@@ -493,19 +543,34 @@ async function save() {
 }
 
 async function removeCard(c) {
-  if (!confirm(`Delete card ending in ${c.last4}?`)) return
+  cardToDelete.value = c
+  showDeleteModal.value = true
+}
+
+async function confirmDelete() {
+  if (!cardToDelete.value) return
   
   try {
     const user = auth.currentUser
     if (!user) return
-    await deleteDoc(doc(db, 'users', user.uid, 'payment_methods', c.id))
+    
+    await deleteDoc(doc(db, 'users', user.uid, 'payment_methods', cardToDelete.value.id))
     await load()
-    // If default was deleted, set first available as default
+    
+    showSuccess('Payment method deleted successfully')
     await ensureFirstIsDefault()
+    
+    showDeleteModal.value = false
+    cardToDelete.value = null
   } catch (e) {
     console.error(e)
-    error.value = 'Could not delete card. Please try again.'
+    showError('Could not delete card. Please try again.')
   }
+}
+
+function cancelDelete() {
+  showDeleteModal.value = false
+  cardToDelete.value = null
 }
 
 async function setDefault(c) {
