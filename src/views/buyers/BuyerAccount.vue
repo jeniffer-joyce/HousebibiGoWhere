@@ -57,7 +57,6 @@ const items = [
   { label: 'Banks & Cards',         to: '/buyer-account/banks-cards' },
   { label: 'Addresses',             to: '/buyer-account/addresses' },
   { label: 'Change Password',       to: '/buyer-account/password' },
-  { label: 'Notification Settings', to: '/buyer-account/notifications' },
   { label: 'Privacy Settings',      to: '/buyer-account/privacy' },
 ]
 

@@ -9,7 +9,6 @@ import About from '../views/About.vue'
 
 // Seller Views
 import ForSellers from '../views/ForSellers.vue'
-import SellerOrders from '../views/sellers/SellerOrders.vue'
 import SellerAnalytics from '../views/sellers/SellerAnalytics.vue'
 import { user } from '../store/user.js'
 import SellerMessages from "../views/sellers/SellerMessages.vue";
@@ -18,10 +17,8 @@ import EditAccount from "../views/sellers/EditAccount.vue";
 
 import MyProfile from "../views/sellers/account/MyProfile.vue";
 import MyBusiness from "../views/sellers/account/MyBusiness.vue";
-import Notifications from "../views/sellers/account/Notifications.vue";
 import ChangePassword from "../views/sellers/account/ChangePassword.vue";
 import DeleteAccount from "../views/sellers/account/DeleteAccount.vue";
-import ReturnRefund from "../views/sellers/account/ReturnRefund.vue";
 
 // Seller TEST View (Developers only)
 import CurrentSeller from "../views/sellers/CurrentSeller.vue";
@@ -44,7 +41,6 @@ import Checkout from "../views/buyers/Checkout.vue";
 import ProfileTab from '../views/buyers/account/ProfileTab.vue'
 import AddressesTab from '../views/buyers/account/AddressesTab.vue'
 import PaymentsTab from '../views/buyers/account/PaymentsTab.vue'
-import NotificationsTab from '../views/buyers/account/NotificationsTab.vue'
 import ChangePasswordTab from '../views/buyers/account/ChangePasswordTab.vue'
 import PrivacySettingsTab from '../views/buyers/account/PrivacySettingsTab.vue'
 
@@ -135,8 +131,6 @@ const routes = [
     children: [
       { path: 'my-profile', name: 'edit-profile.my-profile', component: MyProfile },
       { path: 'my-business', name: 'edit-profile.my-business', component: MyBusiness },
-      { path: 'return-refund', name: 'edit-profile.return-refund', component: ReturnRefund },
-      { path: 'notifications', name: 'edit-profile.notifications', component: Notifications },
       { path: 'change-password', name: 'edit-profile.change-password', component: ChangePassword },
       { path: 'delete-account', name: 'edit-profile.delete-account', component: DeleteAccount },
     ]
@@ -160,7 +154,6 @@ const routes = [
       { path: 'profile', component: ProfileTab },
       { path: 'addresses', component: AddressesTab },
       { path: 'banks-cards', component: PaymentsTab },
-      { path: 'notifications', component: NotificationsTab },
       { path: 'password', component: ChangePasswordTab },
       { path: 'privacy', component: PrivacySettingsTab },
     ]
