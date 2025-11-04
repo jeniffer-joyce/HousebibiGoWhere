@@ -76,17 +76,21 @@
           <span class="material-symbols-outlined text-base sm:text-lg text-yellow-500">star</span>
           <span class="font-medium">{{ displayRating }} / 5.0</span>
           <span class="text-gray-400 dark:text-gray-600">·</span>
-          <span>{{ followingCount }} Following</span>
-          <span class="text-gray-400 dark:text-gray-600">·</span>
           <span>{{ followersCount }} Followers</span>
         </div>
 
         <!-- Action Buttons -->
         <div class="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto px-4 sm:px-0">
-          <button
-            class="flex items-center justify-center rounded-lg h-10 px-6 bg-primary text-white text-sm font-bold shadow-sm hover:bg-opacity-90 transition-colors">
-            Follow
-          </button>
+           <button
+              @click="toggleFollow"
+              :disabled="followLoading"
+              class="flex items-center justify-center rounded-lg h-10 px-6 text-sm font-bold shadow-sm transition-colors"
+              :class="isFollowing 
+                ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600' 
+                : 'bg-primary text-white hover:bg-opacity-90'">
+              <span v-if="followLoading" class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></span>
+              {{ followLoading ? 'Loading...' : (isFollowing ? 'Following' : 'Follow') }}
+            </button>
 
           <!-- Message Button -->
           <MessageButton :seller-id="business.uid" :seller-name="business.name" variant="secondary" size="md"
@@ -502,162 +506,221 @@ html {
 </style>
 
 <script setup>
-import { getBusinesses } from '@/firebase/services/home/business.js';
-import { onMounted, onUnmounted, ref, computed, reactive, onBeforeUnmount } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import Loading from '@/components/status/Loading.vue';
-import MessageButton from '@/components/messageButton.vue';
+import { getBusinesses } from '@/firebase/services/home/business.js'
+import { onMounted, onUnmounted, ref, computed, reactive } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import Loading from '@/components/status/Loading.vue'
+import MessageButton from '@/components/messageButton.vue'
 import defaultProfilePic from '@/assets/defaultBusinessLogo.png'
-import { getSellerProductsSortedBySales } from '@/composables/productUtils.js';
+import { getSellerProductsSortedBySales } from '@/composables/productUtils.js'
 import { useFavorites } from '@/composables/useFavorites.js'
 import { user } from '@/store/user.js'
+import { useToast } from '@/composables/useToast.js'
+import { auth, db } from '@/firebase/firebase_config'
+import { collection, query, where, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
 
-/* --------- ADDED: Firestore imports for dynamic reviews --------- */
-import { db } from '@/firebase/firebase_config'
-import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore'
-/* --------------------------------------------------------------- */
+const route = useRoute()
+const router = useRouter()
+const uid = route.params.id
 
-const sidebarOpen = ref(false);
-const activeSection = ref('about');
+// State
+const business = ref(null)
+const allProducts = ref([])
+const showAll = ref(false)
+const loading = ref(true)
+const isFollowing = ref(false)
+const followLoading = ref(false)
+const activeSection = ref('about')
+const searchTerm = ref('')
+const showSort = ref(false)
+const sortMode = ref('none')
 
-const route = useRoute();
-const router = useRouter();
-const uid = route.params.id;
-
-const business = ref(null);
-const allProducts = ref([]);
-const showAll = ref(false);
-const loading = ref(true);
-
-// Google Maps API Key for Embed API
-const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-
-// Add this after your other const declarations (around line 20)
+// Favorites
 const { favoriteProducts, toggleProductFavorite, loadFavoriteProducts } = useFavorites()
 
-const topProducts = computed(() => {
-  return showAll.value ? allProducts.value : allProducts.value.slice(0, 3);
-});
+// Google Maps API Key
+const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
-const handleScroll = () => {
-  const sections = ['about', 'products', 'location', 'reviews'];
-  const offset = 120; // slightly bigger than your sticky/header height
-  for (const id of sections) {
-    const el = document.getElementById(id);
-    if (!el) continue;
-    const rect = el.getBoundingClientRect();
-    // consider a section active if its top is above the offset and at least part is visible
-    if (rect.top <= offset && rect.bottom > offset) {
-      activeSection.value = id;
-      break;
-    }
+// ✅ FIX: Declare with consistent naming
+let _unsubReviews = null
+
+// Maps for caching
+const buyers = new Map()
+const products = new Map()
+
+// Helper functions
+async function getBuyer(uid) {
+  if (!uid) return null
+  if (buyers.has(uid)) return buyers.get(uid)
+  
+  let snap = await getDoc(doc(db, 'users', uid)).catch(() => null)
+  let data = snap?.exists() ? snap.data() : null
+  
+  if (!data) {
+    snap = await getDoc(doc(db, 'profiles', uid)).catch(() => null)
+    data = snap?.exists() ? snap.data() : null
   }
-};
-
-const scrollToSection = (sectionId) => {
-  const navbarHeight = 70;
-  const section = document.getElementById(sectionId);
-  if (section) {
-    activeSection.value = sectionId;
-    window.scrollTo({
-      top: section.offsetTop - navbarHeight,
-      behavior: 'smooth'
-    });
+  
+  const user = {
+    displayName: data?.displayName || data?.name || 'User',
+    photoURL: data?.photoURL || data?.avatar
   }
-};
+  
+  buyers.set(uid, user)
+  return user
+}
 
-onMounted(() => {
-  window.addEventListener('scroll', handleScroll)
-  // Run once at load to highlight correct section if not at top
-  handleScroll()
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', handleScroll)
-})
-
-onMounted(async () => {
-  const businesses = await getBusinesses();
-  business.value = businesses.find(b => b.uid === uid);
-
-  try {
-    allProducts.value = await getSellerProductsSortedBySales(uid);
-  } catch (error) {
-    console.error('Error loading products:', error);
-  } finally {
-    loading.value = false;
+async function getProduct(productId) {
+  if (!productId) return null
+  if (products.has(productId)) return products.get(productId)
+  
+  const snap = await getDoc(doc(db, 'products', productId)).catch(() => null)
+  const d = snap?.exists() ? snap.data() : null
+  
+  const prod = {
+    name: d?.name || d?.item_name || 'Product',
+    imageUrl: d?.imageUrl || d?.img_url
   }
+  
+  products.set(productId, prod)
+  return prod
+}
 
-  /* --------- ADDED: Live reviews listener --------- */
-  const q = query(
-    collection(db, 'reviews'),
-    where('sellerId', '==', uid),
-    orderBy('createdAt', 'desc')
-  )
-  unsubReviews = onSnapshot(q, async (snap) => {
-    const rows = []
-    const tasks = []
+function mask(name) {
+  const n = (name || 'User').trim()
+  if (n.length <= 2) return n[0] + '*'
+  return n[0] + '*'.repeat(Math.max(1, n.length - 2)) + n[n.length - 1]
+}
 
-    snap.forEach(d => {
-      const rev = { id: d.id, ...d.data() }
-      const createdAt = rev.createdAt
-      const sellerService = Number(rev.sellerService || 0)
-      const delivery = Number(rev.delivery || 0)
-      const buyerId = rev.buyerId
+function niceTime(ts) {
+  const d = ts?.toDate ? ts.toDate() : new Date(ts)
+  return d.toLocaleString('en-SG', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
-      if (Array.isArray(rev.items)) {
-        rev.items.forEach((it, idx) => {
-          const row = {
-            key: `${d.id}-${idx}`,
-            createdAt,
-            sellerService,
-            delivery,
-
-            buyerId,
-            buyerName: null,
-            buyerPhoto: null,
-
-            productId: it.productId,
-            productName: null,
-            productImage: null,
-
-            size: it.size || null,
-            rating: Number(it.rating || 0),
-            text: it.text || '',
-            images: Array.isArray(it.images) ? it.images : [],
-            anonymous: Number(it.anonymous ?? 0)
-          }
-          rows.push(row)
-
-          tasks.push((async () => {
-            const u = await fetchBuyer(buyerId)
-            if (u) { row.buyerName = u.displayName; row.buyerPhoto = u.photoURL || null }
-            const p = await fetchProduct(it.productId)
-            if (p) { row.productName = p.name; row.productImage = p.imageUrl || null }
-          })())
-        })
+// Reviews reactive state
+const rv = reactive({
+  raw: [],
+  ui: {
+    sort: 'newest',
+    productId: 'all'
+  },
+  productOptions: computed(() => {
+    const m = new Map()
+    rv.raw.forEach(r => {
+      if (r.productId && r.productName) {
+        m.set(r.productId, r.productName)
       }
     })
+    return Array.from(m.entries()).map(([id, name]) => ({ id, name }))
+  }),
+  listSorted: computed(() => {
+    let list = rv.raw
+    
+    if (rv.ui.productId !== 'all') {
+      list = list.filter(x => x.productId === rv.ui.productId)
+    }
+    
+    if (rv.ui.sort === 'newest') {
+      list = [...list].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    } else if (rv.ui.sort === 'oldest') {
+      list = [...list].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0))
+    } else if (rv.ui.sort === 'high') {
+      list = [...list].sort((a, b) => b.rating - a.rating)
+    } else if (rv.ui.sort === 'low') {
+      list = [...list].sort((a, b) => a.rating - b.rating)
+    }
+    
+    return list
+  }),
+  reset: () => {
+    rv.ui.sort = 'newest'
+    rv.ui.productId = 'all'
+  },
+  displayName: (r) => {
+    return Number(r.anonymous) === 1 ? mask(r.buyerName) : r.buyerName || 'User'
+  },
+  avatarUrl: (r) => {
+    if (Number(r.anonymous) === 1) {
+      return `https://ui-avatars.com/api?name=${encodeURIComponent('Anonymous')}&background=64748b&color=fff&size=64`
+    }
+    return r.buyerPhoto || `https://ui-avatars.com/api?name=${encodeURIComponent(r.buyerName || 'User')}&background=10b981&color=fff&size=64`
+  },
+  formatTime: niceTime
+})
 
-    await Promise.all(tasks)
-    reviewsFlat.value = rows
-  }, err => console.error('reviews onSnapshot error:', err))
-  /* ------------------------------------------------ */
-
-  window.addEventListener('scroll', handleScroll);
-  if (user.value?.uid) {
-    loadFavoriteProducts(user.value.uid)
+// Follow functionality
+async function checkFollowStatus() {
+  if (!auth.currentUser || !uid) return
+  
+  try {
+    const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid))
+    if (userDoc.exists()) {
+      const userData = userDoc.data()
+      isFollowing.value = userData.favoriteBusinesses?.includes(uid) || false
+    }
+  } catch (error) {
+    console.error('Error checking follow status:', error)
   }
-});
+}
 
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll);
-  _unsubReviews?.()
-});
+async function toggleFollow() {
+  if (!auth.currentUser) {
+    useToast.error('Please log in to follow businesses')
+    return
+  }
+  
+  if (followLoading.value) return
+  followLoading.value = true
+  
+  try {
+    const userRef = doc(db, 'users', auth.currentUser.uid)
+    const businessRef = doc(db, 'businesses', uid)
+    
+    // Determine the new state
+    const willBeFollowing = !isFollowing.value
+    const currentFollowers = business.value.followers || 0
+    const newFollowerCount = willBeFollowing 
+      ? currentFollowers + 1 
+      : Math.max(0, currentFollowers - 1)
+    
+    // Update user's favorites
+    await updateDoc(userRef, {
+      favoriteBusinesses: willBeFollowing 
+        ? arrayUnion(uid) 
+        : arrayRemove(uid)
+    })
+    
+    // Update business followers count
+    await updateDoc(businessRef, {
+      followers: newFollowerCount
+    })
+    
+    // ✅ Update local state
+    business.value.followers = newFollowerCount
+    isFollowing.value = willBeFollowing
+    
+    // Show success message
+    useToast.success(willBeFollowing ? 'Following!' : 'Unfollowed')
+    
+  } catch (error) {
+    console.error('Error toggling follow:', error)
+    useToast.error('Failed to update follow status')
+  } finally {
+    followLoading.value = false
+  }
+}
 
-const viewAllProducts = () => {
-  showAll.value = !showAll.value;
-};
+
+// Computed properties
+const topProducts = computed(() => {
+  return showAll.value ? allProducts.value : allProducts.value.slice(0, 3)
+})
 
 const displayRating = computed(() => {
   const n = Number(business.value?.rating)
@@ -665,272 +728,93 @@ const displayRating = computed(() => {
 })
 
 const followersCount = computed(() => Number(business.value?.followers ?? 0))
-const followingCount = computed(() => Number(business.value?.following ?? 0))
 
-/* ===================== ADDED: Reviews helpers ===================== */
-const _buyers = new Map();    // buyerId -> {displayName, photoURL}
-const _products = new Map();  // productId -> {name, imageUrl}
-
-async function getBuyer(uid) {
-  if (!uid) return null;
-  if (_buyers.has(uid)) return _buyers.get(uid);
-
-  let snap = await getDoc(doc(db, "users", uid)).catch(() => null);
-  let data = snap?.exists() ? snap.data() : null;
-
-  if (!data) {
-    snap = await getDoc(doc(db, "profiles", uid)).catch(() => null);
-    data = snap?.exists() ? snap.data() : null;
+// Scroll handling
+const handleScroll = () => {
+  const sections = ['about', 'products', 'location', 'reviews']
+  const offset = 120
+  
+  for (const id of sections) {
+    const el = document.getElementById(id)
+    if (!el) continue
+    const rect = el.getBoundingClientRect()
+    if (rect.top <= offset && rect.bottom >= offset) {
+      activeSection.value = id
+      break
+    }
   }
-
-  const user = {
-    displayName: data?.displayName || data?.name || "User",
-    photoURL: data?.photoURL || data?.avatar || ""
-  };
-  _buyers.set(uid, user);
-  return user;
 }
 
-async function getProduct(productId) {
-  if (!productId) return null;
-  if (_products.has(productId)) return _products.get(productId);
-
-  const snap = await getDoc(doc(db, "products", productId)).catch(() => null);
-  const d = snap?.exists() ? snap.data() : null;
-  const prod = {
-    name: d?.name || d?.item_name || "Product",
-    imageUrl: d?.imageUrl || d?.img_url || ""
-  };
-  _products.set(productId, prod);
-  return prod;
+const scrollToSection = (sectionId) => {
+  const navbarHeight = 70
+  const section = document.getElementById(sectionId)
+  if (section) {
+    activeSection.value = sectionId
+    window.scrollTo({
+      top: section.offsetTop - navbarHeight,
+      behavior: 'smooth'
+    })
+  }
 }
 
-function mask(name) {
-  const n = (name || "User").trim();
-  if (n.length <= 2) return n[0] + "*";
-  return `${n[0]}${"*".repeat(Math.max(1, n.length - 2))}${n[n.length - 1]}`;
-}
-
-function niceTime(ts) {
-  const d = ts?.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleString("en-SG", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
-// ==================== REACTIVE STATE ====================
-const rv = reactive({
-  raw: [], // flattened rows
-  ui: { sort: "newest", productId: "all" },
-
-  productOptions: computed(() => {
-    const m = new Map();
-    rv.raw.forEach(r => {
-      if (r.productId && r.productName) m.set(r.productId, r.productName);
-    });
-    return Array.from(m.entries()).map(([id, name]) => ({ id, name }));
-  }),
-
-  listSorted: computed(() => {
-    let list = rv.raw;
-    if (rv.ui.productId !== "all") list = list.filter(x => x.productId === rv.ui.productId);
-
-    if (rv.ui.sort === "newest")
-      list = [...list].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-    else if (rv.ui.sort === "oldest")
-      list = [...list].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-    else if (rv.ui.sort === "high")
-      list = [...list].sort((a, b) => b.rating - a.rating);
-    else if (rv.ui.sort === "low")
-      list = [...list].sort((a, b) => a.rating - b.rating);
-
-    return list;
-  }),
-
-  reset() {
-    rv.ui.sort = "newest";
-    rv.ui.productId = "all";
-  },
-
-  // Template helpers
-  displayName(r) {
-    return Number(r.anonymous) === 1 ? mask(r.buyerName) : (r.buyerName || "User");
-  },
-  avatarUrl(r) {
-    if (Number(r.anonymous) === 1)
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        "Anonymous"
-      )}&background=64748b&color=fff&size=64`;
-    return (
-      r.buyerPhoto ||
-      `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        r.buyerName || "User"
-      )}&background=10b981&color=fff&size=64`
-    );
-  },
-  formatTime: niceTime
-});
-
-// ==================== LIVE SUBSCRIPTION ====================
-let _unsubReviews = null;
-
-onMounted(() => {
-  const q = query(collection(db, "reviews"), where("sellerId", "==", uid), orderBy("createdAt", "desc"));
-  _unsubReviews = onSnapshot(
-    q,
-    async snap => {
-      const rows = [];
-      const tasks = [];
-
-      snap.forEach(ds => {
-        const rev = { id: ds.id, ...ds.data() };
-        const base = {
-          createdAt: rev.createdAt,
-          sellerService: Number(rev.sellerService || 0),
-          delivery: Number(rev.delivery || 0),
-          buyerId: rev.buyerId
-        };
-
-        (rev.items || []).forEach((it, i) => {
-          const row = {
-            key: `${ds.id}-${i}`,
-            ...base,
-            productId: it.productId || null,
-            size: it.size || null,
-            rating: Number(it.rating || 0),
-            text: it.text || "",
-            images: Array.isArray(it.images) ? it.images : [],
-            anonymous: Number(it.anonymous ?? 0),
-
-            // placeholders filled by tasks
-            buyerName: null,
-            buyerPhoto: null,
-            productName: null,
-            productImage: null
-          };
-
-          rows.push(row);
-          tasks.push(
-            (async () => {
-              const u = await getBuyer(base.buyerId);
-              if (u) {
-                row.buyerName = u.displayName;
-                row.buyerPhoto = u.photoURL;
-              }
-              const p = await getProduct(it.productId);
-              if (p) {
-                row.productName = p.name;
-                row.productImage = p.imageUrl;
-              }
-            })()
-          );
-        });
-      });
-
-      await Promise.all(tasks);
-      rv.raw = rows;
-    },
-    err => console.error("reviews onSnapshot error:", err)
-  );
-});
-
-onUnmounted(() => {
-  _unsubReviews?.();
-});
-
-// ==================== LIGHTBOX (image zoom) ====================
-const lb = ref({ open: false, images: [], index: 0 });
-
-function openLightbox(images, index = 0) {
-  lb.value.open = true;
-  lb.value.images = images || [];
-  lb.value.index = index;
-}
-
-function closeLightbox() {
-  lb.value.open = false;
-  lb.value.images = [];
-  lb.value.index = 0;
-}
-
-function next() {
-  if (!lb.value.images.length) return;
-  lb.value.index = (lb.value.index + 1) % lb.value.images.length;
-}
-
-function prev() {
-  if (!lb.value.images.length) return;
-  lb.value.index = (lb.value.index - 1 + lb.value.images.length) % lb.value.images.length;
-}
-
-function onKey(e) {
-  if (!lb.value.open) return;
-  if (e.key === "Escape") return closeLightbox();
-  if (e.key === "ArrowRight") return next();
-  if (e.key === "ArrowLeft") return prev();
-}
-
-onMounted(() => window.addEventListener("keydown", onKey));
-onUnmounted(() => window.removeEventListener("keydown", onKey));
-/* ================================================================ */
-
-// SEARCH + SORT 
-const searchTerm = ref('')
-const showSort = ref(false)
-const sortMode = ref('none')
-
+// Sort/Filter
 const sortOptions = [
   { value: 'none', label: 'Best Selling' },
-  { value: 'name_asc', label: 'A → Z' },
-  { value: 'name_desc', label: 'Z → A' },
-  { value: 'price_asc', label: 'Price: Low → High' },
-  { value: 'price_desc', label: 'Price: High → Low' },
+  { value: 'name-asc', label: 'A → Z' },
+  { value: 'name-desc', label: 'Z → A' },
+  { value: 'price-asc', label: 'Price: Low → High' },
+  { value: 'price-desc', label: 'Price: High → Low' }
 ]
 
-const currentSortLabel = computed(() =>
-  sortOptions.find(o => o.value === sortMode.value)?.label || 'Best Selling'
-)
-
-function toggleSortMenu() { showSort.value = !showSort.value }
-function setSort(mode) { sortMode.value = mode; showSort.value = false }
-
-/* Filter + Sort logic only used when showAll is true */
-const filteredSortedProducts = computed(() => {
-  let filtered = allProducts.value.filter(p =>
-    p.name?.toLowerCase().includes(searchTerm.value.toLowerCase())
-  )
-
-  switch (sortMode.value) {
-    case 'name_asc': return filtered.sort((a, b) => a.name.localeCompare(b.name))
-    case 'name_desc': return filtered.sort((a, b) => b.name.localeCompare(a.name))
-    case 'price_asc': return filtered.sort((a, b) => getMinPrice(a) - getMinPrice(b))
-    case 'price_desc': return filtered.sort((a, b) => getMaxPrice(b) - getMaxPrice(a))
-    case 'sales_desc': return filtered.sort((a, b) => (b.totalSales || 0) - (a.totalSales || 0))
-    default: return filtered
-  }
+const currentSortLabel = computed(() => {
+  return sortOptions.find(o => o.value === sortMode.value)?.label || 'Best Selling'
 })
 
-function getMinPrice(p) {
+function toggleSortMenu() {
+  showSort.value = !showSort.value
+}
+
+function setSort(mode) {
+  sortMode.value = mode
+  showSort.value = false
+}
+
+const getMinPrice = (p) => {
   const prices = Array.isArray(p.price) ? p.price : [p.price]
   return Math.min(...prices.map(Number).filter(n => !isNaN(n)))
 }
-function getMaxPrice(p) {
+
+const getMaxPrice = (p) => {
   const prices = Array.isArray(p.price) ? p.price : [p.price]
   return Math.max(...prices.map(Number).filter(n => !isNaN(n)))
 }
 
-function goBackToProduct() {
-  console.log('🔙 Back to Product clicked')
-  console.log('📍 fromProduct:', route.query.fromProduct)
-  console.log('🏪 shop:', uid)
-  console.log('📄 productsPage:', route.query.productsPage)
+const filteredSortedProducts = computed(() => {
+  let filtered = allProducts.value.filter(p =>
+    p.name?.toLowerCase().includes(searchTerm.value.toLowerCase())
+  )
   
+  switch (sortMode.value) {
+    case 'name-asc':
+      return filtered.sort((a, b) => a.name.localeCompare(b.name))
+    case 'name-desc':
+      return filtered.sort((a, b) => b.name.localeCompare(a.name))
+    case 'price-asc':
+      return filtered.sort((a, b) => getMinPrice(a) - getMinPrice(b))
+    case 'price-desc':
+      return filtered.sort((a, b) => getMaxPrice(b) - getMaxPrice(a))
+    default:
+      return filtered
+  }
+})
+
+function viewAllProducts() {
+  showAll.value = !showAll.value
+}
+
+function goBackToProduct() {
   if (!route.query.fromProduct) {
-    console.error('❌ No fromProduct in query params')
+    console.error('No fromProduct in query params')
     return
   }
   
@@ -938,12 +822,147 @@ function goBackToProduct() {
     name: 'ProductDetails',
     params: { id: route.query.fromProduct },
     query: {
-      fromProductsPage: 'true',  // ✅ KEEP this so it knows to show "Back to Products"
+      fromProductsPage: true,
       shop: uid,
       productsPage: route.query.productsPage
-      // ❌ Don't add fromShop here - we want it to show "Back to Products" button
     }
   })
 }
 
+// Lightbox
+const lb = ref({
+  open: false,
+  images: [],
+  index: 0
+})
+
+function openLightbox(images, index = 0) {
+  lb.value.open = true
+  lb.value.images = images
+  lb.value.index = index
+}
+
+function closeLightbox() {
+  lb.value.open = false
+  lb.value.images = []
+  lb.value.index = 0
+}
+
+function next() {
+  if (!lb.value.images.length) return
+  lb.value.index = (lb.value.index + 1) % lb.value.images.length
+}
+
+function prev() {
+  if (!lb.value.images.length) return
+  lb.value.index = (lb.value.index - 1 + lb.value.images.length) % lb.value.images.length
+}
+
+function onKey(e) {
+  if (!lb.value.open) return
+  if (e.key === 'Escape') return closeLightbox()
+  if (e.key === 'ArrowRight') return next()
+  if (e.key === 'ArrowLeft') return prev()
+}
+
+// ✅ CONSOLIDATED SINGLE onMounted
+onMounted(async () => {
+  // 1. Load business data
+  const businesses = await getBusinesses()
+  business.value = businesses.find(b => b.uid === uid)
+  
+  // 2. Load products
+  try {
+    allProducts.value = await getSellerProductsSortedBySales(uid)
+  } catch (error) {
+    console.error('Error loading products:', error)
+  }
+  
+  // 3. Setup reviews listener
+  const q = query(
+    collection(db, 'reviews'),
+    where('sellerId', '==', uid),
+    orderBy('createdAt', 'desc')
+  )
+  
+  _unsubReviews = onSnapshot(q, async (snap) => {
+    const rows = []
+    const tasks = []
+    
+    snap.forEach(ds => {
+      const rev = { id: ds.id, ...ds.data() }
+      const base = {
+        createdAt: rev.createdAt,
+        sellerService: Number(rev.sellerService || 0),
+        delivery: Number(rev.delivery || 0),
+        buyerId: rev.buyerId
+      }
+      
+      ;(rev.items || []).forEach((it, i) => {
+        const row = {
+          key: `${ds.id}-${i}`,
+          ...base,
+          productId: it.productId || null,
+          size: it.size || null,
+          rating: Number(it.rating || 0),
+          text: it.text || "",
+          images: Array.isArray(it.images) ? it.images : [],
+          anonymous: Number(it.anonymous ?? 0),
+          buyerName: null,
+          buyerPhoto: null,
+          productName: null,
+          productImage: null
+        }
+        
+        rows.push(row)
+        tasks.push(
+          (async () => {
+            // ✅ FIX: Use getBuyer instead of fetchBuyer
+            const u = await getBuyer(base.buyerId)
+            if (u) {
+              row.buyerName = u.displayName
+              row.buyerPhoto = u.photoURL
+            }
+            // ✅ FIX: Use getProduct instead of fetchProduct
+            const p = await getProduct(it.productId)
+            if (p) {
+              row.productName = p.name
+              row.productImage = p.imageUrl
+            }
+          })()
+        )
+      })
+    })
+    
+    await Promise.all(tasks)
+    rv.raw = rows
+  }, err => {
+    console.error('reviews onSnapshot error:', err)
+  })
+  
+  // 4. Setup scroll listener
+  window.addEventListener('scroll', handleScroll)
+  handleScroll()
+  
+  // 5. Setup keyboard listener
+  window.addEventListener('keydown', onKey)
+  
+  // 6. Load favorites
+  if (user.value?.uid) {
+    await loadFavoriteProducts(user.value.uid)
+  }
+  
+  // 7. Check follow status
+  await checkFollowStatus()
+  
+  // 8. Done loading
+  loading.value = false
+})
+
+// ✅ CONSOLIDATED cleanup
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+  window.removeEventListener('keydown', onKey)
+  _unsubReviews?.() // ✅ Clean up reviews listener
+})
 </script>

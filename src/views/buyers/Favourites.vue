@@ -1,44 +1,135 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
 import { useFavorites } from '@/composables/useFavorites.js'
-import { user } from '@/store/user.js'
+import { useToast } from '@/composables/useToast.js'
+import { auth, db } from '@/firebase/firebase_config'
+import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore'
+import { onAuthStateChanged } from 'firebase/auth'
 
-console.log(user.avatar)
+const followedBusinesses = ref([])
+const loadingBusinesses = ref(true)
 
 const {
   isSidebarCollapsed,
-  favorites,
   favoriteProducts,
   handleSidebarToggle,
-  toggleFavorite,
   toggleProductFavorite
 } = useFavorites()
 
-// Search input
 const searchQuery = ref('')
 
-// Filtered favorites
 const filteredProducts = computed(() => {
-  // ✅ Ensure favoriteProducts is an array
   if (!Array.isArray(favoriteProducts.value)) return []
   
   if (!searchQuery.value) return favoriteProducts.value
   return favoriteProducts.value.filter(p =>
-    p.item_name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    p.item_name?.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 })
 
 const filteredBusinesses = computed(() => {
-  if (!Array.isArray(favorites.value)) return []
+  if (!Array.isArray(followedBusinesses.value)) return []
   
-  if (!searchQuery.value) return favorites.value
-  return favorites.value.filter(b =>
-    b.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    b.category.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
+  if (!searchQuery.value) return followedBusinesses.value
+  
+  return followedBusinesses.value.filter(b => {
+    const name = (b.name || b.businessName || '').toLowerCase()
+    const category = (b.category || '').toLowerCase()
+    const searchLower = searchQuery.value.toLowerCase()
+    
+    return name.includes(searchLower) || category.includes(searchLower)
+  })
 })
 
+async function loadFollowedBusinesses(userId) {
+  if (!userId) {
+    loadingBusinesses.value = false
+    return
+  }
+  
+  try {
+    const userDoc = await getDoc(doc(db, 'users', userId))
+    
+    if (!userDoc.exists()) {
+      followedBusinesses.value = []
+      loadingBusinesses.value = false
+      return
+    }
+    
+    const userData = userDoc.data()
+    const favoriteBusinessIds = userData.favoriteBusinesses || []
+    
+    if (favoriteBusinessIds.length === 0) {
+      followedBusinesses.value = []
+      loadingBusinesses.value = false
+      return
+    }
+    
+    const businessPromises = favoriteBusinessIds.map(id => 
+      getDoc(doc(db, 'businesses', id))
+    )
+    
+    const businessDocs = await Promise.all(businessPromises)
+    
+    followedBusinesses.value = businessDocs
+      .filter(doc => doc.exists())
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        isFavorite: true
+      }))
+    
+  } catch (error) {
+    console.error('Error loading followed businesses:', error)
+    followedBusinesses.value = []
+  } finally {
+    loadingBusinesses.value = false
+  }
+}
+
+async function unfollowBusiness(businessId, businessName) {
+  if (!auth.currentUser) {
+    useToast.error('Please log in to manage favorites')
+    return
+  }
+  
+  try {
+    const userRef = doc(db, 'users', auth.currentUser.uid)
+    const businessRef = doc(db, 'businesses', businessId)
+    
+    await updateDoc(userRef, {
+      favoriteBusinesses: arrayRemove(businessId)
+    })
+    
+    const businessDoc = await getDoc(businessRef)
+    if (businessDoc.exists()) {
+      const currentFollowers = businessDoc.data().followers || 0
+      await updateDoc(businessRef, {
+        followers: Math.max(0, currentFollowers - 1)
+      })
+    }
+    
+    followedBusinesses.value = followedBusinesses.value.filter(b => b.id !== businessId)
+    
+    useToast.success(`Unfollowed ${businessName}`)
+    
+  } catch (error) {
+    console.error('Error unfollowing business:', error)
+    useToast.error('Failed to unfollow business')
+  }
+}
+
+onMounted(() => {
+  onAuthStateChanged(auth, async (firebaseUser) => {
+    if (firebaseUser) {
+      await loadFollowedBusinesses(firebaseUser.uid)
+    } else {
+      followedBusinesses.value = []
+      loadingBusinesses.value = false
+    }
+  })
+})
 </script>
 
 <template>
@@ -92,8 +183,11 @@ const filteredBusinesses = computed(() => {
                class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
             <div class="relative w-full h-48 sm:h-56 md:h-48 lg:h-52">
               <img :src="product.img_url" :alt="product.item_name" class="w-full h-full object-cover" />
-              <button @click="toggleProductFavorite(product)"
-                      class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
+              <button 
+                @click="toggleProductFavorite(product)"
+                title="Unfavourite this product"
+                class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors"
+              >
                 <svg :class="['h-6 w-6 transition-colors', product.isFavorite ? 'text-red-500 fill-current' : 'text-slate-400']"
                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -141,22 +235,31 @@ const filteredBusinesses = computed(() => {
       <!-- Favorites Count for Businesses -->
       <div class="mb-6">
         <p class="text-slate-600 dark:text-slate-400">
-          You have <span class="font-semibold text-primary">{{ favorites.length }}</span> favorite businesses
+          You have <span class="font-semibold text-primary">{{ followedBusinesses.length }}</span> favorite businesses
         </p>
       </div>
 
-      <!-- Favorites Grid -->
-      <div v-if="favorites.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div v-for="business in favorites" :key="business.id"
+      <!-- Favorites Grid for Businesses -->
+      <div v-if="filteredBusinesses.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div v-for="business in filteredBusinesses" :key="business.id"
              class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
           <div class="relative w-full h-48 sm:h-56 md:h-48 lg:h-52">
-            <img :src="business.image" :alt="business.name" class="w-full h-full object-cover" />
-            <button @click="toggleFavorite(business.id)"
-                    class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
-              <svg :class="['h-6 w-6 transition-colors', business.isFavorite ? 'text-red-500 fill-current' : 'text-slate-400']"
-                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+            <img 
+              :src="business.profilePic || 'https://via.placeholder.com/400x300?text=No+Image'" 
+              :alt="business.name" 
+              class="w-full h-full object-cover" 
+            />
+            
+            <!-- Heart button with native tooltip -->
+            <button 
+              @click="unfollowBusiness(business.id, business.name)"
+              title="Unfavourite this business"
+              class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 hover:scale-110 transition-all duration-200 shadow-md z-10"
+              type="button"
+            >
+              <svg class="h-6 w-6 text-red-500 fill-current"
+                   viewBox="0 0 24 24">
+                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
               </svg>
             </button>
           </div>
@@ -164,26 +267,39 @@ const filteredBusinesses = computed(() => {
           <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between">
             <div class="mb-2">
               <span class="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">
-                {{ business.category }}
+                {{ business.category || 'Business' }}
               </span>
             </div>
+            
             <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">{{ business.name }}</h3>
-            <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">{{ business.description }}</p>
+            
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-4 line-clamp-2">
+              {{ business.bio || business.description || 'No description available' }}
+            </p>
 
             <div class="flex items-center gap-2 mb-4">
               <div class="flex items-center">
                 <svg class="h-5 w-5 text-yellow-400 fill-current" viewBox="0 0 24 24">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
                 </svg>
-                <span class="ml-1 font-semibold text-slate-900 dark:text-white">{{ business.rating }}</span>
+                <span class="ml-1 font-semibold text-slate-900 dark:text-white">
+                  {{ business.rating ? business.rating.toFixed(1) : 'N/A' }}
+                </span>
               </div>
-              <span class="text-sm text-slate-500 dark:text-slate-400">({{ business.reviews }} reviews)</span>
+              <span class="text-sm text-slate-500 dark:text-slate-400">
+                {{ business.followers || 0 }} followers
+              </span>
             </div>
 
             <div class="flex flex-col sm:flex-row gap-2">
-              <button class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                Visit Store
-              </button>
+              <RouterLink 
+                :to="{ name: 'ShopDetails', params: { id: business.id || business.uid } }" 
+                class="flex-1"
+              >
+                <button class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                  Visit Store
+                </button>
+              </RouterLink>
               <button
                 class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,11 +319,13 @@ const filteredBusinesses = computed(() => {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
         </svg>
-        <h3 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">No favorites yet</h3>
+        <h3 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">No favorite businesses yet</h3>
         <p class="text-slate-600 dark:text-slate-400 mb-6">Start exploring and add businesses to your favorites!</p>
-        <button class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-          Explore Businesses
-        </button>
+        <RouterLink to="/businesses">
+          <button class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+            Explore Businesses
+          </button>
+        </RouterLink>
       </div>
     </main>
   </div>
