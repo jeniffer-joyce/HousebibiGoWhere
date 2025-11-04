@@ -5,14 +5,11 @@
 
     <!-- Main content is pushed by sidebar; no overlay -->
     <main
-      class="flex-1 transition-all duration-300
-             py-6 sm:py-8
-             pr-4 sm:pr-8
-             pl-3 sm:pl-5 md:pl-6"
-      :class="isSidebarCollapsed ? 'ml-16' : 'ml-64'"
+      class="flex-1 transition-all duration-300 py-6 sm:py-8 px-6 sm:px-8"
+      :class="isSidebarCollapsed ? 'ml-20' : 'ml-64'"
     >
-      <!-- Left-aligned container to remove gutter -->
-      <div class="w-full space-y-8">
+      <!-- Container with max-width that adjusts based on sidebar state -->
+      <div class="w-full max-w-7xl mx-auto space-y-8">
         <!-- success banner -->
         <div
           v-if="banner.show"

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
+import MessageButton from '@/components/messageButton.vue'
 import { useFavorites } from '@/composables/useFavorites.js'
 import { useToast } from '@/composables/useToast.js'
 import { auth, db } from '@/firebase/firebase_config'
@@ -300,13 +301,14 @@ onMounted(() => {
                   Visit Store
                 </button>
               </RouterLink>
-              <button
-                class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                </svg>
-              </button>
+              <!-- Message Button Component -->
+              <MessageButton 
+                :seller-id="business.id || business.uid" 
+                :seller-name="business.name || business.businessName" 
+                variant="secondary" 
+                size="md"
+                class="w-full sm:w-auto"
+              />
             </div>
           </div>
         </div>

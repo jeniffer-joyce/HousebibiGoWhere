@@ -420,12 +420,12 @@ function handleClickOutside(event) {
             'flex-1 flex transition-all duration-300 overflow-hidden',
             isSidebarCollapsed ? 'ml-20' : 'ml-64'
         ]">
-                <!-- Conversations List -->
-                <div class="w-96 border-r border-slate-200 dark:border-slate-700 flex flex-col bg-white dark:bg-slate-800">
+                <!-- Conversations List - Minimal width below 768px for full chat visibility even with expanded sidebar -->
+                <div class="w-[15vw] md:w-80 border-r border-slate-200 dark:border-slate-700 flex flex-col bg-white dark:bg-slate-800 flex-shrink-0">
                     <!-- Header -->
-                    <div class="p-4 border-b border-slate-200 dark:border-slate-700">
-                        <div class="flex items-center justify-between mb-4">
-                            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Messages</h1>
+                    <div class="p-2 md:p-4 border-b border-slate-200 dark:border-slate-700">
+                        <div class="flex items-center justify-between mb-2 md:mb-4">
+                            <h1 class="text-base md:text-2xl font-bold text-slate-900 dark:text-white">Messages</h1>
                         </div>
                         
                         <!-- Search -->
@@ -433,9 +433,9 @@ function handleClickOutside(event) {
                             <input 
                                 v-model="searchQuery"
                                 type="text" 
-                                placeholder="Search messages"
-                                class="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
-                            <svg class="absolute left-3 top-2.5 h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                placeholder="Search"
+                                class="w-full pl-8 md:pl-10 pr-2 md:pr-4 py-1.5 md:py-2 text-xs md:text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+                            <svg class="absolute left-2 md:left-3 top-1.5 md:top-2.5 h-4 w-4 md:h-5 md:w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                             </svg>
                         </div>
@@ -444,25 +444,22 @@ function handleClickOutside(event) {
                     <!-- Conversations List -->
                     <div class="flex-1 overflow-y-auto">
                         <div v-if="loading && conversations.length === 0" class="flex items-center justify-center h-full">
-                            <div class="text-center">
-                                <svg class="animate-spin h-10 w-10 mx-auto text-primary mb-3" fill="none" viewBox="0 0 24 24">
+                            <div class="text-center p-2">
+                                <svg class="animate-spin h-6 md:h-10 w-6 md:w-10 mx-auto text-primary mb-2 md:mb-3" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                 </svg>
-                                <p class="text-slate-600 dark:text-slate-400">Loading conversations...</p>
+                                <p class="text-xs md:text-sm text-slate-600 dark:text-slate-400">Loading...</p>
                             </div>
                         </div>
 
                         <div v-else-if="filteredConversations.length === 0" class="flex items-center justify-center h-full">
-                            <div class="text-center px-4">
-                                <svg class="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="text-center px-2 md:px-4">
+                                <svg class="h-10 md:h-16 w-10 md:w-16 mx-auto text-slate-300 dark:text-slate-600 mb-2 md:mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                 </svg>
-                                <p class="text-slate-600 dark:text-slate-400">
+                                <p class="text-xs md:text-sm text-slate-600 dark:text-slate-400">
                                     {{ searchQuery ? 'No conversations found' : 'No messages yet' }}
-                                </p>
-                                <p v-if="!searchQuery" class="text-slate-500 dark:text-slate-500 text-sm mt-1">
-                                    Start browsing shops to message sellers
                                 </p>
                             </div>
                         </div>
@@ -473,10 +470,32 @@ function handleClickOutside(event) {
                                 :key="conversation.id"
                                 @click="selectConversation(conversation.id)"
                                 :class="[
-                                    'p-4 border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors',
-                                    activeConversationId === conversation.id ? 'bg-slate-100 dark:bg-slate-700 border-l-4 border-l-primary' : ''
+                                    'p-2 md:p-4 border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors',
+                                    activeConversationId === conversation.id ? 'bg-slate-100 dark:bg-slate-700 border-l-2 md:border-l-4 border-l-primary' : ''
                                 ]">
-                                <div class="flex items-start gap-3">
+                                <!-- Mobile: Ultra Compact Layout for 15vw width -->
+                                <div class="flex md:hidden flex-col items-center text-center gap-1">
+                                    <img 
+                                        :src="getAvatarUrl(conversation.otherUserId)" 
+                                        :alt="getDisplayName(conversation.otherUserId)" 
+                                        class="w-8 h-8 rounded-full object-cover" />
+                                    <div class="w-full">
+                                        <h3 class="text-[10px] font-semibold text-slate-900 dark:text-white truncate">
+                                            {{ getDisplayName(conversation.otherUserId).length > 8 ? getDisplayName(conversation.otherUserId).substring(0, 8) + '...' : getDisplayName(conversation.otherUserId) }}
+                                        </h3>
+                                        <p class="text-[8px] text-slate-600 dark:text-slate-400 truncate mt-0.5">
+                                            {{ conversation.lastMessage ? (conversation.lastMessage.length > 8 ? conversation.lastMessage.substring(0, 8) + '...' : conversation.lastMessage) : 'New' }}
+                                        </p>
+                                        <div class="flex items-center justify-center gap-0.5 mt-0.5">
+                                            <span v-if="conversation.unreadCount > 0" 
+                                                class="w-2 h-2 bg-primary rounded-full">
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Desktop: Horizontal Layout -->
+                                <div class="hidden md:flex items-start gap-3">
                                     <img 
                                         :src="getAvatarUrl(conversation.otherUserId)" 
                                         :alt="getDisplayName(conversation.otherUserId)" 
@@ -566,7 +585,7 @@ function handleClickOutside(event) {
                     <!-- Messages -->
                     <div 
                         ref="messagesContainer"
-                        class="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-900">
+                        class="flex-1 overflow-y-auto p-2 md:p-4 bg-slate-50 dark:bg-slate-900">
                         <div v-if="!messages || messages.length === 0" class="flex items-center justify-center h-full">
                             <div class="text-center">
                                 <svg class="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -601,7 +620,7 @@ function handleClickOutside(event) {
                                             message.senderId === currentUserIdRef ? 'justify-end' : 'justify-start'
                                         ]">
                                         <div :class="[
-                                            'max-w-xs px-3 py-2 rounded-2xl',
+                                            'max-w-[70%] md:max-w-xs px-3 py-2 rounded-2xl',
                                             message.senderId === currentUserIdRef
                                                 ? 'bg-blue-500 text-white rounded-br-md'
                                                 : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-md shadow-sm'

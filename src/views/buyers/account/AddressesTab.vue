@@ -29,11 +29,11 @@
     </div>
 
     <!-- Address Cards -->
-    <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div v-else class="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       <div
         v-for="(addr, idx) in addresses"
         :key="idx"
-        class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+        class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 transition-all"
       >
         <div class="mb-2 flex items-center justify-between">
           <span class="text-sm font-semibold capitalize text-slate-800 dark:text-slate-200">{{ addr.type }}</span>
