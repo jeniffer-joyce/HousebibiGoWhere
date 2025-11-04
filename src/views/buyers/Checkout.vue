@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { db, auth } from "@/firebase/firebase_config"
-import { doc, getDoc, setDoc, onSnapshot, updateDoc, arrayRemove } from "firebase/firestore"
+import { doc, getDoc, setDoc, onSnapshot, updateDoc, arrayRemove, collection, getDocs } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 import { getFunctions, httpsCallable } from "firebase/functions"
 import { stripePromise } from '@/firebase/services/stripe'
@@ -24,6 +24,9 @@ const SHIPPING_FEE = 1.99
 
 // Payment processing state
 const processingPayment = ref(false)
+const savedCards = ref([])
+const selectedCardIndex = ref(null) // null means "enter new card at Stripe"
+const useNewCard = ref(true)
 
 // Address modal state
 const showAddressModal = ref(false)
@@ -62,23 +65,38 @@ onAuthStateChanged(auth, (user) => {
     }
 })
 
-// Load user data including addresses
+// Load user data including addresses and payment methods
 async function loadUserData() {
-    if (!currentUser.value) return
+  if (!currentUser.value) return;
 
-    try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.value.uid))
-        if (userDoc.exists()) {
-            userDetails.value = userDoc.data()
-            // Find default address or use first one
-            if (userDetails.value.addresses && userDetails.value.addresses.length > 0) {
-                const defaultIdx = userDetails.value.addresses.findIndex(a => a.default === 1)
-                selectedAddressIndex.value = defaultIdx !== -1 ? defaultIdx : 0
-            }
-        }
-    } catch (error) {
-        console.error('Error loading user data:', error)
+  try {
+    const userDoc = await getDoc(doc(db, 'users', currentUser.value.uid));
+    if (userDoc.exists()) {
+      userDetails.value = userDoc.data();
+
+      // Fetch saved cards from subcollection 'payment_methods'
+      const paymentMethodsCol = collection(db, 'users', currentUser.value.uid, 'payment_methods');
+      const paymentSnap = await getDocs(paymentMethodsCol);
+      savedCards.value = paymentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log('Fetched saved cards:', savedCards.value);
+
+
+      // Set default card if available
+      const defaultCardIndex = savedCards.value.findIndex(c => c.isDefault);
+      if (defaultCardIndex !== -1) {
+        selectedCardIndex.value = defaultCardIndex;
+        useNewCard.value = false;
+      }
+
+      // Find default address or use first one
+      if (userDetails.value.addresses && userDetails.value.addresses.length > 0) {
+        const defaultIdx = userDetails.value.addresses.findIndex(a => a.default === 1);
+        selectedAddressIndex.value = defaultIdx !== -1 ? defaultIdx : 0;
+      }
     }
+  } catch (error) {
+    console.error('Error loading user data:', error);
+  }
 }
 
 // Load cart from Firestore
@@ -225,10 +243,28 @@ const selectedAddress = computed(() => {
     return userDetails.value.addresses[selectedAddressIndex.value]
 })
 
+// Get selected card
+const selectedCard = computed(() => {
+    if (useNewCard.value || selectedCardIndex.value === null) return null
+    return savedCards.value[selectedCardIndex.value]
+})
+
 // Check if there are any stock warnings
 const hasStockWarnings = computed(() => {
     return stockWarnings.value.size > 0
 })
+
+// Get card brand
+function getCardBrand(number) {
+  if (!number || typeof number !== 'string') {
+    return 'generic';
+  }
+  const cleanNumber = number.replace(/\s/g, '');
+  if (cleanNumber.startsWith('4')) return 'visa';
+  if (/^5[1-5]/.test(cleanNumber)) return 'mastercard';
+  return 'generic';
+}
+
 
 // Address form validation
 const fullNameValid = computed(() => addressForm.value.fullName.trim().length > 0)
@@ -358,102 +394,138 @@ async function deleteAddress(index) {
 function formatPrice(price) {
     return `$${price.toFixed(2)}`
 }
+
 // STRIPE PAYMENT INTEGRATION
 async function proceedToPayment() {
-    // Validation checks
-    if (!selectedAddress.value) {
-        useToast().error('Please select a delivery address')
-        return
+  // Validation checks
+  if (!selectedAddress.value) {
+    useToast().error('Please select a delivery address');
+    return;
+  }
+
+  if (selectedCartItems.value.length === 0) {
+    useToast().error('No items selected for checkout');
+    return;
+  }
+
+  if (hasStockWarnings.value) {
+    useToast().error('Please resolve stock availability issues before proceeding');
+    return;
+  }
+
+  processingPayment.value = true;
+
+  // Use safe string slicing with fallback
+  const last4 = selectedCard.value && selectedCard.value.last4
+    ? selectedCard.value.last4.slice(-4)
+    : '';
+
+  try {
+    // Prepare items for Stripe with proper size extraction
+    const items = selectedCartItems.value.map(item => {
+      let sizeName = item.size || null;
+      if (
+        !sizeName &&
+        item.sizeIndex !== null &&
+        item.sizeIndex !== undefined &&
+        item.availableSizes &&
+        item.availableSizes.length > 0
+      ) {
+        sizeName = item.availableSizes[item.sizeIndex] || null;
+      }
+
+      return {
+        name: item.item_name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.img_url || null,
+        size: sizeName,
+        sizeIndex: item.sizeIndex !== undefined ? item.sizeIndex : null,
+        productId: item.productId,
+        sellerId: item.sellerId,
+        shopName: item.shopName || item.sellerName || item.businessName || null
+      };
+    });
+
+    // Calculate total including shipping
+    const itemsTotal = selectedCartItems.value.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    const grandTotal = itemsTotal + SHIPPING_FEE;
+
+    console.log('🛒 Checkout Data:', {
+      items,
+      itemsTotal,
+      shippingFee: SHIPPING_FEE,
+      grandTotal,
+      itemsWithSize: items.filter(i => i.size).length,
+      deliveryAddress: selectedAddress.value,
+      savedCard: selectedCard.value
+        ? {
+            last4: selectedCard.value.number
+              ? selectedCard.value.number.slice(-4)
+              : '',
+            holderName: selectedCard.value.holderName || ''
+          }
+        : null
+    });
+
+    // Get current URL for success/cancel redirects
+    const baseUrl = window.location.origin;
+
+    // Get user auth token
+    const token = await auth.currentUser.getIdToken();
+
+    // Prepare payment data
+    const paymentData = {
+      items,
+      shippingFee: SHIPPING_FEE,
+      totalAmount: grandTotal,
+      deliveryAddress: selectedAddress.value,
+      successUrl: `${baseUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${baseUrl}/checkout`
+    };
+
+    // Add saved card data if selected
+    if (selectedCard.value) {
+      paymentData.savedCard = {
+        number: selectedCard.value.number || '',
+        expiryDate: selectedCard.value.expiryDate || '',
+        holderName: selectedCard.value.holderName || '',
+        cvv: selectedCard.value.cvv || ''
+      };
     }
 
-    if (selectedCartItems.value.length === 0) {
-        useToast().error('No items selected for checkout')
-        return
+    // Call Firebase Function via HTTP request
+    const functionUrl =
+      'https://us-central1-craftconnect-3b52c.cloudfunctions.net/createCheckoutSession';
+
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(paymentData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Payment failed');
     }
 
-    if (hasStockWarnings.value) {
-        useToast().error('Please resolve stock availability issues before proceeding')
-        return
-    }
+    const data = await response.json();
 
-    processingPayment.value = true
-
-    try {
-        // Prepare items for Stripe with proper size extraction
-        const items = selectedCartItems.value.map(item => {
-            // Get the actual size name from availableSizes array using sizeIndex
-            let sizeName = item.size || null
-            if (!sizeName && item.sizeIndex !== null && item.sizeIndex !== undefined && item.availableSizes && item.availableSizes.length > 0) {
-                sizeName = item.availableSizes[item.sizeIndex] || null
-            }
-            
-            return {
-                name: item.item_name,
-                price: item.price,
-                quantity: item.quantity,
-                image: item.img_url || null,
-                size: sizeName,
-                sizeIndex: item.sizeIndex !== undefined ? item.sizeIndex : null,
-                productId: item.productId,
-                sellerId: item.sellerId,
-                shopName: item.shopName || item.sellerName || item.businessName || null
-            }
-        })
-
-        // Calculate total including shipping
-        const itemsTotal = selectedCartItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-        const grandTotal = itemsTotal + SHIPPING_FEE
-
-        console.log('🛒 Checkout Data:', {
-            items: items,
-            itemsTotal: itemsTotal,
-            shippingFee: SHIPPING_FEE,
-            grandTotal: grandTotal,
-            itemsWithSize: items.filter(i => i.size).length,
-            deliveryAddress: selectedAddress.value
-        })
-
-        // Get current URL for success/cancel redirects
-        const baseUrl = window.location.origin
-
-        // Get user auth token
-        const token = await auth.currentUser.getIdToken()
-
-        // Call Firebase Function via HTTP request
-        const functionUrl = 'https://us-central1-craftconnect-3b52c.cloudfunctions.net/createCheckoutSession'
-        
-        const response = await fetch(functionUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                items: items,
-                shippingFee: SHIPPING_FEE,
-                totalAmount: grandTotal,  // Include calculated total
-                deliveryAddress: selectedAddress.value,  // Include delivery address
-                successUrl: `${baseUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-                cancelUrl: `${baseUrl}/checkout`
-            })
-        })
-
-        if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.error || 'Payment failed')
-        }
-
-        const data = await response.json()
-
-        // Redirect to Stripe Checkout
-        window.location.href = data.url
-
-    } catch (error) {
-        console.error('Payment error:', error)
-        useToast().error(error.message || 'Payment failed. Please try again.')
-        processingPayment.value = false
-    }
+    // Redirect to Stripe Checkout
+    window.location.href = data.url;
+  } catch (error) {
+    console.error('Payment error:', error);
+    useToast().error(error.message || 'Payment failed. Please try again.');
+    processingPayment.value = false;
+  }
 }
+
 
 // Cleanup
 onBeforeUnmount(() => {
@@ -533,6 +605,81 @@ onBeforeUnmount(() => {
                                         </svg>
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Method Section -->
+                <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold text-slate-900 dark:text-white">Payment Method</h2>
+                        <router-link to="/buyer-account/banks-cards"
+                            class="text-sm font-medium text-primary hover:text-primary/80">
+                            Manage Cards
+                        </router-link>
+                    </div>
+
+                    <!-- Use New Card Option -->
+                    <div
+                        @click="useNewCard = true"
+                        :class="[
+                            'rounded-lg border-2 p-4 cursor-pointer transition-all mb-3',
+                            useNewCard
+                                ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                                : 'border-slate-200 dark:border-slate-700 hover:border-primary/50'
+                        ]">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-14 items-center justify-center rounded bg-slate-100 dark:bg-slate-700">
+                                <svg class="h-6 w-6 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-slate-900 dark:text-white">Enter card at checkout</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Pay with a new or different card</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Saved Cards -->
+                    <div v-if="savedCards.length > 0" class="space-y-3">
+                        <p class="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Or use a saved card:</p>
+                        <div
+                            v-for="(card, index) in savedCards"
+                            :key="index"
+                            @click="selectedCardIndex = index; useNewCard = false"
+                            :class="[
+                                'rounded-lg border-2 p-4 cursor-pointer transition-all',
+                                !useNewCard && selectedCardIndex === index
+                                    ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                                    : 'border-slate-200 dark:border-slate-700 hover:border-primary/50'
+                            ]">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-10 w-14 items-center justify-center rounded bg-slate-100 dark:bg-slate-700">
+                                    <svg v-if="getCardBrand(card.last4) === 'visa'" class="h-6 w-auto" viewBox="0 0 48 32" fill="none">
+                                        <rect width="48" height="32" rx="4" fill="#1434CB"/>
+                                        <text x="24" y="20" text-anchor="middle" fill="white" font-family="sans-serif" font-size="12" font-weight="bold">VISA</text>
+                                    </svg>
+                                    <svg v-else-if="getCardBrand(card.last) === 'mastercard'" class="h-6 w-auto" viewBox="0 0 48 32">
+                                        <rect width="48" height="32" rx="4" fill="#EB001B"/>
+                                        <circle cx="20" cy="16" r="8" fill="#FF5F00"/>
+                                        <circle cx="28" cy="16" r="8" fill="#F79E1B"/>
+                                    </svg>
+                                    <svg v-else class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-semibold text-slate-900 dark:text-white">
+                                        •••• •••• •••• {{ (card.last4 || '').slice(-4) }}
+                                    </p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ card.holderName }}</p>
+                                </div>
+                                <span v-if="card.isDefault"
+                                    class="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                                    Default
+                                </span>
                             </div>
                         </div>
                     </div>

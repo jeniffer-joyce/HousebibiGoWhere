@@ -15,6 +15,7 @@ import Loading from '@/components/status/Loading.vue'
 import AddToCartSuccessModal from '@/components/modals/AddToCartSuccessModal.vue'
 import { useToast } from '@/composables/useToast.js'
 
+const success = ref('')
 
 
 const route = useRoute()
@@ -487,33 +488,52 @@ const { adding, addToCart } = useCart()
 
 // Add to cart handler
 async function handleAddToCart() {
+  console.log("User before addToCart:", auth.currentUser);
+
   if (selectedQuantity.value <= 0) {
-    error('This item is out of stock', 'Out of Stock')
-    return
+    error('This item is out of stock', 'Out of Stock');
+    return;
   }
 
   if (userQuantity.value <= 0) {
-    warning('Please select a quantity', 'Invalid Quantity')
-    return
+    warning('Please select a quantity', 'Invalid Quantity');
+    return;
+  }
+
+  if (!auth.currentUser) {
+    useToast.error("Please log in to add items to cart.");
+    return;
   }
 
   try {
     const productData = {
       id: productId.value,
       ...toRaw(product.value)
-    }
-    await addToCart(productData, userQuantity.value, selectedSize.value)
-    
-    addedProductName.value = productData.item_name || productData.name
-    addedQuantity.value = userQuantity.value
-    showSuccessModal.value = true
-    success('Added to cart!', 'Success')
-    
+    };
+
+    await addToCart(productData, userQuantity.value, selectedSize.value);
+    console.log("addToCart success, setting UI");
+
+    addedProductName.value = productData.item_name || productData.name;
+    addedQuantity.value = userQuantity.value;
+    showSuccessModal.value = true;
+    useToast.success('Added to cart!', 'Success');
+
   } catch (err) {
-    error('Please log in to manage cart.', 'Login Required')
-    console.error(err)
+    console.error("Add to cart error:", err);
+
+    // Check if error is auth related, else show generic error
+    if (
+      (err.code && err.code === 'permission-denied') ||
+      (err.message && err.message.toLowerCase().includes('unauthenticated'))
+    ) {
+      useToast.error('Please log in to manage cart.', 'Login Required');
+    } else {
+      useToast.error('Failed to add to cart. Please try again.', 'Error');
+    }
   }
 }
+
 function closeSuccessModal() {
     showSuccessModal.value = false
 }
