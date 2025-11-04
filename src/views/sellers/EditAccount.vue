@@ -93,8 +93,6 @@ const route = useRoute()
 const tabs = [
   { key: 'my-profile',      label: 'My Profile',        icon: 'person',        routeName: 'edit-profile.my-profile' },
   { key: 'my-business',     label: 'My Business',       icon: 'storefront',    routeName: 'edit-profile.my-business' },
-  { key: 'notifications',   label: 'Notifications',     icon: 'notifications', routeName: 'edit-profile.notifications' },
-  { key: 'return-refund',    label: 'Return Refund',    icon: 'undo',          routeName: 'edit-profile.return-refund' },
   { key: 'change-password', label: 'Change Password',   icon: 'key',           routeName: 'edit-profile.change-password' },
   { key: 'delete-account',  label: 'Delete Account',    icon: 'delete_forever',routeName: 'edit-profile.delete-account' },
 ]
