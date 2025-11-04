@@ -1,79 +1,55 @@
 <template>
-  <div class="min-h-screen bg-slate-50 dark:bg-slate-900 p-6 sm:p-10">
-    <div class="mx-auto w-full max-w-7xl space-y-8">
+    <section class="space-y-4">
       <!-- Header -->
-      <header>
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Return / Refund Requests</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400">
-          Review and respond to buyers’ refund or return requests.
-        </p>
-      </header>
-
-      <!-- Status Filter + Search -->
-      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div class="relative w-full md:w-1/2">
-          <input
-            v-model.trim="queryStr"
-            type="text"
-            placeholder="Search by product name or order #"
-            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm
-                   text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500
-                   dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-          />
-          <button
-            v-if="queryStr"
-            @click="queryStr = ''"
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-          >
-            ✕
-          </button>
+      <header class="flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Return / Refund Requests</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Review and respond to buyers' refund or return requests.
+          </p>
         </div>
 
         <div class="flex items-center gap-2">
-          <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Filter by Status:</label>
+          <!-- Search -->
+          <div class="relative">
+            <input
+              v-model.trim="queryStr"
+              type="text"
+              class="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm
+                     bg-white text-slate-800 placeholder:text-slate-400
+                     dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
+              placeholder="Search by product name or order #"
+            />
+            <svg class="pointer-events-none absolute right-2 top-2.5 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>
+            </svg>
+          </div>
+
+          <!-- Status Filter -->
           <select
             v-model="stateFilter"
-            class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
-                   focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
+                   text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            title="Filter by status"
           >
-            <option value="">All</option>
+            <option value="">All Statuses</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
             <option value="declined">Declined</option>
           </select>
         </div>
-      </div>
-
-      <!-- Loading -->
-      <div
-        v-if="loading"
-        class="flex h-48 items-center justify-center text-slate-500 dark:text-slate-400"
-      >
-        <svg class="mr-2 h-5 w-5 animate-spin text-blue-600" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a 8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
-        </svg>
-        Loading requests…
-      </div>
-
-      <!-- Empty -->
-      <div
-        v-else-if="paged.length === 0"
-        class="rounded-2xl border border-dashed border-slate-300 bg-white py-20 text-center
-               dark:border-slate-700 dark:bg-slate-800"
-      >
-        <p class="text-lg font-semibold text-slate-900 dark:text-white">No requests found</p>
-        <p class="mt-1 text-slate-500 dark:text-slate-400">All caught up here.</p>
-      </div>
+      </header>
 
       <!-- Table -->
-      <div v-else class="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+     <div class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
         <!-- Header row -->
         <div
-          class="grid grid-cols-12 gap-3 border-b px-4 py-3 text-sm font-semibold
-                text-slate-700 dark:text-slate-200
-                bg-slate-50 dark:bg-slate-800/60
-                border-slate-200 dark:border-slate-700">
+        class="grid grid-cols-12 gap-3 border-b px-4 py-3 text-sm font-semibold
+               text-slate-700 dark:text-slate-200
+               bg-slate-50 dark:bg-slate-800/60
+               border-slate-200 dark:border-slate-700
+               rounded-t-2xl">
           <div class="col-span-5">Product(s)</div>
           <div class="col-span-1">Amount</div>
           <div class="col-span-1">Status</div>
@@ -82,140 +58,164 @@
           <div class="col-span-2">Actions</div>
         </div>
 
+        <!-- Empty / Loading -->
+        <div v-if="loading" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">Loading requests…</div>
+        <div v-else-if="paged.length === 0" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">No requests found</div>
+
         <!-- Rows -->
-        <div v-for="r in paged" :key="r.id" class="grid grid-cols-12 gap-3 px-4 py-4 border-t
-                    border-slate-200 dark:border-slate-700">
+        <div v-else class="divide-y divide-slate-100 dark:divide-slate-800">
+          <div
+            v-for="r in paged" 
+            :key="r.id"
+            class="grid grid-cols-12 gap-3 px-4 py-4"
+          >
+            <!-- Product(s) -->
+            <div class="col-span-5">
+              <div class="flex gap-3">
+                <img 
+                  :src="findProductImg(r)"
+                  alt=""
+                  class="h-12 w-12 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" 
+                />
+                <div class="min-w-0">
+                  <div class="font-medium whitespace-normal break-words leading-tight text-slate-900 dark:text-white">
+                    {{ findProductName(r) }}
+                    <span class="ml-2 inline-flex items-center whitespace-nowrap rounded-full
+                                 bg-blue-50 text-blue-700
+                                 dark:bg-blue-950/40 dark:text-blue-300
+                                 px-2 py-0.5 text-xs font-medium">
+                      No. of products: {{ (r.products || []).length }}
+                    </span>
+                  </div>
 
-          <!-- Product(s) -->
-          <div class="col-span-5">
-            <div class="flex gap-3">
-              <img :src="findProductImg(r)"
-                  class="h-12 w-12 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
-              <div class="min-w-0">
-                <div class="font-medium whitespace-normal break-words leading-tight text-slate-900 dark:text-white">
-                  {{ findProductName(r) }}
-                  <span class="ml-2 inline-flex items-center whitespace-nowrap rounded-full
-                              bg-blue-50 text-blue-700
-                              dark:bg-blue-950/40 dark:text-blue-300
-                              px-2 py-0.5 text-xs font-medium">
-                    No. of products: {{ (r.products || []).length }}
-                  </span>
-                </div>
+                  <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    Order #{{ r.orderId }}
+                  </div>
 
-                <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Order #{{ r.orderId }}
-                </div>
+                  <!-- View items -->
+                  <button 
+                    class="mt-1 text-xs text-blue-700 dark:text-blue-300 hover:underline"
+                    @click="toggleExpand(r.id)"
+                  >
+                    {{ expanded[r.id] ? 'Hide items' : `View items (${(r.products||[]).length})` }}
+                  </button>
 
-                <!-- View items -->
-                <button class="mt-1 text-xs text-blue-700 dark:text-blue-300 hover:underline"
-                        @click="toggleExpand(r.id)">
-                  {{ expanded[r.id] ? 'Hide items' : `View items (${(r.products||[]).length})` }}
-                </button>
-
-                <!-- Expanded items table (same style as Shipping) -->
-                <div v-if="expanded[r.id]"
+                  <!-- Expanded items table -->
+                  <div
+                    v-if="expanded[r.id]"
                     class="mt-2 w-[640px] max-w-full rounded-lg
-                            border border-slate-200 bg-slate-50
-                            dark:border-slate-700 dark:bg-slate-800/40
-                            p-2">
-                  <table class="w-full table-fixed text-xs">
-                    <colgroup>
-                      <col class="w-[55%]" />
-                      <col class="w-[20%]" />
-                      <col class="w-[10%]" />
-                      <col class="w-[15%]" />
-                    </colgroup>
-                    <thead>
-                      <tr class="text-slate-500 dark:text-slate-400">
-                        <th class="text-left font-medium py-1">Item</th>
-                        <th class="text-left font-medium py-1">Variant</th>
-                        <th class="text-right font-medium py-1">Qty</th>
-                        <th class="text-right font-medium py-1">Unit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="(p, i) in (r.products||[])" :key="i">
-                        <td class="py-1 whitespace-normal break-words text-slate-800 dark:text-slate-200">
-                          {{ p.item_name || p.name }}
-                        </td>
-                        <td class="py-1 whitespace-nowrap text-slate-700 dark:text-slate-300">
-                          {{ p.size || p.variant || '-' }}
-                        </td>
-                        <td class="py-1 text-right text-slate-700 dark:text-slate-300">
-                          {{ p.quantity ?? p.qty ?? 1 }}
-                        </td>
-                        <td class="py-1 text-right whitespace-nowrap tabular-nums text-slate-900 dark:text-white">
-                          {{ `S$${Number(p.price || 0).toFixed(2)}` }}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                           border border-slate-200 bg-slate-50
+                           dark:border-slate-700 dark:bg-slate-800/40
+                           p-2"
+                  >
+                    <table class="w-full table-fixed text-xs">
+                      <colgroup>
+                        <col class="w-[55%]" />
+                        <col class="w-[20%]" />
+                        <col class="w-[10%]" />
+                        <col class="w-[15%]" />
+                      </colgroup>
+                      <thead>
+                        <tr class="text-slate-500 dark:text-slate-400">
+                          <th class="text-left font-medium py-1">Item</th>
+                          <th class="text-left font-medium py-1">Variant</th>
+                          <th class="text-right font-medium py-1">Qty</th>
+                          <th class="text-right font-medium py-1">Unit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(p, i) in (r.products||[])" :key="i">
+                          <td class="py-1 whitespace-normal break-words text-slate-800 dark:text-slate-200">
+                            {{ p.item_name || p.name }}
+                          </td>
+                          <td class="py-1 whitespace-nowrap text-slate-700 dark:text-slate-300">
+                            {{ p.size || p.variant || '-' }}
+                          </td>
+                          <td class="py-1 text-right text-slate-700 dark:text-slate-300">
+                            {{ p.quantity ?? p.qty ?? 1 }}
+                          </td>
+                          <td class="py-1 text-right whitespace-nowrap tabular-nums text-slate-900 dark:text-white">
+                            S${{ Number(p.price || 0).toFixed(2) }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Amount -->
-          <div class="col-span-1 text-sm font-semibold text-slate-900 dark:text-white">
-            {{ `S$${Number(r.returnRequestSummary?.amount ?? 0).toFixed(2)}` }}
-          </div>
+            <!-- Amount -->
+            <div class="col-span-1 text-sm font-semibold text-slate-900 dark:text-white">
+              S${{ Number(r.returnRequestSummary?.amount ?? 0).toFixed(2) }}
+            </div>
 
-          <!-- Status -->
-          <div class="col-span-1 self-start">
-            <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
-                  :class="statusClass(r.returnRequestSummary?.state)">
-              {{ capitalizeStatus(r.returnRequestSummary?.state || 'pending') }}
-            </span>
-          </div>
+            <!-- Status -->
+            <div class="col-span-1 self-start">
+              <span 
+                class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
+                :class="statusClass(r.returnRequestSummary?.state)"
+              >
+                {{ capitalizeStatus(r.returnRequestSummary?.state || 'pending') }}
+              </span>
+            </div>
 
-          <!-- Requested On -->
-          <div class="col-span-2 self-start">
-            <span class="inline-block rounded-full px-2 py-1 text-xs font-semibold leading-tight
-                        bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              {{ formatDate(r.returnRequestSummary?.requestedAt) }}
-            </span>
-          </div>
+            <!-- Requested On -->
+            <div class="col-span-2 self-start">
+              <span class="inline-block rounded-full px-2 py-1 text-xs font-semibold leading-tight
+                           bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                {{ formatDate(r.returnRequestSummary?.requestedAt) }}
+              </span>
+            </div>
 
-          <!-- Solution -->
-          <div class="col-span-1 self-start">
-            <span class="inline-flex items-center whitespace-nowrap rounded-full
-                        bg-blue-50 text-blue-700
-                        dark:bg-blue-950/40 dark:text-blue-300
-                        px-2 py-0.5 text-xs font-medium">
-              {{ solutionLabel(r.returnRequestSummary?.solution) }}
-            </span>
-          </div>
+            <!-- Solution -->
+            <div class="col-span-1 self-start">
+              <span class="inline-flex items-center whitespace-nowrap rounded-full
+                           bg-blue-50 text-blue-700
+                           dark:bg-blue-950/40 dark:text-blue-300
+                           px-2 py-0.5 text-xs font-medium">
+                {{ solutionLabel(r.returnRequestSummary?.solution) }}
+              </span>
+            </div>
 
-          <!-- Actions -->
-          <div class="col-span-2 self-start">
-            <div class="flex flex-col items-start gap-2">
-              <!-- Pending -->
-              <template v-if="r.returnRequestSummary?.state === 'pending'">
-                <button @click="openConfirm(r,'approved')"
-                        class="rounded-md bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700">
-                  Approve
-                </button>
-                <button @click="openConfirm(r,'declined')"
-                        class="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700">
-                  Decline
-                </button>
-              </template>
+            <!-- Actions -->
+            <div class="col-span-2 self-start">
+              <div class="flex flex-col items-start gap-2">
+                <!-- Pending -->
+                <template v-if="r.returnRequestSummary?.state === 'pending'">
+                  <button 
+                    @click="openConfirm(r,'approved')"
+                    class="w-full rounded-md bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700"
+                  >
+                    Approve
+                  </button>
+                  <button 
+                    @click="openConfirm(r,'declined')"
+                    class="w-full rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700"
+                  >
+                    Decline
+                  </button>
+                </template>
 
-              <!-- Approved / Declined -->
-              <template v-else>
-                <button @click="openDecisionDetails(r)"
-                        class="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700">
-                  {{ decisionDetailLabel(r) }}
-                </button>
+                <!-- Approved / Declined -->
+                <template v-else>
+                  <button 
+                    @click="openDecisionDetails(r)"
+                    class="w-full rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+                  >
+                    View Details
+                  </button>
 
-                <!-- Optional: View Buyer Details as secondary action -->
-                <button @click="openBuyerDetails(r)"
-                        class="rounded-md border px-3 py-1.5 text-sm
-                              border-slate-300 text-slate-700 hover:bg-slate-50
-                              dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60">
-                  View Details
-                </button>
-              </template>
+                  <button 
+                    @click="openBuyerDetails(r)"
+                    class="w-full rounded-md border px-3 py-1.5 text-sm
+                           border-slate-300 text-slate-700 hover:bg-slate-50
+                           dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
+                  >
+                    View Buyer Info
+                  </button>
+                </template>
+              </div>
             </div>
           </div>
         </div>
@@ -227,7 +227,7 @@
         class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
       >
         <p>
-          Showing <span class="font-medium">{{ pageStart }}</span>–
+          Showing <span class="font-medium">{{ pageStart }}</span> of 1 – 
           <span class="font-medium">{{ pageEnd }}</span> of
           <span class="font-medium">{{ filtered.length }}</span> results
         </p>
@@ -250,7 +250,7 @@
           </button>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- Decision Details Modal (post-approve/decline) -->
     <div
@@ -700,7 +700,6 @@
       :duration="toast.duration"
       @close="toast.show = false"
     />
-  </div>
 </template>
 
 <script setup>

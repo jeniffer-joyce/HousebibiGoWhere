@@ -1,3 +1,4 @@
+
 <!-- src/views/sellers/orders/SellerOrdersToShip.vue -->
 <template>
   <section class="space-y-4">
@@ -13,14 +14,20 @@
 
       <div class="flex items-center gap-2">
         <!-- Search -->
-        <input
-          v-model="searchQuery"
-          type="text"
-          class="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm
-                 bg-white text-slate-800 placeholder:text-slate-400
-                 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
-          placeholder="Search order, buyer, product…"
-        />
+        <div class="relative">
+          <input
+            v-model="searchQuery"
+            type="text"
+            class="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm
+                   bg-white text-slate-800 placeholder:text-slate-400
+                   dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
+            placeholder="Search order, buyer, product…"
+          />
+          <svg class="pointer-events-none absolute right-2 top-2.5 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>
+          </svg>
+        </div>
 
         <!-- Sort -->
         <select
@@ -72,25 +79,29 @@
 
     <!-- Table -->
     <div class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <!-- Header row (grid = 5 / 1 / 1 / 2 / 2 / 1) -->
       <div
         class="grid grid-cols-12 gap-3 border-b px-4 py-3 text-sm font-semibold
                text-slate-700 dark:text-slate-200
                bg-slate-50 dark:bg-slate-800/60
-               border-slate-200 dark:border-slate-700">
+               border-slate-200 dark:border-slate-700
+               rounded-t-2xl">
         <div class="col-span-5">Product(s)</div>
-        <div class="col-span-2">Total Price</div>
+        <div class="col-span-1">Total</div>
         <div class="col-span-1">Status</div>
-        <div class="col-span-1">Countdown</div>
+        <div class="col-span-2">Ship-by Countdown</div>
         <div class="col-span-2">Channel</div>
         <div class="col-span-1">Actions</div>
       </div>
 
+      <!-- Empty state -->
       <div v-if="!sorted.length" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
         No orders available
       </div>
 
+      <!-- Rows -->
       <div v-else class="divide-y divide-slate-100 dark:divide-slate-800">
-        <div v-for="o in sorted" :key="o.id" class="grid grid-cols-12 gap-3 px-4 py-4">
+        <div v-for="o in paged" :key="o.id" class="grid grid-cols-12 gap-3 px-4 py-4">
           <!-- Product(s) -->
           <div class="col-span-5">
             <div class="flex gap-3">
@@ -114,7 +125,7 @@
                   {{ expanded[o.id] ? 'Hide items' : `View items (${(o.products||[]).length})` }}
                 </button>
 
-                <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   Order placed: {{ fmtDate(o.createdAt) }}
                 </div>
 
@@ -148,7 +159,7 @@
                 </div>
 
                 <!-- Helper copy under products -->
-                <div class="pt-2 text-xs text-slate-500 dark:text-slate-400">
+                <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   <template v-if="o.shipping?.arranged && o.shipping?.method === 'dropoff' && !o.shipping?.dropoff?.completed">
                     Drop off at any HouseBiBi Express counter within {{ o.shipping?.dropoff?.windowDays || 3 }} days.
                   </template>
@@ -169,20 +180,27 @@
           </div>
 
           <!-- Total -->
-          <div class="col-span-2 font-medium text-slate-900 dark:text-white">{{ money(total(o)) }}</div>
-
-          <!-- Status -->
-          <div class="col-span-1">
-            <div class="text-sm font-medium text-slate-800 dark:text-slate-200">
-              {{ o.shipping?.dropoff?.completed || o.shipping?.pickup?.completed ? 'Shipping' : 'To ship' }}
-            </div>
+          <div class="col-span-1 text-sm font-semibold text-slate-900 dark:text-white">
+            {{ money(total(o)) }}
           </div>
 
-          <!-- Countdown -->
-          <div class="col-span-1 flex flex-col justify-start">
+          <!-- Status -->
+          <div class="col-span-1 self-start">
             <span
-              class="flex items-center justify-center rounded-full px-2 py-1 text-xs font-semibold leading-tight text-center
-                     break-words whitespace-normal min-w-[90px] max-w-[110px]"
+              class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold
+                     bg-sky-100 text-sky-700
+                     dark:bg-sky-900/40 dark:text-sky-300"
+            >
+              <span class="h-2 w-2 rounded-full bg-sky-600"></span>
+              {{ o.shipping?.dropoff?.completed || o.shipping?.pickup?.completed ? 'Shipping' : 'To ship' }}
+            </span>
+          </div>
+
+          <!-- Ship-by Countdown -->
+          <div class="col-span-2 self-start">
+            <span
+              class="inline-block max-w-[220px] rounded-full px-2 py-1 text-xs font-semibold leading-tight text-left
+                     break-words whitespace-normal"
               :class="toShipCountdownInfo(o).cls"
               :title="toShipCountdownInfo(o).title"
             >
@@ -191,7 +209,7 @@
           </div>
 
           <!-- Channel -->
-          <div class="col-span-2">
+          <div class="col-span-2 self-start">
             <span class="inline-flex items-center whitespace-nowrap rounded-full
                          bg-blue-50 text-blue-700
                          dark:bg-blue-950/40 dark:text-blue-300
@@ -201,78 +219,110 @@
           </div>
 
           <!-- Actions: 'View Actions' popover -->
-          <div class="col-span-1 relative flex items-center justify-end">
-            <button
-              :class="[
-                'rounded-md border px-3 py-1.5 text-sm transition',
-                'border-slate-300 text-slate-700 hover:bg-slate-50',
-                'dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60',
-                openActionsFor === o.id ? 'rounded-b-none border-b-0 bg-slate-50 dark:bg-slate-800/60' : ''
-              ]"
-              @click="toggleActions(o.id)"
-            >
-              View Actions
-            </button>
+          <div class="col-span-1 self-start">
+            <div class="relative">
+              <button
+                :class="[
+                  'rounded-md border px-3 py-1.5 text-sm transition',
+                  'border-slate-300 text-slate-700 hover:bg-slate-50',
+                  'dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60',
+                  openActionsFor === o.id ? 'rounded-b-none border-b-0 bg-slate-50 dark:bg-slate-800/60' : ''
+                ]"
+                @click="toggleActions(o.id)"
+              >
+                View Actions
+              </button>
 
-            <div
-              v-if="openActionsFor === o.id"
-              class="absolute right-0 top-[calc(100%-1px)] z-20 w-44 rounded-b-xl rounded-t-md
-                     border border-slate-200 bg-white shadow-lg
-                     dark:border-slate-700 dark:bg-slate-800"
-            >
-              <ul class="py-1 text-sm text-slate-700 dark:text-slate-200">
-                <!-- Not arranged yet -->
-                <li v-if="!o.shipping?.arranged">
-                  <button class="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="openChooser(o)">
-                    Arrange Shipment
-                  </button>
-                </li>
+              <div
+                v-if="openActionsFor === o.id"
+                class="absolute right-0 top-[calc(100%-1px)] z-20 w-44 rounded-b-xl rounded-t-md
+                       border border-slate-200 bg-white shadow-lg
+                       dark:border-slate-700 dark:bg-slate-800"
+              >
+                <ul class="py-1 text-sm text-slate-700 dark:text-slate-200">
+                  <!-- Not arranged yet -->
+                  <li v-if="!o.shipping?.arranged">
+                    <button class="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="openChooser(o)">
+                      Arrange Shipment
+                    </button>
+                  </li>
 
-                <!-- Arranged: Drop-off path -->
-                <template v-else-if="o.shipping?.method === 'dropoff' && !o.shipping?.dropoff?.completed">
-                  <li>
-                    <button class="w-full px-3 py-2 text-left text-emerald-700 hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="openConfirmHandover(o)">
-                      Drop-off Done
-                    </button>
-                  </li>
-                  <li>
-                    <button class="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="reprintWaybill(o)">
-                      Reprint Waybill
-                    </button>
-                  </li>
-                  <li>
-                    <button class="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="openDropoffLocations()">
-                      Locations
-                    </button>
-                  </li>
-                </template>
+                  <!-- Arranged: Drop-off path -->
+                  <template v-else-if="o.shipping?.method === 'dropoff' && !o.shipping?.dropoff?.completed">
+                    <li>
+                      <button class="w-full px-3 py-2 text-left text-emerald-700 hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="openConfirmHandover(o)">
+                        Drop-off Done
+                      </button>
+                    </li>
+                    <li>
+                      <button class="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="reprintWaybill(o)">
+                        Reprint Waybill
+                      </button>
+                    </li>
+                    <li>
+                      <button class="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="openDropoffLocations()">
+                        Locations
+                      </button>
+                    </li>
+                  </template>
 
-                <!-- Arranged: Pickup path -->
-                <template v-else-if="o.shipping?.method === 'pickup' && !o.shipping?.pickup?.completed">
-                  <li>
-                    <button class="w-full px-3 py-2 text-left text-emerald-700 hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="openConfirmHandover(o)">
-                      Pick-up Done
-                    </button>
-                  </li>
-                  <li>
-                    <button class="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="reprintWaybill(o)">
-                      Reprint Waybill
-                    </button>
-                  </li>
-                </template>
+                  <!-- Arranged: Pickup path -->
+                  <template v-else-if="o.shipping?.method === 'pickup' && !o.shipping?.pickup?.completed">
+                    <li>
+                      <button class="w-full px-3 py-2 text-left text-emerald-700 hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="openConfirmHandover(o)">
+                        Pick-up Done
+                      </button>
+                    </li>
+                    <li>
+                      <button class="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="reprintWaybill(o)">
+                        Reprint Waybill
+                      </button>
+                    </li>
+                  </template>
 
-                <!-- Already completed handover -->
-                <template v-else>
-                  <li>
-                    <button class="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="reprintWaybill(o)">
-                      Reprint Waybill
-                    </button>
-                  </li>
-                </template>
-              </ul>
+                  <!-- Already completed handover -->
+                  <template v-else>
+                    <li>
+                      <button class="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50" @click="reprintWaybill(o)">
+                        Reprint Waybill
+                      </button>
+                    </li>
+                  </template>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div
+      v-if="sorted.length > 0"
+      class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+    >
+      <p>
+        Showing {{ page }} of {{ totalPages || 1 }} – 
+        <span class="font-medium">{{ pageStart }}</span>–<span class="font-medium">{{ pageEnd }}</span> of
+        <span class="font-medium">{{ sorted.length }}</span> results
+      </p>
+      <div class="flex gap-2">
+        <button
+          :disabled="page === 1"
+          @click="page--"
+          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+        >
+          Previous
+        </button>
+        <button
+          :disabled="page === totalPages || totalPages === 0"
+          @click="page++"
+          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+        >
+          Next
+        </button>
       </div>
     </div>
 
@@ -498,7 +548,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, reactive, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { auth, db } from '@/firebase/firebase_config'
 import {
@@ -552,6 +602,16 @@ const openActionsFor = ref(null)
 
 /* NEW: sort mode for To Ship */
 const sortMode = ref('created_desc') // created_desc | created_asc | shipby_asc | shipby_desc
+
+const pageSize = 10
+const page = ref(1)
+const totalPages = computed(() => Math.ceil(sorted.value.length / pageSize))
+const paged = computed(() => sorted.value.slice((page.value-1)*pageSize, page.value*pageSize))  
+const pageStart = computed(() => sorted.value.length ? (page.value-1)*pageSize+1 : 0) 
+const pageEnd = computed(() => Math.min(page.value*pageSize, sorted.value.length)) 
+watch([searchQuery, sortMode, tab], () => {  
+  page.value = 1
+})
 
 /* Rows: base -> filtered (by tab/search) -> sorted (by dropdown) */
 const base = computed(() =>
