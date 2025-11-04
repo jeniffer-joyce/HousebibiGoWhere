@@ -70,104 +70,153 @@
       <div v-else class="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
         <!-- Header row -->
         <div
-          class="grid grid-cols-12 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-600
-                 dark:bg-slate-800 dark:text-slate-300"
-        >
-          <div class="col-span-4">Product(s)</div>
-          <div class="col-span-1 text-center">Amount</div>
-          <div class="col-span-2 text-center">Requested On</div>
-          <div class="col-span-1 text-center">Solution</div>
-          <div class="col-span-1 text-center">Buyer Details</div>
-          <div class="col-span-1 text-center">Status</div>
-          <div class="col-span-1 text-center">Actions</div>
+          class="grid grid-cols-12 gap-3 border-b px-4 py-3 text-sm font-semibold
+                text-slate-700 dark:text-slate-200
+                bg-slate-50 dark:bg-slate-800/60
+                border-slate-200 dark:border-slate-700">
+          <div class="col-span-5">Product(s)</div>
+          <div class="col-span-1">Amount</div>
+          <div class="col-span-1">Status</div>
+          <div class="col-span-2">Requested On</div>
+          <div class="col-span-1">Solution</div>
+          <div class="col-span-2">Actions</div>
         </div>
 
         <!-- Rows -->
-        <div
-          v-for="r in paged"
-          :key="r.id"
-          class="grid grid-cols-12 items-center border-t border-slate-200 px-4 py-3
-                 text-sm dark:border-slate-700"
-        >
+        <div v-for="r in paged" :key="r.id" class="grid grid-cols-12 gap-3 px-4 py-4 border-t
+                    border-slate-200 dark:border-slate-700">
+
           <!-- Product(s) -->
-          <div class="col-span-12 flex items-center gap-3 md:col-span-4">
-            <img
-              :src="findProductImg(r)"
-              class="h-14 w-14 flex-none rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700"
-            />
-            <div class="min-w-0">
-              <p class="font-medium text-slate-900 dark:text-white truncate">
-                {{ findProductName(r) }}
-              </p>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Order: {{ r.orderId }}</p>
+          <div class="col-span-5">
+            <div class="flex gap-3">
+              <img :src="findProductImg(r)"
+                  class="h-12 w-12 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
+              <div class="min-w-0">
+                <div class="font-medium whitespace-normal break-words leading-tight text-slate-900 dark:text-white">
+                  {{ findProductName(r) }}
+                  <span class="ml-2 inline-flex items-center whitespace-nowrap rounded-full
+                              bg-blue-50 text-blue-700
+                              dark:bg-blue-950/40 dark:text-blue-300
+                              px-2 py-0.5 text-xs font-medium">
+                    No. of products: {{ (r.products || []).length }}
+                  </span>
+                </div>
+
+                <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Order #{{ r.orderId }}
+                </div>
+
+                <!-- View items -->
+                <button class="mt-1 text-xs text-blue-700 dark:text-blue-300 hover:underline"
+                        @click="toggleExpand(r.id)">
+                  {{ expanded[r.id] ? 'Hide items' : `View items (${(r.products||[]).length})` }}
+                </button>
+
+                <!-- Expanded items table (same style as Shipping) -->
+                <div v-if="expanded[r.id]"
+                    class="mt-2 w-[640px] max-w-full rounded-lg
+                            border border-slate-200 bg-slate-50
+                            dark:border-slate-700 dark:bg-slate-800/40
+                            p-2">
+                  <table class="w-full table-fixed text-xs">
+                    <colgroup>
+                      <col class="w-[55%]" />
+                      <col class="w-[20%]" />
+                      <col class="w-[10%]" />
+                      <col class="w-[15%]" />
+                    </colgroup>
+                    <thead>
+                      <tr class="text-slate-500 dark:text-slate-400">
+                        <th class="text-left font-medium py-1">Item</th>
+                        <th class="text-left font-medium py-1">Variant</th>
+                        <th class="text-right font-medium py-1">Qty</th>
+                        <th class="text-right font-medium py-1">Unit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(p, i) in (r.products||[])" :key="i">
+                        <td class="py-1 whitespace-normal break-words text-slate-800 dark:text-slate-200">
+                          {{ p.item_name || p.name }}
+                        </td>
+                        <td class="py-1 whitespace-nowrap text-slate-700 dark:text-slate-300">
+                          {{ p.size || p.variant || '-' }}
+                        </td>
+                        <td class="py-1 text-right text-slate-700 dark:text-slate-300">
+                          {{ p.quantity ?? p.qty ?? 1 }}
+                        </td>
+                        <td class="py-1 text-right whitespace-nowrap tabular-nums text-slate-900 dark:text-white">
+                          {{ `S$${Number(p.price || 0).toFixed(2)}` }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- Amount -->
-          <div class="col-span-6 text-center md:col-span-1 font-semibold">
-            S${{ Number(r.returnRequestSummary?.amount ?? 0).toFixed(2) }}
-          </div>
-
-          <!-- Requested On -->
-          <div class="col-span-6 text-center md:col-span-2">
-            {{ formatDate(r.returnRequestSummary?.requestedAt) }}
-          </div>
-
-          <!-- Solution -->
-          <div class="col-span-6 text-center md:col-span-1 capitalize">
-            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              {{ solutionLabel(r.returnRequestSummary?.solution) }}
-            </span>
-          </div>
-
-          <!-- Buyer Details -->
-          <div class="col-span-6 text-center md:col-span-1">
-            <button
-              @click="openBuyerDetails(r)"
-              class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50
-                     dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-            >
-              View Details
-            </button>
+          <div class="col-span-1 text-sm font-semibold text-slate-900 dark:text-white">
+            {{ `S$${Number(r.returnRequestSummary?.amount ?? 0).toFixed(2)}` }}
           </div>
 
           <!-- Status -->
-          <div class="col-span-6 text-center md:col-span-1">
-            <span
-              class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
-              :class="statusClass(r.returnRequestSummary?.state)"
-            >
+          <div class="col-span-1 self-start">
+            <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
+                  :class="statusClass(r.returnRequestSummary?.state)">
               {{ capitalizeStatus(r.returnRequestSummary?.state || 'pending') }}
             </span>
           </div>
 
-          <!-- Actions -->
-          <div class="col-span-6 flex flex-col items-center gap-2 text-center md:col-span-1">
-            <!-- Pending -->
-            <template v-if="r.returnRequestSummary?.state === 'pending'">
-              <button
-                @click="openConfirm(r, 'approved')"
-                class="w-20 rounded-md bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
-              >
-                Approve
-              </button>
-              <button
-                @click="openConfirm(r, 'declined')"
-                class="w-20 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
-              >
-                Decline
-              </button>
-            </template>
+          <!-- Requested On -->
+          <div class="col-span-2 self-start">
+            <span class="inline-block rounded-full px-2 py-1 text-xs font-semibold leading-tight
+                        bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              {{ formatDate(r.returnRequestSummary?.requestedAt) }}
+            </span>
+          </div>
 
-            <!-- Approved / Declined -->
-            <template v-else>
-              <button
-                @click="openDecisionDetails(r)"
-                class="rounded-md bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
-              >
-                {{ decisionDetailLabel(r) }}
-              </button>
-            </template>
+          <!-- Solution -->
+          <div class="col-span-1 self-start">
+            <span class="inline-flex items-center whitespace-nowrap rounded-full
+                        bg-blue-50 text-blue-700
+                        dark:bg-blue-950/40 dark:text-blue-300
+                        px-2 py-0.5 text-xs font-medium">
+              {{ solutionLabel(r.returnRequestSummary?.solution) }}
+            </span>
+          </div>
+
+          <!-- Actions -->
+          <div class="col-span-2 self-start">
+            <div class="flex flex-col items-start gap-2">
+              <!-- Pending -->
+              <template v-if="r.returnRequestSummary?.state === 'pending'">
+                <button @click="openConfirm(r,'approved')"
+                        class="rounded-md bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700">
+                  Approve
+                </button>
+                <button @click="openConfirm(r,'declined')"
+                        class="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700">
+                  Decline
+                </button>
+              </template>
+
+              <!-- Approved / Declined -->
+              <template v-else>
+                <button @click="openDecisionDetails(r)"
+                        class="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700">
+                  {{ decisionDetailLabel(r) }}
+                </button>
+
+                <!-- Optional: View Buyer Details as secondary action -->
+                <button @click="openBuyerDetails(r)"
+                        class="rounded-md border px-3 py-1.5 text-sm
+                              border-slate-300 text-slate-700 hover:bg-slate-50
+                              dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60">
+                  View Details
+                </button>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -227,6 +276,7 @@
                 <path d="M12 3a9 9 0 1 0 9 9A9.01 9.01 0 0 0 12 3Zm1 13h-2v-2h2Zm0-4h-2V7h2Z"/>
               </svg>
             </div>
+
             <div>
               <h3 class="text-xl font-semibold text-slate-900 dark:text-white">
                 {{ decisionTitle(selectedDecision) }}
@@ -238,25 +288,22 @@
                               dark:bg-slate-700/60 dark:text-slate-200">
                   Order: {{ selectedDecision?.orderId }}
                 </span>
-
-                <span
-                  class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-medium text-xs"
-                  :class="statusPillClass(selectedDecision?.returnRequestSummary?.state)"
-                >
-                  <span class="h-2 w-2 rounded-full" :class="statusDotClass(selectedDecision?.returnRequestSummary?.state)"></span>
-                  {{ capitalizeStatus(selectedDecision?.returnRequestSummary?.state || 'pending') }}
-                </span>
+                <!-- ❌ removed the duplicate status pill that used to be here -->
               </div>
             </div>
           </div>
 
-          <button
-            @click="showDecisionDetails = false"
-            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50
-                   dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
-          >
-            Close
-          </button>
+          <!-- Right side: status pill + timestamp + Close -->
+          <!-- Right side: Close only (remove status pill here) -->
+          <div class="flex items-center gap-3">
+            <button
+              @click="showDecisionDetails = false"
+              class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50
+                    dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              Close
+            </button>
+          </div>
         </div>
 
         <!-- Summary grid -->
@@ -277,15 +324,17 @@
 
           <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Status</p>
-            <p class="mt-1 font-medium text-slate-900 dark:text-white">
-              <span
-                class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                :class="statusPillClass(selectedDecision?.returnRequestSummary?.state)"
-              >
-                <span class="h-2 w-2 rounded-full" :class="statusDotClass(selectedDecision?.returnRequestSummary?.state)"></span>
-                {{ capitalizeStatus(selectedDecision?.returnRequestSummary?.state || 'pending') }}
+
+            <!-- Single pill: “Accepted at …” or “Declined at …” -->
+            <div
+              class="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold"
+              :class="decisionPillClass"
+            >
+              <span class="h-2 w-2 rounded-full" :class="decisionDotClass"></span>
+              <span>
+                {{ decisionVerb }}: {{ reviewedAtStr || '—' }}
               </span>
-            </p>
+            </div>
           </div>
         </div>
 
@@ -329,13 +378,14 @@
               {{ selectedDecision?.returnRequestSummary?.declineReason }}
             </p>
             <div class="mt-3 flex flex-wrap gap-2">
-              <img
-                v-for="(img, idx) in selectedDecision?.returnRequestSummary?.declineEvidenceUrls || []"
-                :key="idx"
-                :src="img"
-                class="h-20 w-20 rounded-md object-cover ring-1 ring-rose-200 dark:ring-rose-900/40"
-              />
-            </div>
+            <img
+              v-for="(img, idx) in selectedDecision?.returnRequestSummary?.declineEvidenceUrls || []"
+              :key="idx"
+              :src="img"
+              @click="openImageModal(img)"
+              class="h-20 w-20 cursor-pointer rounded-md object-cover ring-1 ring-rose-200 transition hover:scale-[1.05] hover:ring-rose-400 dark:ring-rose-900/40"
+            />
+          </div>
           </div>
         </div>
       </div>
@@ -531,23 +581,63 @@
       >
         <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Upload Evidence</h3>
         <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Please upload evidence before proceeding.  
-          Photo(s) showing the correct product packaged in fulfilling this order, preferably CCTV footage.
+          Please upload evidence before proceeding.
+          Photo(s) showing the correct product packaged in fulfilling this order (CCTV / packing photos).
         </p>
 
-        <div class="mt-3">
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Photo(s) <span class="text-rose-600">*</span></label>
-          <input type="file" multiple accept="image/*" @change="handleDeclineFiles" class="text-sm" />
-          <div class="mt-2 flex flex-wrap gap-2">
-            <img
-              v-for="(img, idx) in declineEvidencePreviews"
-              :key="idx"
-              :src="img"
-              class="h-20 w-20 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+        <!-- Photo(s) — required, same UX as shipping -->
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+            Photo(s) <span class="text-rose-600">*</span>
+          </label>
+
+          <div
+            class="rounded-xl border-2 border-dashed px-4 py-6 text-center
+                  border-slate-300 hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-500
+                  bg-white dark:bg-slate-800"
+            @dragover.prevent
+            @drop.prevent="onDeclineDrop"
+          >
+            <input
+              ref="declineInputEl"
+              type="file"
+              accept="image/*"
+              multiple
+              class="hidden"
+              @change="onDeclineFilesChange"
             />
+            <p class="text-sm text-slate-600 dark:text-slate-300">
+              Drag & drop photos here, or
+              <button type="button" class="font-semibold text-blue-600 hover:underline" @click="triggerDeclinePicker">
+                choose files
+              </button>
+            </p>
+            <p class="mt-1 text-xs text-slate-400">PNG/JPG/WebP · Max 10 MB each</p>
+
+            <!-- Previews -->
+            <div v-if="declinePreviews.length" class="mt-4 flex flex-wrap justify-center gap-2">
+              <div
+                v-for="(url, i) in declinePreviews"
+                :key="i"
+                class="relative"
+              >
+                <img :src="url" class="h-16 w-16 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
+                <button
+                  type="button"
+                  class="absolute -right-2 -top-2 rounded-full bg-white px-1 text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50
+                        dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700"
+                  @click="removeDeclinePreview(i)"
+                  aria-label="Remove"
+                >✕</button>
+              </div>
+            </div>
+
+            <!-- Inline error -->
+            <p v-if="declineError" class="mt-3 text-xs text-rose-600">{{ declineError }}</p>
           </div>
         </div>
 
+        <!-- Reason -->
         <div class="mt-4">
           <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
             Description <span class="text-rose-600">*</span>
@@ -555,15 +645,16 @@
           <textarea
             v-model="declineReason"
             rows="3"
-            placeholder="Evidence explanation (required)"
+            placeholder="Explain why the request is declined (required)"
             maxlength="256"
             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
-                   placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500
-                   dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500
+                  dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           ></textarea>
           <p class="mt-1 text-xs text-slate-400">{{ declineReason.length }}/256</p>
         </div>
 
+        <!-- Footer -->
         <div class="mt-6 flex justify-end gap-2">
           <button
             @click="confirm.visible=false"
@@ -572,7 +663,7 @@
             Cancel
           </button>
           <button
-            :disabled="!declineReason.trim() || declineFiles.length === 0"
+            :disabled="!declineReason.trim() || declineFiles.length === 0 || !!declineError"
             @click="submitDecline"
             class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
           >
@@ -580,6 +671,24 @@
           </button>
         </div>
       </div>
+    </div>
+    <!-- Image Lightbox Modal -->
+    <div
+      v-if="imageModal.show"
+      class="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      @click="closeImageModal"
+    >
+      <img
+        :src="imageModal.url"
+        class="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl ring-2 ring-white"
+        @click.stop
+      />
+      <button
+        class="absolute top-6 right-6 rounded-full bg-white/90 px-3 py-1.5 text-sm font-medium text-slate-700 shadow hover:bg-white"
+        @click="closeImageModal"
+      >
+        ✕ Close
+      </button>
     </div>
 
     <ToastNotification
@@ -596,7 +705,7 @@
 
 <script setup>
 import { getAuth } from 'firebase/auth'
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, reactive } from 'vue'
 import { auth, db, storage } from '@/firebase/firebase_config'
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import {
@@ -688,6 +797,8 @@ onMounted(() => {
   })
 })
 
+const expanded = reactive({})
+function toggleExpand(id){ expanded[id] = !expanded[id] }
 onBeforeUnmount(() => { stopOrders?.(); stopAuth?.() })
 
 /* ------------ Helpers ------------ */
@@ -742,20 +853,47 @@ const decisionTitle = (row) => {
   const isReturn = String(sol).toLowerCase().includes('return')
   return isReturn ? 'Return Details' : 'Refund Details'
 }
-function statusPillClass(state){
-  switch(state){
-    case 'approved': return 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200'
-    case 'declined': return 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'
-    default:         return 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
+const reviewedAtStr = computed(() => {
+  // Prefer explicit reviewedAt, fall back to matching statusLog entry
+  const rr = selectedDecision.value?.returnRequestSummary || {}
+  let ts = rr.reviewedAt
+
+  if (!ts && Array.isArray(selectedDecision.value?.statusLog)) {
+    const target = rr.state === 'approved' ? 'return_approved' : (rr.state === 'declined' ? 'return_declined' : null)
+    if (target) {
+      const entry = [...selectedDecision.value.statusLog].reverse().find(e => e?.status === target)
+      ts = entry?.time || null
+    }
   }
-}
-function statusDotClass(state){
-  switch(state){
-    case 'approved': return 'bg-green-600'
-    case 'declined': return 'bg-rose-600'
-    default:         return 'bg-amber-600'
-  }
-}
+
+  if (!ts) return ''
+  try {
+    const d = ts?.toDate ? ts.toDate() : new Date(ts)
+    return d.toLocaleString('en-SG', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
+  } catch { return '' }
+})
+
+const decisionVerb = computed(() => {
+  const s = selectedDecision.value?.returnRequestSummary?.state
+  if (s === 'approved') return 'Accepted'
+  if (s === 'declined') return 'Declined'
+  return 'Pending'
+})
+
+const decisionPillClass = computed(() => {
+  const s = selectedDecision.value?.returnRequestSummary?.state
+  if (s === 'approved') return 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200'
+  if (s === 'declined') return 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'
+  return 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
+})
+
+const decisionDotClass = computed(() => {
+  const s = selectedDecision.value?.returnRequestSummary?.state
+  if (s === 'approved') return 'bg-green-600'
+  if (s === 'declined') return 'bg-rose-600'
+  return 'bg-amber-600'
+})
+
 
 /* ------------ Filter + search + paginate ------------ */
 const filtered = computed(() => {
@@ -792,6 +930,15 @@ function guessImageMime(file) {
   if (name.endsWith('.jfif')) return 'image/jpeg'  // 👈 add this line
   return 'image/jpeg'
 }
+const imageModal = ref({ show: false, url: '' })
+
+function openImageModal(url) {
+  imageModal.value = { show: true, url }
+}
+
+function closeImageModal() {
+  imageModal.value = { show: false, url: '' }
+}
 
 const pageSize = 10
 const page = ref(1)
@@ -799,6 +946,60 @@ const totalPages = computed(() => Math.ceil(filtered.value.length / pageSize))
 const paged = computed(() => filtered.value.slice((page.value-1)*pageSize, page.value*pageSize))
 const pageStart = computed(() => filtered.value.length ? (page.value-1)*pageSize+1 : 0)
 const pageEnd = computed(() => Math.min(page.value*pageSize, filtered.value.length))
+
+// --- Decline uploader state (JS) ---
+const declineInputEl   = ref(null)
+const declineError     = ref('')
+const declineFiles     = ref([])       // was ref<File[]>
+const declinePreviews  = ref([])       // was ref<string[]>
+
+function triggerDeclinePicker () { declineInputEl.value?.click() }
+
+function validateDeclineFile (f) {
+  declineError.value = ''
+  if (!f) { declineError.value = 'A photo is required.'; return false }
+  const type = f.type || guessImageMime(f)
+  if (!String(type).startsWith('image/')) {
+    declineError.value = 'Please upload image files only (PNG/JPG).'
+    return false
+  }
+  const MAX = 10 * 1024 * 1024 // 10MB — matches Storage rule
+  if (f.size > MAX) {
+    declineError.value = `File too large: ${(f.size/1048576).toFixed(1)}MB (max 10MB).`
+    return false
+  }
+  return true
+}
+
+function onDeclineFilesChange (e) {
+  const input = e?.target
+  const files = Array.from((input && input.files) ? input.files : [])
+  const ok = []
+  const previews = []
+  for (const f of files) {
+    if (validateDeclineFile(f)) { ok.push(f); previews.push(URL.createObjectURL(f)) }
+  }
+  declineFiles.value = ok
+  declinePreviews.value = previews
+}
+
+function onDeclineDrop (e) {
+  const files = Array.from(e?.dataTransfer?.files || [])
+  const ok = []
+  const previews = []
+  for (const f of files) {
+    if (validateDeclineFile(f)) { ok.push(f); previews.push(URL.createObjectURL(f)) }
+  }
+  declineFiles.value = ok
+  declinePreviews.value = previews
+}
+
+function removeDeclinePreview (i) {
+  declineFiles.value.splice(i, 1)
+  declinePreviews.value.splice(i, 1)
+  if (declineFiles.value.length === 0) declineError.value = 'A photo is required.'
+}
+
 
 /* ------------ Actions ------------ */
 const confirm = ref({ visible:false, action:null, target:null })
@@ -866,87 +1067,43 @@ async function applyDecline(payload){
 }
 
 const declineReason = ref('')
-const declineFiles = ref([])
 const declineEvidencePreviews = ref([])
 
-function handleDeclineFiles(e) {
-  const files = Array.from(e.target.files || [])
-  declineFiles.value = files
-  declineEvidencePreviews.value = files.map(f => URL.createObjectURL(f))
-}
 
-async function submitDecline() {
+async function submitDecline () {
   const row = confirm.value.target
   if (!row) return
   confirm.value.visible = false
 
   try {
-    await verifySellerBeforeUpload(row) // ensure order belongs to seller
+    await verifySellerBeforeUpload(row)
 
-    // ✅ define sellerUid at the start
     const sellerUid = auth.currentUser?.uid
     if (!sellerUid) throw new Error('Not signed in.')
 
-    // 🧭 Step 1: Storage debug toast (actual bucket + intended path + MIME + size)
-    const st = getStorage()
-    const bucketName = st.app?.options?.storageBucket || '(no bucket in app.options)'
-
-    if (declineFiles.value.length) {
-      const firstFile = declineFiles.value[0]
-      const debugInfo = [
-        `Bucket: ${bucketName}`,
-        `Path: decline_evidence/${row.id}/${sellerUid}/${firstFile?.name || 'file'}`,
-        `Type: ${guessImageMime(firstFile)}`,
-        `Size: ${((firstFile?.size || 0) / 1048576).toFixed(2)} MB`
-      ].join('\n')
-
-      showToast({
-        type: 'info',
-        title: 'Storage Debug',
-        message: debugInfo,
-        duration: 7000
-      })
-    }
-
-    // 🔎 Preflight toast (MIME confirmation)
-    if (declineFiles.value.length) {
-      showToast({
-        type: 'info',
-        title: 'Uploading…',
-        message: `Using contentType: ${guessImageMime(declineFiles.value[0])}`,
-        duration: 3000
-      })
-    }
-
     const uploadedUrls = []
-    const MAX_MB = 5 // matches your current Storage rule isValidSize(5)
+    const MAX_MB = 10 // match Storage rule
 
     for (const f of declineFiles.value) {
-      // 🔒 Size guard to avoid Storage 403 from size rule
       if (f.size > MAX_MB * 1024 * 1024) {
-        throw new Error(`"${f.name}" is ${(f.size / 1048576).toFixed(2)} MB. Max allowed is ${MAX_MB} MB.`)
+        throw new Error(`"${f.name}" is ${(f.size/1048576).toFixed(2)} MB. Max allowed is ${MAX_MB} MB.`)
       }
 
-      const safeName = `${Date.now()}_${(f.name || 'evidence').replace(/[^\w.\-]/g, '_')}`
-      const path = `decline_evidence/${row.id}/${sellerUid}/${safeName}`
+      const safe = `${Date.now()}_${(f.name || 'evidence').replace(/[^\w.\-]/g,'_')}`
+      const path = `decline_evidence/${row.id}/${sellerUid}/${safe}`
       const fileRef = storageRef(storage, path)
 
-      // ✅ enforce a valid image MIME (fixes .jfif / empty type)
-      const forcedType = guessImageMime(f) // ensure this handles .jfif → image/jpeg
-      const fileToSend =
-        f.type && f.type.startsWith('image/')
-          ? f
-          : new File([f], f.name || 'evidence.jpg', { type: forcedType })
+      const forcedType = guessImageMime(f) // handles .jfif → image/jpeg
+      const fileToSend = (f.type && f.type.startsWith('image/'))
+        ? f
+        : new File([f], f.name || 'evidence.jpg', { type: forcedType })
 
       const metadata = { contentType: forcedType, cacheControl: 'public,max-age=31536000' }
 
-      console.debug('[DeclineUpload]', { path, forcedType, size: fileToSend.size })
       await uploadBytes(fileRef, fileToSend, metadata)
-      const url = await getDownloadURL(fileRef)
-      uploadedUrls.push(url)
+      uploadedUrls.push(await getDownloadURL(fileRef))
     }
 
-    // ✅ save to Firestore
     await updateDoc(doc(db, 'orders', row.id), {
       returnRequestSummary: {
         ...row.returnRequestSummary,
@@ -962,27 +1119,21 @@ async function submitDecline() {
       ]
     })
 
-    showToast({
-      type: 'success',
-      title: 'Declined',
-      message: 'Buyer will be notified with your reason and evidence.'
-    })
+    showToast({ type:'success', title:'Declined', message:'Buyer will be notified with your reason and evidence.' })
   } catch (err) {
     console.error('Decline failed (Storage/Firestore):', err)
     let msg = err?.message || 'Unexpected error.'
-    if (err?.code === 'storage/unauthorized') {
-      msg = 'Upload blocked by Storage Rules. Likely wrong contentType or path mismatch.'
-    }
-    if (err?.code === 'storage/forbidden') {
-      msg = 'Forbidden by bucket or token. Check rules or authentication.'
-    }
-    showToast({ type: 'error', title: 'Decline Failed', message: msg, duration: 7000 })
+    if (err?.code === 'storage/unauthorized') msg = 'Upload blocked by Storage Rules. Check path & contentType.'
+    if (err?.code === 'storage/forbidden')    msg = 'Forbidden by bucket/token. Check rules or authentication.'
+    showToast({ type:'error', title:'Decline Failed', message: msg, duration: 7000 })
   } finally {
     declineReason.value = ''
     declineFiles.value = []
-    declineEvidencePreviews.value = []
+    declinePreviews.value = []
+    declineError.value = ''
   }
 }
+
 
 </script>
 

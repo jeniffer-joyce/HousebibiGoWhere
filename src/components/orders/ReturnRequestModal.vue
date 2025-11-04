@@ -172,9 +172,61 @@
             <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
               Evidence (photos/videos)
             </label>
-            <input type="file" multiple accept="image/*,video/*" @change="onFiles" />
-            <div class="mt-2 flex flex-wrap gap-2">
-              <img v-for="(p, i) in previews" :key="i" :src="p" class="h-16 w-16 rounded-md object-cover" />
+
+            <!-- Drag-drop zone -->
+            <div
+              class="rounded-xl border-2 border-dashed px-4 py-6 text-center
+                    border-slate-300 hover:border-slate-400
+                    dark:border-slate-600 dark:hover:border-slate-500
+                    bg-white dark:bg-slate-800 transition"
+              @dragover.prevent
+              @drop.prevent="onDrop"
+            >
+              <input
+                ref="fileInput"
+                type="file"
+                multiple
+                accept="image/*,video/*"
+                class="hidden"
+                @change="onFilesChange"
+              />
+              <p class="text-sm text-slate-600 dark:text-slate-300">
+                Drag & drop photos here, or
+                <button
+                  type="button"
+                  class="font-semibold text-blue-600 hover:underline"
+                  @click="triggerPicker"
+                >
+                  choose files
+                </button>
+              </p>
+              <p class="mt-1 text-xs text-slate-400">PNG/JPG/WebP/MP4 · Max 10 MB each</p>
+
+              <!-- Previews -->
+              <div v-if="previews.length" class="mt-4 flex flex-wrap justify-center gap-2">
+                <div
+                  v-for="(p, i) in previews"
+                  :key="i"
+                  class="relative group"
+                >
+                  <img
+                    :src="p"
+                    class="h-20 w-20 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                  />
+                  <button
+                    type="button"
+                    class="absolute -right-2 -top-2 rounded-full bg-white/90 px-1 text-slate-600 ring-1 ring-slate-300
+                          hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700"
+                    @click="removePreview(i)"
+                    aria-label="Remove"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              <!-- Inline error -->
+              <p v-if="fileError" class="mt-3 text-xs text-rose-600">{{ fileError }}</p>
             </div>
           </div>
 
@@ -372,9 +424,61 @@ const canSubmit = computed(() =>
 )
 
 /* Files */
-function onFiles(e) {
-  files.value = Array.from(e.target.files || [])
-  previews.value = files.value.map(f => URL.createObjectURL(f))
+const fileInput  = ref(null)
+const fileError  = ref('')
+
+function triggerPicker() {
+  fileInput.value?.click()
+}
+
+function validateFile(f) {
+  fileError.value = ''
+  if (!f) return false
+  const type = f.type || ''
+  const sizeMB = f.size / 1048576
+  if (!type.startsWith('image/') && !type.startsWith('video/')) {
+    fileError.value = 'Only image or video files are allowed.'
+    return false
+  }
+  if (sizeMB > 10) {
+    fileError.value = `File too large: ${sizeMB.toFixed(1)} MB (max 10 MB).`
+    return false
+  }
+  return true
+}
+
+function onFilesChange(e) {
+  const filesList = Array.from(e.target.files || [])
+  const valid = []
+  const newPreviews = []
+  for (const f of filesList) {
+    if (validateFile(f)) {
+      valid.push(f)
+      newPreviews.push(URL.createObjectURL(f))
+    }
+  }
+  files.value = valid
+  previews.value = newPreviews
+}
+
+function onDrop(e) {
+  const dropped = Array.from(e.dataTransfer?.files || [])
+  const valid = []
+  const newPreviews = []
+  for (const f of dropped) {
+    if (validateFile(f)) {
+      valid.push(f)
+      newPreviews.push(URL.createObjectURL(f))
+    }
+  }
+  files.value = valid
+  previews.value = newPreviews
+}
+
+function removePreview(i) {
+  files.value.splice(i, 1)
+  previews.value.splice(i, 1)
+  if (!files.value.length) fileError.value = ''
 }
 
 /* Submit with pinpointed logs */

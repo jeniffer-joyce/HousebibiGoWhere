@@ -13,6 +13,27 @@
       <div v-if="ev.text && ev.text !== ev.label" class="text-sm text-slate-600">
         {{ ev.text }}
       </div>
+
+      <!-- ✅ Show proof button directly below the Delivered text -->
+      <div
+        v-if="(ev.key === 'delivered' || ev.label?.toLowerCase()?.includes('delivered')) && delivery?.proofUrl"
+        class="mt-2 flex items-center gap-3"
+      >
+        <a
+          :href="delivery.proofUrl"
+          target="_blank"
+          rel="noopener"
+          class="inline-flex items-center rounded-lg bg-emerald-50 px-3 py-1.5 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100"
+        >
+          View proof photo
+        </a>
+        <img
+          :src="delivery.proofUrl"
+          alt="Proof thumbnail"
+          class="h-10 w-10 rounded-md object-cover ring-1 ring-slate-200"
+        />
+      </div>
+
       <div v-if="ev.note" class="text-xs text-slate-500">{{ ev.note }}</div>
     </div>
 
@@ -28,7 +49,8 @@ import { computed } from 'vue'
 const props = defineProps({
   shipping:  { type: Object, default: () => ({}) },
   logistics: { type: Object, default: () => ({}) },
-  meta:      { type: Object, default: () => ({ createdAt: null, statusLog: [] }) }
+  meta:      { type: Object, default: () => ({ createdAt: null, statusLog: [] }) },
+  delivery:  { type: Object, default: null } // ✅ added
 })
 
 /* ---------- utils ---------- */
@@ -50,14 +72,12 @@ function fmt(t) {
 function fmtMinute(t) {
   try {
     const d = t && typeof t.toDate === 'function' ? t.toDate() : new Date(t)
-    return d.toISOString().slice(0, 16) // yyyy-mm-ddThh:mm
+    return d.toISOString().slice(0, 16)
   } catch { return '' }
 }
 const isPlaced    = (e) => (e.label || e.text || '').toLowerCase().startsWith('order placed')
 const isPreparing = (e) => (e.label || e.text || '').toLowerCase().startsWith('seller is preparing')
 
-/* Group events into semantic kinds to collapse duplicates written to both
-   shipping.timeline and logistics.trackingHistory in the same minute. */
 function eventKind(lbl = '', txt = '') {
   const s = (lbl || txt || '').toLowerCase()
   if (s.startsWith('order placed'))                 return 'placed'
@@ -72,8 +92,6 @@ function eventKind(lbl = '', txt = '') {
 /* ---------- synthesize buyer-side events ---------- */
 const baseEvents = computed(() => {
   const out = []
-
-  // "Order placed"
   const placed =
     props.meta?.createdAt ||
     props.logistics?.orderedAt ||
@@ -81,7 +99,6 @@ const baseEvents = computed(() => {
     null
   if (placed) out.push({ time: placed, label: 'Order placed', text: 'Order placed' })
 
-  // "Seller is preparing to ship"
   const arrangedAt = props.shipping?.arrangedAt
   const statusLog  = Array.isArray(props.meta?.statusLog) ? props.meta.statusLog : []
   const toShipLog  = statusLog.find(s => s?.status === 'to_ship')
@@ -96,40 +113,31 @@ const baseEvents = computed(() => {
   return out
 })
 
-/* ---------- merge all sources, collapse dupes, sort NEWEST → OLDEST, then pin bottom two ---------- */
+/* ---------- merge, collapse, order ---------- */
 const orderedEvents = computed(() => {
   const a = (props.shipping?.timeline || []).map(e => ({ ...e }))
   const b = (props.logistics?.trackingHistory || []).map(e => ({ ...e }))
-
-  // 1) Merge and keep only timed events
   const merged = [...a, ...b, ...baseEvents.value].filter(e => !!e?.time)
 
-  // 2) Sort newest → oldest initially
   merged.sort((x, y) => toMs(y.time) - toMs(x.time))
 
-  // 3) Collapse semantic duplicates by (kind + minute)
   const bucket = new Map()
   for (const e of merged) {
     const minute = fmtMinute(e.time)
     const kind   = eventKind(e.label, e.text)
     const key    = `${kind}|${minute}`
 
-    if (!bucket.has(key)) {
-      bucket.set(key, { ...e })
-    } else {
+    if (!bucket.has(key)) bucket.set(key, { ...e })
+    else {
       const cur = bucket.get(key)
-      // prefer having a distinct label
       if ((!cur.label || cur.label === cur.text) && e.label) cur.label = e.label
-      // keep the most descriptive text
       if ((e.text || '').length > (cur.text || '').length) cur.text = e.text
-      // preserve the latest exact timestamp
       if (toMs(e.time) > toMs(cur.time)) cur.time = e.time
       bucket.set(key, cur)
     }
   }
-  const collapsed = Array.from(bucket.values())
 
-  // 4) De-dupe any remaining exact label+minute pairs (safety)
+  const collapsed = Array.from(bucket.values())
   const seen = new Set()
   const deduped = []
   for (const e of collapsed) {
@@ -139,20 +147,13 @@ const orderedEvents = computed(() => {
     deduped.push(e)
   }
 
-  // 5) Pin bottom order: “…preparing…” then “Order placed”
-  //    Pick earliest occurrence of each, remove from list, append in pinned order.
-  const preparingCandidates = deduped.filter(isPreparing).sort((x,y)=>toMs(x.time)-toMs(y.time))
-  const placedCandidates    = deduped.filter(isPlaced).sort((x,y)=>toMs(x.time)-toMs(y.time))
-  const preparingPinned = preparingCandidates[0] || null
-  const placedPinned    = placedCandidates[0]    || null
-
+  const preparingPinned = deduped.find(isPreparing)
+  const placedPinned    = deduped.find(isPlaced)
   const rest = deduped
     .filter(e => !(isPreparing(e) || isPlaced(e)))
-    .sort((x, y) => toMs(y.time) - toMs(x.time)) // newest → oldest
-
+    .sort((x, y) => toMs(y.time) - toMs(x.time))
   if (preparingPinned) rest.push(preparingPinned)
   if (placedPinned)    rest.push(placedPinned)
-
   return rest
 })
 </script>
