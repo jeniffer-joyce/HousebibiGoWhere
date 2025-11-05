@@ -58,6 +58,7 @@ const items = computed(() => ([
   { label: 'Shipping',      to: { name: 'SellerOrdersShipping' },      count: norm.value.shipping },
   { label: 'Completed',     to: { name: 'SellerOrdersCompleted' },     count: norm.value.completed },
   { label: 'Cancellation',  to: { name: 'SellerOrdersCancellation' },  count: norm.value.cancelled },
-  { label: 'Return/Refund', to: { name: 'SellerOrdersReturnRefund' },  count: norm.value.rr }
+  { label: 'Return/Refund', to: { name: 'SellerOrdersReturnRefund' },  count: norm.value.rr },
+  { label: 'Inventory',     to: { name: 'SellerOrdersInventory' },    count: 0 },
 ]))
 </script>
