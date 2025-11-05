@@ -64,8 +64,6 @@ onAuthStateChanged(auth, async (firebaseUser) => {
   if (firebaseUser) {
     // Logged in
     user.isLoggedIn = true
-    user.name = firebaseUser.displayName || "Anonymous"
-    user.avatar = firebaseUser.photoURL || "/avatar.png"
     user.uid = firebaseUser.uid
     user.email = firebaseUser.email
 
@@ -100,21 +98,42 @@ onAuthStateChanged(auth, async (firebaseUser) => {
         user.preferences.categories = data.preferredCategories || []
         user.preferences.hasSetPreferences = data.hasSetPreferences || false
 
-        // Use seller's logo if available
+        // Priority order for display name:
+        // 1. Firestore displayName
+        // 2. Firebase Auth displayName
+        // 3. "Anonymous"
+        user.name = data.displayName || firebaseUser.displayName || "Anonymous"
+
+        // Priority order for avatar:
+        // 1. For sellers: use their logo if available
+        // 2. Firestore photoURL
+        // 3. Firebase Auth photoURL
+        // 4. Default avatar
         if (user.role === "seller" && data.logo) {
-          user.avatar = data.profilePic
-        } else {
+          user.avatar = data.logo
+        } else if (data.photoURL) {
           user.avatar = data.photoURL
+        } else if (firebaseUser.photoURL) {
+          user.avatar = firebaseUser.photoURL
+        } else {
+          user.avatar = "/avatar.png"
         }
+
+        console.log("👤 User display name:", user.name)
+        console.log("🖼️ User avatar:", user.avatar)
       } else {
         console.warn("⚠️ User document not found in Firestore after 5 retries, defaulting to buyer role")
         user.role = "buyer"
+        user.name = firebaseUser.displayName || "Anonymous"
+        user.avatar = firebaseUser.photoURL || "/avatar.png"
         user.preferences.categories = []
         user.preferences.hasSetPreferences = false
       }
     } catch (error) {
       console.error("❌ Error fetching user data:", error)
       user.role = "buyer"
+      user.name = firebaseUser.displayName || "Anonymous"
+      user.avatar = firebaseUser.photoURL || "/avatar.png"
       user.preferences.categories = []
       user.preferences.hasSetPreferences = false
     }
