@@ -583,7 +583,9 @@ async function proceedToPayment() {
         size: sizeName,
         sizeIndex: item.sizeIndex !== undefined ? item.sizeIndex : null,
         productId: item.productId,
-        sellerId: item.sellerId,
+        sellerId: item.sellerId || item.seller_id || item.sellerUid,  // ✅ ADD THIS
+        sellerUsername: item.sellerUsername || item.seller_username,  // ✅ ADD THIS
+        shopName: item.shopName || item.shop_name,                   // ✅ ADD THIS        
         shopName: item.shopName || item.sellerName || item.businessName || null
       }
     })
