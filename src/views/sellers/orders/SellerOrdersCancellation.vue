@@ -1,4 +1,3 @@
-<!-- src/views/sellers/orders/SellerOrdersAll.vue -->
 <template>
   <section class="space-y-4">
     <!-- Header -->

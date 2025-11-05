@@ -2,7 +2,7 @@
 <template>
   <section class="space-y-4">
     <!-- Header -->
-    <header class="flex items-center justify-between">
+    <header class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div>
         <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Inventory</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400">
@@ -10,13 +10,13 @@
         </p>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
         <!-- Search -->
-        <div class="relative">
+        <div class="relative flex-1 sm:flex-initial">
           <input
             v-model="searchStr"
             type="text"
-            class="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm
+            class="w-full sm:w-72 rounded-md border border-slate-300 px-3 py-2 text-sm
                    bg-white text-slate-800 placeholder:text-slate-400
                    dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             placeholder="Search Product Name, Parent SKU, SKU, Item ID"
@@ -30,7 +30,7 @@
         <!-- Sort -->
         <select
           v-model="sortMode"
-          class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
+          class="w-full sm:w-auto rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
                  text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           title="Sort products"
         >
@@ -46,9 +46,9 @@
 
     <!-- Table -->
     <div class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-      <!-- Header row (grid = 5 / 1 / 1 / 2 / 2 / 1) -->
+      <!-- Header row (desktop only) -->
       <div
-        class="grid grid-cols-12 gap-3 border-b px-4 py-3 text-sm font-semibold
+        class="hidden lg:grid grid-cols-12 gap-3 border-b px-4 py-3 text-sm font-semibold
                text-slate-700 dark:text-slate-200
                bg-slate-50 dark:bg-slate-800/60
                border-slate-200 dark:border-slate-700
@@ -69,89 +69,168 @@
       <div v-else class="divide-y divide-slate-100 dark:divide-slate-800">
         <div
           v-for="p in sortedRows" :key="p.id"
-          class="grid grid-cols-12 gap-3 px-4 py-4"
+          class="px-4 py-4"
         >
-          <!-- Product(s) -->
-          <div class="col-span-5">
+          <!-- Mobile Layout -->
+          <div class="lg:hidden space-y-4">
+            <!-- Product Info -->
             <div class="flex gap-3">
-              <img :src="p.img_url || 'https://via.placeholder.com/48x48?text=%20'" alt="" class="h-12 w-12 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
-              <div class="min-w-0">
+              <img :src="p.img_url || 'https://via.placeholder.com/48x48?text=%20'" alt="" class="h-12 w-12 flex-shrink-0 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
+              <div class="min-w-0 flex-1">
                 <div class="font-medium whitespace-normal break-words leading-tight text-slate-900 dark:text-white">
                   {{ p.item_name || p.name || '—' }}
                 </div>
-
                 <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   Parent SKU: {{ p.parentSKU || '—' }}
                 </div>
-                <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                <div class="text-xs text-slate-500 dark:text-slate-400">
                   Item ID: {{ p.itemId || p.id }}
                 </div>
               </div>
-              /div>
             </div>
-          </div>
 
-          <!-- L30d Sales -->
-          <div class="col-span-1 text-sm font-semibold text-slate-900 dark:text-white">
-            {{ p.l30dSales || 0 }}
-          </div>
+            <!-- Stats Grid (Mobile) -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">L30d Sales</div>
+                <div class="text-sm font-semibold text-slate-900 dark:text-white">{{ p.l30dSales || 0 }}</div>
+              </div>
+              <div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Trend</div>
+                <span
+                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
+                  :class="trendPill(p).cls"
+                >
+                  {{ trendPill(p).label }}
+                </span>
+              </div>
+              <div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Price</div>
+                <div class="text-sm font-semibold text-slate-900 dark:text-white">{{ money(p.price) }}</div>
+              </div>
+              <div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Stock</div>
+                <span
+                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
+                  :class="stockPill(p).cls"
+                  :title="stockPill(p).title"
+                >
+                  <span class="h-2 w-2 rounded-full" :class="stockPill(p).dot"></span>
+                  {{ stockPill(p).label }}
+                </span>
+              </div>
+            </div>
 
-          <!-- L30d Sales Trend -->
-          <div class="col-span-1 self-start">
-            <span
-              class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
-              :class="trendPill(p).cls"
-            >
-              {{ trendPill(p).label }}
-            </span>
-          </div>
-
-          <!-- Price -->
-          <div class="col-span-2 self-start">
-            <span class="inline-block text-sm font-semibold text-slate-900 dark:text-white">
-              {{ money(p.price) }}
-            </span>
-          </div>
-
-          <!-- Stock -->
-          <div class="col-span-2 self-start">
-            <span
-              class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
-              :class="stockPill(p).cls"
-              :title="stockPill(p).title"
-            >
-              <span class="h-2 w-2 rounded-full" :class="stockPill(p).dot"></span>
-              {{ stockPill(p).label }}
-            </span>
-          </div>
-
-          <!-- Actions -->
-          <div class="col-span-1 self-start">
-            <div class="flex flex-col items-start gap-2">
+            <!-- Actions (Mobile) -->
+            <div class="flex gap-2">
               <button
-                class="rounded-md border px-3 py-1.5 text-sm transition
+                class="flex-1 rounded-md border px-3 py-1.5 text-sm transition
                        border-slate-300 text-slate-700 hover:bg-slate-50
                        dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
                 @click="editProduct(p)"
               >
                 Edit
               </button>
-
               <button
-                class="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+                class="flex-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
                 @click="boostProduct(p)"
               >
                 Boosting
               </button>
-
               <button
-                class="rounded-md border px-3 py-1.5 text-sm transition
+                class="flex-1 rounded-md border px-3 py-1.5 text-sm transition
                        border-slate-300 text-slate-700 hover:bg-slate-50
                        dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
                 @click="moreActions(p)"
               >
                 More
               </button>
+            </div>
+          </div>
+
+          <!-- Desktop Layout -->
+          <div class="hidden lg:grid grid-cols-12 gap-3">
+            <!-- Product(s) -->
+            <div class="col-span-5">
+              <div class="flex gap-3">
+                <img :src="p.img_url || 'https://via.placeholder.com/48x48?text=%20'" alt="" class="h-12 w-12 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
+                <div class="min-w-0">
+                  <div class="font-medium whitespace-normal break-words leading-tight text-slate-900 dark:text-white">
+                    {{ p.item_name || p.name || '—' }}
+                  </div>
+
+                  <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    Parent SKU: {{ p.parentSKU || '—' }}
+                  </div>
+                  <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    Item ID: {{ p.itemId || p.id }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- L30d Sales -->
+            <div class="col-span-1 text-sm font-semibold text-slate-900 dark:text-white">
+              {{ p.l30dSales || 0 }}
+            </div>
+
+            <!-- L30d Sales Trend -->
+            <div class="col-span-1 self-start">
+              <span
+                class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+                :class="trendPill(p).cls"
+              >
+                {{ trendPill(p).label }}
+              </span>
+            </div>
+
+            <!-- Price -->
+            <div class="col-span-2 self-start">
+              <span class="inline-block text-sm font-semibold text-slate-900 dark:text-white">
+                {{ money(p.price) }}
+              </span>
+            </div>
+
+            <!-- Stock -->
+            <div class="col-span-2 self-start">
+              <span
+                class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+                :class="stockPill(p).cls"
+                :title="stockPill(p).title"
+              >
+                <span class="h-2 w-2 rounded-full" :class="stockPill(p).dot"></span>
+                {{ stockPill(p).label }}
+              </span>
+            </div>
+
+            <!-- Actions -->
+            <div class="col-span-1 self-start">
+              <div class="flex flex-col items-stretch gap-2 w-full">
+                <button
+                  class="w-full rounded-md border px-3 py-1.5 text-sm transition
+                         border-slate-300 text-slate-700 hover:bg-slate-50
+                         dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
+                  @click="editProduct(p)"
+                >
+                  Edit
+                </button>
+
+                <button
+                  class="w-full rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+                  @click="boostProduct(p)"
+                >
+                  Boosting
+                </button>
+
+                <button
+                  class="w-full rounded-md border px-3 py-1.5 text-sm transition
+                         border-slate-300 text-slate-700 hover:bg-slate-50
+                         dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
+                  @click="moreActions(p)"
+                >
+                  More
+                </button>
+              </div>
             </div>
           </div>
         </div>
