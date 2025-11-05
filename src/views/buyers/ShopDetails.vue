@@ -670,8 +670,10 @@ async function checkFollowStatus() {
 }
 
 async function toggleFollow() {
+  // ✅ ADD THIS - Check authentication FIRST, before any other logic
   if (!auth.currentUser) {
-    useToast.error('Please log in to follow businesses')
+    const { error } = useToast()
+    error('Please log in to follow sellers', 'Login Required')
     return
   }
   
@@ -706,15 +708,18 @@ async function toggleFollow() {
     isFollowing.value = willBeFollowing
     
     // Show success message
-    useToast.success(willBeFollowing ? 'Following!' : 'Unfollowed')
+    const { success } = useToast()
+    success(willBeFollowing ? 'Following!' : 'Unfollowed')
     
   } catch (error) {
     console.error('Error toggling follow:', error)
-    useToast.error('Failed to update follow status')
+    const { error: errorToast } = useToast()
+    errorToast('Failed to update follow status')
   } finally {
     followLoading.value = false
   }
 }
+
 
 
 // Computed properties
