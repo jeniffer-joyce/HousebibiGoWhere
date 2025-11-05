@@ -30,12 +30,14 @@
           <select
             v-model="stateFilter"
             class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
-                   text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             title="Filter by status"
           >
             <option value="">All Statuses</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
+            <option value="return_dropped_off">Return Dropped Off</option>
+            <option value="return_received">Return Received</option>
             <option value="declined">Declined</option>
           </select>
         </div>
@@ -197,7 +199,25 @@
                   </button>
                 </template>
 
-                <!-- Approved / Declined -->
+                <!-- Return Dropped Off - waiting for seller to receive -->
+                <template v-else-if="r.returnRequestSummary?.state === 'return_dropped_off'">
+                  <button 
+                    @click="openReceiveReturn(r)"
+                    class="w-full rounded-md bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700"
+                  >
+                    Confirm Received Return
+                  </button>
+                  <button 
+                    @click="openDecisionDetails(r)"
+                    class="w-full rounded-md border px-3 py-1.5 text-sm
+                          border-slate-300 text-slate-700 hover:bg-slate-50
+                          dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
+                  >
+                    View Details
+                  </button>
+                </template>
+
+                <!-- Approved / Return Received / Declined -->
                 <template v-else>
                   <button 
                     @click="openDecisionDetails(r)"
@@ -209,8 +229,8 @@
                   <button 
                     @click="openBuyerDetails(r)"
                     class="w-full rounded-md border px-3 py-1.5 text-sm
-                           border-slate-300 text-slate-700 hover:bg-slate-50
-                           dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
+                          border-slate-300 text-slate-700 hover:bg-slate-50
+                          dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
                   >
                     View Buyer Info
                   </button>
@@ -336,7 +356,25 @@
               </button>
             </template>
 
-            <!-- Approved / Declined -->
+            <!-- Return Dropped Off -->
+            <template v-else-if="r.returnRequestSummary?.state === 'return_dropped_off'">
+              <button 
+                @click="openReceiveReturn(r)"
+                class="w-full rounded-md bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700"
+              >
+                Confirm Received Return
+              </button>
+              <button 
+                @click="openDecisionDetails(r)"
+                class="w-full rounded-md border px-3 py-2 text-sm
+                      border-slate-300 text-slate-700 hover:bg-slate-50
+                      dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
+              >
+                View Details
+              </button>
+            </template>
+
+            <!-- Approved / Return Received / Declined -->
             <template v-else>
               <button 
                 @click="openDecisionDetails(r)"
@@ -348,8 +386,8 @@
               <button 
                 @click="openBuyerDetails(r)"
                 class="w-full rounded-md border px-3 py-2 text-sm
-                       border-slate-300 text-slate-700 hover:bg-slate-50
-                       dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
+                      border-slate-300 text-slate-700 hover:bg-slate-50
+                      dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
               >
                 View Buyer Info
               </button>
@@ -458,15 +496,18 @@
           <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:col-span-2 md:col-span-1">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Status</p>
 
-            <!-- Single pill -->
-            <div
-              class="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold"
-              :class="decisionPillClass"
-            >
-              <span class="h-2 w-2 rounded-full flex-shrink-0" :class="decisionDotClass"></span>
-              <span class="truncate">
-                {{ decisionVerb }}: {{ reviewedAtStr || '—' }}
-              </span>
+            <!-- Status pill -->
+            <div class="mt-2">
+              <div
+                class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold"
+                :class="detailStatusPillClass"
+              >
+                <span class="h-2 w-2 rounded-full flex-shrink-0" :class="detailStatusDotClass"></span>
+                <span>{{ detailStatusLabel }}</span>
+              </div>
+              <p class="mt-2 text-sm font-medium text-slate-900 dark:text-white ">
+                {{ detailStatusTime }}
+              </p>
             </div>
           </div>
         </div>
@@ -498,9 +539,10 @@
         </div>
 
         <!-- Decision-specific details -->
-        <div v-if="selectedDecision?.returnRequestSummary?.state === 'approved'" class="mt-6">
+        <div v-if="selectedDecision?.returnRequestSummary?.state === 'approved' || selectedDecision?.returnRequestSummary?.state === 'return_received'" class="mt-6">
           <div class="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-200">
-            <b>Refund Approved</b> — Buyer has been refunded.
+            <b>{{ selectedDecision?.returnRequestSummary?.solution === 'return_and_refund' ? 'Return & Refund' : 'Refund' }} Approved</b> — 
+            {{ selectedDecision?.returnRequestSummary?.state === 'return_received' ? 'Return received. Buyer has been refunded.' : 'Buyer will be refunded.' }}
           </div>
         </div>
 
@@ -664,7 +706,7 @@
       </div>
     </div>
 
-    <!-- Confirm Full Refund Modal -->
+    <!-- Confirm Approval Modal (Enhanced for Return vs Refund) -->
     <div
       v-if="confirm.visible && confirm.action === 'approved'"
       class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
@@ -674,17 +716,28 @@
         class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:mx-4 dark:bg-slate-800"
         @click.stop
       >
-        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Confirm Full Refund</h3>
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+          {{ isReturnRequest(confirm.target) ? 'Approve Return Request' : 'Confirm Full Refund' }}
+        </h3>
+        
         <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Once you confirm, the full payment will be refunded to the buyer.
-          <b>You will no longer be able to raise a dispute afterwards.</b>
+          <template v-if="isReturnRequest(confirm.target)">
+            Once you approve, the buyer will have <b>3 days</b> to drop off the return at a HouseBiBi Hub. 
+            After you receive and confirm the return, the refund will be processed automatically.
+          </template>
+          <template v-else>
+            Once you confirm, the full payment will be refunded to the buyer.
+            <b>You will no longer be able to raise a dispute afterwards.</b>
+          </template>
         </p>
+        
         <p class="mt-4 text-sm font-medium text-slate-700 dark:text-slate-200">
           Refund to Buyer:
           <span class="font-bold text-blue-600">
             S${{ confirm.target?.returnRequestSummary?.amount?.toFixed(2) }}
           </span>
         </p>
+        
         <div class="mt-5 flex justify-end gap-2">
           <button
             @click="confirm.visible=false"
@@ -694,9 +747,9 @@
           </button>
           <button
             @click="applyDecision"
-            class="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+            class="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
           >
-            Confirm
+            {{ isReturnRequest(confirm.target) ? 'Approve Return' : 'Confirm Refund' }}
           </button>
         </div>
       </div>
@@ -805,6 +858,55 @@
         </div>
       </div>
     </div>
+    <!-- Confirm Received Return Modal -->
+    <div
+      v-if="showReceiveReturnModal"
+      class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
+      @click="showReceiveReturnModal = false"
+    >
+      <div
+        class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:mx-4 dark:bg-slate-800"
+        @click.stop
+      >
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-green-50 dark:bg-green-900/30 flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+            Confirm Return Received
+          </h3>
+        </div>
+        
+        <p class="text-sm text-slate-600 dark:text-slate-300">
+          Please confirm that you have physically received the return parcel from the buyer. 
+          Once confirmed, the refund of <b class="text-slate-900 dark:text-white">S${{ selectedReceiveReturn?.returnRequestSummary?.amount?.toFixed(2) }}</b> will be processed immediately.
+        </p>
+        
+        <div class="mt-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 p-3">
+          <p class="text-xs text-blue-800 dark:text-blue-200">
+            <b>Note:</b> Only confirm after you've inspected the returned items. This action cannot be undone.
+          </p>
+        </div>
+        
+        <div class="mt-6 flex justify-end gap-2">
+          <button
+            @click="showReceiveReturnModal = false"
+            class="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Cancel
+          </button>
+          <button
+            @click="confirmReceiveReturn"
+            class="rounded-lg bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
+          >
+            Confirm Received
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Image Lightbox Modal -->
     <div
       v-if="imageModal.show"
@@ -855,6 +957,76 @@ const showDecisionDetails = ref(false)
 const selectedDecision = ref(null)
 const showBuyerDetails = ref(false)
 const selectedBuyer = ref(null)
+
+// Computed for detail modal status display
+const detailStatusLabel = computed(() => {
+  const state = selectedDecision.value?.returnRequestSummary?.state
+  if (state === 'return_received') return 'Return Received'
+  if (state === 'approved') return 'Approved'
+  if (state === 'declined') return 'Declined'
+  if (state === 'return_dropped_off') return 'Dropped Off'
+  return 'Pending'
+})
+
+const detailStatusTime = computed(() => {
+  const rr = selectedDecision.value?.returnRequestSummary || {}
+  const state = rr.state
+  
+  // For return_received, use returnReceivedAt
+  if (state === 'return_received') {
+    const ts = rr.returnReceivedAt || rr.reviewedAt
+    if (!ts) return '—'
+    try {
+      const d = ts?.toDate ? ts.toDate() : new Date(ts)
+      return d.toLocaleString('en-SG', { 
+        year:'numeric', month:'short', day:'numeric', 
+        hour:'2-digit', minute:'2-digit' 
+      })
+    } catch { return '—' }
+  }
+  
+  // For other states, use reviewedAt or statusLog
+  let ts = rr.reviewedAt
+  if (!ts && Array.isArray(selectedDecision.value?.statusLog)) {
+    let target = null
+    if (state === 'approved') target = 'return_approved'
+    else if (state === 'declined') target = 'return_declined'
+    else if (state === 'return_dropped_off') target = 'return_dropped_off'
+    
+    if (target) {
+      const entry = [...selectedDecision.value.statusLog].reverse().find(e => e?.status === target)
+      ts = entry?.time || null
+    }
+  }
+  
+  if (!ts) return '—'
+  try {
+    const d = ts?.toDate ? ts.toDate() : new Date(ts)
+    return d.toLocaleString('en-SG', { 
+      year:'numeric', month:'short', day:'numeric', 
+      hour:'2-digit', minute:'2-digit' 
+    })
+  } catch { return '—' }
+})
+
+const detailStatusPillClass = computed(() => {
+  const state = selectedDecision.value?.returnRequestSummary?.state
+  if (state === 'return_received' || state === 'approved') 
+    return 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200'
+  if (state === 'declined') 
+    return 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'
+  if (state === 'return_dropped_off')
+    return 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
+  return 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
+})
+
+const detailStatusDotClass = computed(() => {
+  const state = selectedDecision.value?.returnRequestSummary?.state
+  if (state === 'return_received' || state === 'approved') return 'bg-green-600'
+  if (state === 'declined') return 'bg-rose-600'
+  if (state === 'return_dropped_off') return 'bg-blue-600'
+  return 'bg-amber-600'
+})
 
 /* ------------ Data ------------ */
 const requests = ref([])
@@ -952,13 +1124,118 @@ function formatDate(ts){
   }
   try { return new Date(ts).toLocaleString('en-SG') } catch { return '—' }
 }
-function capitalizeStatus(s){ return (s||'pending').replace(/^\w/, c => c.toUpperCase()) }
+function capitalizeStatus(s){ 
+  if (s === 'return_dropped_off') return 'Returned'
+  if (s === 'return_received') return 'Completed'
+  return (s||'pending').replace(/^\w/, c => c.toUpperCase()) 
+}
+
+// Add these new refs after the existing ones (around line 31)
+const showReceiveReturnModal = ref(false)
+const selectedReceiveReturn = ref(null)
+
+// Add this helper function after the formatDate function (around line 115)
+function isReturnRequest(row) {
+  const solution = row?.returnRequestSummary?.solution || ''
+  return String(solution).toLowerCase().includes('return')
+}
+
+// Add this function to open the receive return modal
+function openReceiveReturn(row) {
+  selectedReceiveReturn.value = row
+  showReceiveReturnModal.value = true
+}
+
+// Update the applyDecision function (around line 385)
+async function applyDecision(){
+  const row = confirm.value.target
+  if(!row) return
+  const state = 'approved'
+  confirm.value.visible = false
+  
+  try{
+    const isReturn = isReturnRequest(row)
+    const now = Timestamp.now()
+    
+    // Calculate deadline (3 days from now)
+    const deadline = isReturn 
+      ? Timestamp.fromDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000))
+      : null
+    
+    await updateDoc(doc(db,'orders',row.id),{
+      returnRequestSummary:{
+        ...row.returnRequestSummary,
+        state,
+        reviewedAt: now,
+        reviewedBy: auth.currentUser?.uid || null,
+        ...(isReturn && { dropoffDeadline: deadline })
+      },
+      statusLog:[
+        ...(row.statusLog||[]),
+        { status:'return_approved', by:'seller', time: now }
+      ]
+    })
+    
+    const message = isReturn 
+      ? 'Return approved. Buyer has 3 days to drop off at a HouseBiBi Hub.'
+      : 'Refund approved successfully.'
+    
+    showToast({ type:'success', title:'Approved', message })
+  }catch(e){
+    console.error(e)
+    showToast({ type:'error', title:'Failed', message:'Could not approve request.' })
+  }
+}
+
+// Add new function to confirm received return
+async function confirmReceiveReturn() {
+  const row = selectedReceiveReturn.value
+  if (!row) return
+  
+  showReceiveReturnModal.value = false
+  
+  try {
+    const now = Timestamp.now()
+    
+    await updateDoc(doc(db, 'orders', row.id), {
+      returnRequestSummary: {
+        ...row.returnRequestSummary,
+        state: 'return_received',
+        returnReceivedAt: now,
+        returnReceivedBy: auth.currentUser?.uid || null
+      },
+      statusLog: [
+        ...(row.statusLog || []),
+        { status: 'return_received', by: 'seller', time: now }
+      ]
+    })
+    
+    showToast({ 
+      type: 'success', 
+      title: 'Return Confirmed', 
+      message: 'Return received. Refund will be processed automatically.' 
+    })
+  } catch (e) {
+    console.error(e)
+    showToast({ 
+      type: 'error', 
+      title: 'Failed', 
+      message: 'Could not confirm return receipt.' 
+    })
+  }
+}
 
 function statusClass(state){
   switch(state){
-    case 'approved': return 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200'
-    case 'declined': return 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'
-    default: return 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
+    case 'approved': 
+    case 'return_received':
+      return 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200'
+    case 'declined': 
+      return 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'
+    case 'return_dropped_off':
+      return 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
+    default: 
+      return 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
   }
 }
 function solutionLabel(sol){
@@ -991,46 +1268,6 @@ const decisionTitle = (row) => {
   const isReturn = String(sol).toLowerCase().includes('return')
   return isReturn ? 'Return Details' : 'Refund Details'
 }
-const reviewedAtStr = computed(() => {
-  // Prefer explicit reviewedAt, fall back to matching statusLog entry
-  const rr = selectedDecision.value?.returnRequestSummary || {}
-  let ts = rr.reviewedAt
-
-  if (!ts && Array.isArray(selectedDecision.value?.statusLog)) {
-    const target = rr.state === 'approved' ? 'return_approved' : (rr.state === 'declined' ? 'return_declined' : null)
-    if (target) {
-      const entry = [...selectedDecision.value.statusLog].reverse().find(e => e?.status === target)
-      ts = entry?.time || null
-    }
-  }
-
-  if (!ts) return ''
-  try {
-    const d = ts?.toDate ? ts.toDate() : new Date(ts)
-    return d.toLocaleString('en-SG', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
-  } catch { return '' }
-})
-
-const decisionVerb = computed(() => {
-  const s = selectedDecision.value?.returnRequestSummary?.state
-  if (s === 'approved') return 'Accepted'
-  if (s === 'declined') return 'Declined'
-  return 'Pending'
-})
-
-const decisionPillClass = computed(() => {
-  const s = selectedDecision.value?.returnRequestSummary?.state
-  if (s === 'approved') return 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200'
-  if (s === 'declined') return 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'
-  return 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
-})
-
-const decisionDotClass = computed(() => {
-  const s = selectedDecision.value?.returnRequestSummary?.state
-  if (s === 'approved') return 'bg-green-600'
-  if (s === 'declined') return 'bg-rose-600'
-  return 'bg-amber-600'
-})
 
 watch([queryStr, stateFilter], () => {
   page.value = 1
@@ -1086,7 +1323,6 @@ const pageSize = 10
 const page = ref(1)
 const totalPages = computed(() => Math.ceil(filtered.value.length / pageSize))
 const paged = computed(() => filtered.value.slice((page.value-1)*pageSize, page.value*pageSize))
-const pageStart = computed(() => filtered.value.length ? (page.value-1)*pageSize+1 : 0)
 const pageEnd = computed(() => Math.min(page.value*pageSize, filtered.value.length))
 
 // --- Decline uploader state (JS) ---
@@ -1163,54 +1399,8 @@ function openBuyerDetails(row){
   showBuyerDetails.value = true
 }
 
-async function applyDecision(){
-  const row = confirm.value.target
-  if(!row) return
-  const state = 'approved'
-  confirm.value.visible = false
-  try{
-    await updateDoc(doc(db,'orders',row.id),{
-      returnRequestSummary:{
-        ...row.returnRequestSummary,
-        state,
-        reviewedAt: Timestamp.now(),
-        reviewedBy: auth.currentUser?.uid || null
-      },
-      statusLog:[...(row.statusLog||[]),{ status:'return_approved', by:'seller', time:Timestamp.now() }]
-    })
-    showToast({ type:'success', title:'Approved', message:'Refund approved successfully.' })
-  }catch(e){
-    console.error(e)
-    showToast({ type:'error', title:'Failed', message:'Could not approve request.' })
-  }
-}
-
-async function applyDecline(payload){
-  const row = confirm.value.target
-  if(!row) return
-  confirm.value.visible = false
-  try{
-    await updateDoc(doc(db,'orders',row.id),{
-      returnRequestSummary:{
-        ...row.returnRequestSummary,
-        state:'declined',
-        declineReason: payload.reason,
-        declineEvidenceUrls: payload.evidenceUrls || [],
-        reviewedAt: Timestamp.now(),
-        reviewedBy: auth.currentUser?.uid || null
-      },
-      statusLog:[...(row.statusLog||[]),{ status:'return_declined', by:'seller', time:Timestamp.now() }]
-    })
-    showToast({ type:'success', title:'Declined', message:'Refund request declined with reason and evidence.' })
-  }catch(e){
-    console.error(e)
-    showToast({ type:'error', title:'Failed', message:'Could not decline request.' })
-  }
-}
 
 const declineReason = ref('')
-const declineEvidencePreviews = ref([])
-
 
 async function submitDecline () {
   const row = confirm.value.target

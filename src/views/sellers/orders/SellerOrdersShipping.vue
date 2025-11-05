@@ -210,7 +210,7 @@
                 :disabled="busyId===o.id"
                 @click="autoCancel(o)"
               >
-                Auto-cancel (Overdue)
+                Cancel (Overdue)
               </button>
 
               <!-- Resend Delivery -->
@@ -955,22 +955,23 @@ async function autoCancel(o) {
       return;
     }
 
-    // Debug: Check seller identification
-    console.log('🔍 Auto-cancel Debug:', {
-      currentUid: uid,
-      orderSellerId: o.sellerId,
-      firstProductSellerId: o.products?.[0]?.sellerId,
-      orderStatus: o.status,
-      deliveryStatus: o.delivery?.status,
+    // ✅ ADD THIS: Log the full order object
+    console.log('🔍 Full order object:', {
+      id: o.id,
+      status: o.status,
+      sellerId: o.sellerId,
+      uid: o.uid,
+      products: o.products?.map(p => ({
+        sellerId: p.sellerId,
+        name: p.item_name || p.name
+      })),
+      delivery: o.delivery,
       hasShipping: !!o.shipping,
-      shippingKeys: o.shipping ? Object.keys(o.shipping) : [],
-      hasTimeline: !!o.shipping?.timeline,
-      timelineLength: o.shipping?.timeline?.length || 0
+      shippingKeys: o.shipping ? Object.keys(o.shipping) : []
     });
 
     const refDoc = doc(db, 'orders', o.id);
 
-    // Build the update payload
     const updatePayload = {
       status: 'cancelled',
       cancelledAt: serverTimestamp(),
@@ -984,17 +985,6 @@ async function autoCancel(o) {
         message: 'Auto-cancelled due to overdue completion'
       })
     };
-
-    // ✅ Only add shipping.timeline if shipping already exists AND has a timeline array
-    // This uses dot notation to append to the existing timeline array
-    if (o.shipping?.timeline && Array.isArray(o.shipping.timeline)) {
-      updatePayload['shipping.timeline'] = arrayUnion({
-        key: 'auto_cancelled',
-        label: 'Order Auto-cancelled',
-        text: 'Overdue completion; seller auto-cancelled',
-        time: Timestamp.now()
-      });
-    }
 
     console.log('📤 Sending update payload:', JSON.stringify(updatePayload, null, 2));
 
