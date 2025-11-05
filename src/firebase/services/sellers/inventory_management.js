@@ -1,10 +1,4 @@
 // inventory_management.js
-// Live inventory sync (orders -> products) for a specific seller
-// - Listens to the most recent orders and filters client-side to this seller
-// - Applies idempotent adjustments based on the latest status in statusLog
-// - Handles single-variant and multi-variant products (size / sizeIndex)
-// - Uses Firestore transactions to update quantities and totalSales safely
-
 import {
   getFirestore,
   collection,
@@ -15,17 +9,19 @@ import {
   runTransaction,
   doc,
   updateDoc,
+  getDoc,
 } from 'firebase/firestore'
 
 let _unsub = null
+let _businessCheckTimeout = null
 
 /**
  * Attach a live watcher that syncs inventory for a seller.
- * Call this once after seller signs in (you already call it from seller_product.js).
+ * ✅ NOW CHECKS if businesses document exists first!
  *
  * @param {Object} opts
  * @param {import('firebase/firestore').Firestore} opts.db
- * @param {any} opts.auth     // not used here, kept for symmetry with your call sites
+ * @param {any} opts.auth     // not used here, kept for symmetry
  * @param {string} opts.sellerId
  */
 export function attachInventoryWatcher({ db = getFirestore(), auth, sellerId }) {
@@ -34,14 +30,63 @@ export function attachInventoryWatcher({ db = getFirestore(), auth, sellerId }) 
     return () => {}
   }
 
-  // If already attached for some reason, detach old one
+  console.log(`[Inventory] Checking if business document exists for seller: ${sellerId}`)
+
+  // ✅ CHECK if businesses document exists first
+  checkBusinessDocumentExists(db, sellerId)
+    .then(exists => {
+      if (!exists) {
+        console.log(`[Inventory] Business document not found for ${sellerId} - will retry`)
+        // Retry after 2 seconds
+        _businessCheckTimeout = setTimeout(() => {
+          attachInventoryWatcher({ db, auth, sellerId })
+        }, 2000)
+        return
+      }
+
+      console.log(`[Inventory] Business document found - initializing watcher`)
+      initializeWatcher(db, sellerId)
+    })
+    .catch(err => {
+      console.error(`[Inventory] Error checking business document:`, err)
+      // Retry on error
+      _businessCheckTimeout = setTimeout(() => {
+        attachInventoryWatcher({ db, auth, sellerId })
+      }, 2000)
+    })
+
+  return _unsub || (() => {})
+}
+
+/**
+ * ✅ CHECK if businesses document exists
+ */
+async function checkBusinessDocumentExists(db, sellerId) {
+  try {
+    const businessDoc = await getDoc(doc(db, 'businesses', sellerId))
+    return businessDoc.exists()
+  } catch (error) {
+    console.error('[Inventory] Error checking business document:', error)
+    throw error
+  }
+}
+
+/**
+ * ✅ Initialize the actual watcher (only after businesses doc confirmed)
+ */
+function initializeWatcher(db, sellerId) {
+  // If already attached, detach old one
   if (_unsub) {
     try { _unsub(); } catch {}
     _unsub = null
   }
 
-  // Heuristic: watch the most recently updated orders (keeps cost sane)
-  // Your orders have `updatedAt` (timestamp). We keep it lean with limit(200).
+  // Clear any pending retry
+  if (_businessCheckTimeout) {
+    clearTimeout(_businessCheckTimeout)
+    _businessCheckTimeout = null
+  }
+
   const ordersRef = collection(db, 'orders')
   const q = query(ordersRef, orderBy('updatedAt', 'desc'), limit(200))
 
@@ -57,7 +102,7 @@ export function attachInventoryWatcher({ db = getFirestore(), auth, sellerId }) 
         if (ch.type !== 'added' && ch.type !== 'modified') continue
         const order = { id: ch.doc.id, ...ch.doc.data() }
 
-        // Ignore orders that don’t include this seller in products[]
+        // Ignore orders that don't include this seller in products[]
         if (!Array.isArray(order.products) || !order.products.some(p => p?.sellerId === sellerId)) {
           continue
         }
@@ -81,6 +126,10 @@ export function attachInventoryWatcher({ db = getFirestore(), auth, sellerId }) 
  * Detach the watcher if needed (e.g., on logout).
  */
 export function detachInventoryWatcher() {
+  if (_businessCheckTimeout) {
+    clearTimeout(_businessCheckTimeout)
+    _businessCheckTimeout = null
+  }
   if (_unsub) {
     try { _unsub(); } catch {}
     _unsub = null
@@ -91,20 +140,6 @@ export function detachInventoryWatcher() {
 /* =====================  CORE STATUS HANDLER  ========================== */
 /* ====================================================================== */
 
-/**
- * Decide what inventory adjustment to apply for the seller, based on the
- * latest status in statusLog. We write an idempotency marker into the order:
- * inventoryCursor: { [sellerId]: "<status-we-last-applied>" }
- *
- * Rules we’re implementing (based on your spec):
- * - When status moves to 'to_ship' (or is 'to_ship' as latest): DEDUCT quantities for all items of this seller.
- * - When status moves to 'cancelled': REIMBURSE quantities for all items of this seller.
- * - When status moves to 'completed': INCREMENT totalSales for all items of this seller (no quantity change).
- *
- * Notes:
- * - Orders are seller-scoped in your app, but we still scope the cursor by sellerId to be safe.
- * - We only act if latestStatus !== inventoryCursor[sellerId] to keep it idempotent.
- */
 async function handleOrderStatusChange(db, order, sellerId) {
   const latestStatus = getLatestStatus(order)
   if (!latestStatus) return
@@ -113,39 +148,29 @@ async function handleOrderStatusChange(db, order, sellerId) {
     ? order.inventoryCursor[sellerId]
     : undefined
 
-  // Nothing to do if we’ve already applied this status for this seller
   if (cursor === latestStatus) {
-    // Debug:
-    // console.log(`[Inventory] Order ${order.id} already applied for status ${latestStatus}`)
     return
   }
 
   console.log(`[Inventory] Handling order ${order.id} → ${latestStatus} (prev: ${cursor ?? 'none'})`)
 
-  // Filter order items to only products of this seller
   const sellerItems = (order.products || []).filter(p => p?.sellerId === sellerId)
   if (!sellerItems.length) return
 
-  // Apply by status
   if (latestStatus === 'to_ship') {
     await adjustAllItems(db, sellerItems, 'DEDUCT')
   } else if (latestStatus === 'cancelled') {
     await adjustAllItems(db, sellerItems, 'REIMBURSE')
   } else if (latestStatus === 'completed') {
     await addSalesAllItems(db, sellerItems)
-  } else {
-    // For other statuses we do nothing to stock/metrics
-    // e.g. to_pay, to_receive, return_refund ...
   }
 
-  // Mark idempotent cursor so we won’t redo the same work next snapshot
   try {
     const orderRef = doc(db, 'orders', order.id)
     await updateDoc(orderRef, {
       [`inventoryCursor.${sellerId}`]: latestStatus
     })
   } catch (e) {
-    // Non-fatal; if this write fails, you might re-apply on next snapshot.
     console.warn(`[Inventory] Could not write inventoryCursor for ${order.id}:`, e)
   }
 }
@@ -154,11 +179,7 @@ async function handleOrderStatusChange(db, order, sellerId) {
 /* =======================  APPLY ADJUSTMENTS  ========================== */
 /* ====================================================================== */
 
-/**
- * DEDUCT or REIMBURSE quantities for each item in the order for this seller.
- * Handles both single-variant (quantity:number) and multi-variant (quantity:number[])
- */
-async function adjustAllItems(db, items, mode /* 'DEDUCT' | 'REIMBURSE' */) {
+async function adjustAllItems(db, items, mode) {
   const isDeduct = mode === 'DEDUCT'
   const verb = isDeduct ? 'Deducted' : 'Reimbursed'
 
@@ -170,18 +191,15 @@ async function adjustAllItems(db, items, mode /* 'DEDUCT' | 'REIMBURSE' */) {
 
       const data = snap.data() || {}
 
-      // Decide if single or multi variant
       const hasVariants = Array.isArray(data.size) && Array.isArray(data.quantity)
       const orderQty = Number(it.quantity ?? 1) || 1
 
       if (hasVariants) {
-        // Prefer explicit sizeIndex from order if present, else match by size label
         let idx = Number.isInteger(it.sizeIndex) ? it.sizeIndex : -1
         if (idx < 0 && it.size != null) {
           idx = (data.size || []).findIndex(s => String(s) === String(it.size))
         }
         if (idx < 0) {
-          // Couldn’t match a variant -> no-op for safety
           console.warn(`[Inventory] Variant not found for product ${it.productId}. sizeIndex=${it.sizeIndex} size=${it.size}`)
           return
         }
@@ -194,7 +212,6 @@ async function adjustAllItems(db, items, mode /* 'DEDUCT' | 'REIMBURSE' */) {
         tx.update(productRef, { quantity: qtyArr })
         console.log(`[Inventory] ${verb} ${orderQty} from product ${it.productId} (variant #${idx}) → ${next}`)
       } else {
-        // Single-variant product
         const current = Number(data.quantity ?? 0) || 0
         const next = isDeduct ? Math.max(0, current - orderQty) : current + orderQty
 
@@ -205,10 +222,6 @@ async function adjustAllItems(db, items, mode /* 'DEDUCT' | 'REIMBURSE' */) {
   }))
 }
 
-/**
- * Increment totalSales for each item (no stock change).
- * For multi-variant products we increment totalSales as a single counter (your schema).
- */
 async function addSalesAllItems(db, items) {
   await Promise.all(items.map(async (it) => {
     const productRef = doc(db, 'products', it.productId)
