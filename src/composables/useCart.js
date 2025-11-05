@@ -43,7 +43,7 @@ export function useCart() {
             const cartItem = {
                 cartItemId: `${product.id}_${hasSize ? sizeIndex : 'nosize'}_${Date.now()}`,
                 productId: product.id || '',
-                sellerId: product.sellerID || '',
+                sellerId: product.sellerId || '',
                 shopName: product.sellerName || 'Shop',
                 sellerUsername: product.username || product.sellerUsername || '',
                 item_name: product.item_name || product.name || 'Product',
