@@ -1,22 +1,22 @@
 <!-- src/views/sellers/orders/SellerOrdersShipping.vue -->
 <template>
-  <section class="space-y-4">
+  <section class="space-y-4 px-2 sm:px-0">
     <!-- Header -->
-    <header class="flex items-center justify-between">
+    <header class="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
       <div>
-        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Shipping</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400">
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Shipping</h2>
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
           Orders handed to courier. Manage same-day delivery ops, proof of delivery, and re-attempts.
         </p>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <!-- Search -->
         <div class="relative">
           <input
             v-model="searchStr"
             type="text"
-            class="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm
+            class="w-full sm:w-72 rounded-md border border-slate-300 px-3 py-2 text-sm
                    bg-white text-slate-800 placeholder:text-slate-400
                    dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             placeholder="Search order, buyer, product, tracking…"
@@ -42,10 +42,10 @@
       </div>
     </header>
 
-    <!-- Table -->
-    <div class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-      <!-- Header row (grid = 5 / 1 / 1 / 2 / 2 / 1) -->
-     <div
+    <!-- Desktop Table (hidden on mobile) -->
+    <div class="hidden lg:block rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <!-- Header row -->
+      <div
         class="grid grid-cols-12 gap-3 border-b px-4 py-3 text-sm font-semibold
                text-slate-700 dark:text-slate-200
                bg-slate-50 dark:bg-slate-800/60
@@ -184,7 +184,7 @@
                 Check Shipping Details
               </button>
 
-              <!-- Start Delivery (opens confirm modal) -->
+              <!-- Start Delivery -->
               <button
                 v-if="canStartDelivery(o)"
                 class="rounded-md bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-700 disabled:opacity-60"
@@ -194,7 +194,7 @@
                 Start Delivery
               </button>
 
-              <!-- Mark Delivered (opens proof modal) -->
+              <!-- Mark Delivered -->
               <button
                 v-if="canMarkDelivered(o)"
                 class="rounded-md bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700"
@@ -203,7 +203,7 @@
                 Mark Delivered
               </button>
 
-              <!-- Auto-cancel (only when Complete-by is overdue and NOT out for delivery) -->
+              <!-- Auto-cancel -->
               <button
                 v-if="o?.status==='to_receive' && isOverdueComplete(o) && o?.delivery?.status !== 'out_for_delivery'"
                 class="rounded-md bg-rose-600 px-3 py-1.5 text-sm text-white hover:bg-rose-700 disabled:opacity-60"
@@ -213,7 +213,7 @@
                 Auto-cancel (Overdue)
               </button>
 
-              <!-- Resend Delivery (only if a delivery was started before and failed) -->
+              <!-- Resend Delivery -->
               <button
                 v-if="canResendDelivery(o)"
                 class="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
@@ -228,12 +228,168 @@
       </div>
     </div>
 
+    <!-- Mobile Card Layout (visible on mobile only) -->
+    <div class="lg:hidden space-y-3">
+      <!-- Empty / Loading -->
+      <div v-if="loading" class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+        Loading orders…
+      </div>
+      <div v-else-if="sortedRows.length===0" class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+        No shipments here yet
+      </div>
+
+      <!-- Card per order -->
+      <div
+        v-else
+        v-for="o in paged"
+        :key="o.id"
+        class="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 space-y-3"
+      >
+        <!-- Product Info -->
+        <div class="flex gap-3">
+          <img :src="thumbnail(o)" alt="" class="h-16 w-16 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700 flex-shrink-0" />
+          <div class="min-w-0 flex-1">
+            <div class="font-medium text-sm leading-tight text-slate-900 dark:text-white break-words">
+              {{ titleLine(o) }}
+            </div>
+            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Order #{{ o.orderId || o.id }}
+            </div>
+            <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              Buyer: {{ o.buyer?.name || o.shippingAddress?.fullName || '—' }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span class="text-slate-500 dark:text-slate-400">Total:</span>
+            <span class="ml-1 font-semibold text-slate-900 dark:text-white">{{ money(total(o)) }}</span>
+          </div>
+          <div>
+            <span class="text-slate-500 dark:text-slate-400">Products:</span>
+            <span class="ml-1 font-semibold text-slate-900 dark:text-white">{{ (o.products || []).length }}</span>
+          </div>
+          <div class="col-span-2">
+            <span class="text-slate-500 dark:text-slate-400">Tracking:</span>
+            <span class="ml-1 font-medium text-slate-900 dark:text-white">{{ tracking(o) || '—' }}</span>
+          </div>
+          <div class="col-span-2">
+            <span class="text-slate-500 dark:text-slate-400">Shipped:</span>
+            <span class="ml-1 text-slate-900 dark:text-white">{{ fmt(getShippedDate(o)) }}</span>
+          </div>
+        </div>
+
+        <!-- Status Badges -->
+        <div class="flex flex-wrap gap-2">
+          <span
+            class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+            :class="deliveryPill(o).cls"
+            :title="deliveryPill(o).title"
+          >
+            <span class="h-2 w-2 rounded-full" :class="deliveryPill(o).dot"></span>
+            {{ deliveryPill(o).label }}
+          </span>
+          
+          <span class="inline-flex items-center whitespace-nowrap rounded-full
+                       bg-blue-50 text-blue-700
+                       dark:bg-blue-950/40 dark:text-blue-300
+                       px-2 py-0.5 text-xs font-medium">
+            HouseBiBi Express
+          </span>
+        </div>
+
+        <!-- Complete By -->
+        <div>
+          <span
+            class="inline-block rounded-full px-2 py-1 text-xs font-semibold leading-tight
+                   break-words"
+            :class="completeByInfo(o).cls"
+            :title="completeByInfo(o).title">
+            {{ completeByInfo(o).text }}
+          </span>
+        </div>
+
+        <!-- View Items Toggle -->
+        <button class="text-xs text-blue-700 dark:text-blue-300 hover:underline font-medium" @click="toggleExpand(o.id)">
+          {{ expanded[o.id] ? 'Hide items' : `View items (${(o.products||[]).length})` }}
+        </button>
+
+        <!-- Expanded items -->
+        <div
+          v-if="expanded[o.id]"
+          class="rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/40 p-3 space-y-2"
+        >
+          <div
+            v-for="(p, i) in (o.products||[])"
+            :key="i"
+            class="text-xs space-y-1 pb-2 border-b border-slate-200 dark:border-slate-700 last:border-0 last:pb-0"
+          >
+            <div class="font-medium text-slate-800 dark:text-slate-200">{{ p.item_name || p.name }}</div>
+            <div class="flex justify-between text-slate-600 dark:text-slate-400">
+              <span>Variant: {{ p.size || p.variant || '-' }}</span>
+              <span>Qty: {{ p.quantity ?? p.qty ?? 1 }}</span>
+            </div>
+            <div class="text-right font-semibold text-slate-900 dark:text-white">{{ money(p.price || 0) }}</div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-col gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <button
+            class="w-full rounded-md border px-3 py-2 text-sm transition
+                   border-slate-300 text-slate-700 hover:bg-slate-50
+                   dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
+            @click="openShipping(o)"
+          >
+            Check Shipping Details
+          </button>
+
+          <button
+            v-if="canStartDelivery(o)"
+            class="w-full rounded-md bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-700 disabled:opacity-60"
+            :disabled="busyId===o.id"
+            @click="openStartModal(o)"
+          >
+            Start Delivery
+          </button>
+
+          <button
+            v-if="canMarkDelivered(o)"
+            class="w-full rounded-md bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700"
+            @click="openProofModal(o)"
+          >
+            Mark Delivered
+          </button>
+
+          <button
+            v-if="o?.status==='to_receive' && isOverdueComplete(o) && o?.delivery?.status !== 'out_for_delivery'"
+            class="w-full rounded-md bg-rose-600 px-3 py-2 text-sm text-white hover:bg-rose-700 disabled:opacity-60"
+            :disabled="busyId===o.id"
+            @click="autoCancel(o)"
+          >
+            Auto-cancel (Overdue)
+          </button>
+
+          <button
+            v-if="canResendDelivery(o)"
+            class="w-full rounded-md bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
+            :disabled="busyId===o.id"
+            @click="resendDelivery(o)"
+          >
+            {{ busyId===o.id ? 'Queueing…' : 'Resend Delivery' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Pagination -->
     <div
       v-if="sortedRows.length > 0"
-      class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+      class="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-500 dark:text-slate-400"
     >
-      <p>
+      <p class="text-center sm:text-left">
         Showing {{ page }} of {{ totalPages || 1 }} – 
         <span class="font-medium">{{ pageEnd }}</span> of
         <span class="font-medium">{{ sortedRows.length }}</span> results
@@ -350,10 +506,10 @@
                 </div>
 
                 <!-- Preview -->
-                <div v-else class="flex items-center gap-4">
+                <div v-else class="flex flex-col sm:flex-row items-center gap-4">
                   <img :src="proofPreview" alt="Proof Preview"
                       class="max-h-40 rounded-md ring-1 ring-slate-200 dark:ring-slate-700"/>
-                  <div class="flex flex-col gap-2">
+                  <div class="flex flex-col gap-2 w-full sm:w-auto">
                     <button type="button"
                             class="rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50
                                   border-slate-300 text-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800/60"
@@ -397,7 +553,7 @@
           </div>
 
           <!-- Footer -->
-          <div class="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
             <button class="rounded-md border px-3 py-2 text-sm dark:border-slate-600 dark:text-slate-200" @click="closeProofModal">
               Back
             </button>

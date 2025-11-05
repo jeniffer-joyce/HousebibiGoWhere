@@ -100,6 +100,91 @@
           </div>
         </div>
 
+        <!-- Filter Row -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+          <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span class="font-medium">Filters:</span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 sm:flex-none">
+            <!-- Sort By -->
+            <select
+              v-model="sortBy"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                     focus:outline-none focus:ring-2 focus:ring-blue-500
+                     dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <option value="date_desc">Date (Newest First)</option>
+              <option value="date_asc">Date (Oldest First)</option>
+              <option value="total_desc">Total (Highest First)</option>
+              <option value="total_asc">Total (Lowest First)</option>
+            </select>
+
+            <!-- Price Range (only for tabs with price relevance) -->
+            <select
+              v-if="['all', 'to_pay', 'completed'].includes(active)"
+              v-model="priceRange"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                     focus:outline-none focus:ring-2 focus:ring-blue-500
+                     dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <option value="all">All Prices</option>
+              <option value="0-50">S$0 - S$50</option>
+              <option value="50-100">S$50 - S$100</option>
+              <option value="100-200">S$100 - S$200</option>
+              <option value="200-500">S$200 - S$500</option>
+              <option value="500+">S$500+</option>
+            </select>
+
+            <!-- Date Range (for completed, cancelled, return_refund) -->
+            <select
+              v-if="['all', 'completed', 'cancelled', 'return_refund'].includes(active)"
+              v-model="dateRange"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                     focus:outline-none focus:ring-2 focus:ring-blue-500
+                     dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <option value="all">All Time</option>
+              <option value="7days">Last 7 Days</option>
+              <option value="30days">Last 30 Days</option>
+              <option value="90days">Last 90 Days</option>
+              <option value="6months">Last 6 Months</option>
+              <option value="1year">Last Year</option>
+            </select>
+
+            <!-- Shipping Method (for to_ship, to_receive, completed) -->
+            <select
+              v-if="['all', 'to_ship', 'to_receive', 'completed'].includes(active)"
+              v-model="shippingMethod"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                     focus:outline-none focus:ring-2 focus:ring-blue-500
+                     dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <option value="all">All Shipping</option>
+              <option value="standard">Standard</option>
+              <option value="express">Express</option>
+              <option value="pickup">Pickup</option>
+            </select>
+
+            <!-- Clear Filters Button -->
+            <button
+              v-if="hasActiveFilters"
+              @click="clearFilters"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50
+                     dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700
+                     flex items-center gap-1 whitespace-nowrap"
+            >
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Clear
+            </button>
+          </div>
+        </div>
+
         <!-- Loading / Empty -->
         <div v-if="loading" class="flex h-48 items-center justify-center text-slate-500 dark:text-slate-400">
           <svg class="mr-2 h-5 w-5 animate-spin text-blue-600" viewBox="0 0 24 24">
@@ -114,7 +199,7 @@
           class="rounded-2xl border border-dashed border-slate-300 bg-white py-20 text-center dark:border-slate-700 dark:bg-slate-800"
         >
           <p class="text-lg font-semibold text-slate-900 dark:text-white">No orders yet</p>
-          <p class="mt-1 text-slate-500 dark:text-slate-400">You don’t have any orders here.</p>
+          <p class="mt-1 text-slate-500 dark:text-slate-400">You don't have any orders here.</p>
         </div>
 
         <!-- Orders List -->
@@ -297,9 +382,9 @@
       <!-- Pagination -->
         <div
           v-if="!loading && visibleOrders.length > 0"
-          class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+          class="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-500 dark:text-slate-400"
         >
-          <p>
+          <p class="text-center sm:text-left">
             Showing {{ page }} of {{ totalPages || 1 }} – 
             <span class="font-medium">{{ pageEnd }}</span> of
             <span class="font-medium">{{ visibleOrders.length }}</span> results
@@ -326,6 +411,7 @@
       </div>
     </main>
 
+    <!-- All modals remain the same... -->
     <!-- Cancel Confirm Modal -->
     <div
       v-if="showCancelConfirm"
@@ -356,8 +442,8 @@
         </h3>
 
         <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          By confirming, you acknowledge the items were received. We’ll release payment to the seller now.
-          If there’s an issue, you can still request a return/refund for your order under the 'Completed' tab.
+          By confirming, you acknowledge the items were received. We'll release payment to the seller now.
+          If there's an issue, you can still request a return/refund for your order under the 'Completed' tab.
         </p>
 
         <div class="mt-4 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
@@ -671,23 +757,133 @@ function openShippingDetails(o) {
   showShippingDetails.value = true
 }
 
-/* Search and filter */
+/* Filter states */
+const sortBy = ref('date_desc')
+const priceRange = ref('all')
+const dateRange = ref('all')
+const shippingMethod = ref('all')
+
+/* Check if any filters are active */
+const hasActiveFilters = computed(() => {
+  return sortBy.value !== 'date_desc' || 
+         priceRange.value !== 'all' || 
+         dateRange.value !== 'all' || 
+         shippingMethod.value !== 'all'
+})
+
+/* Clear all filters */
+function clearFilters() {
+  sortBy.value = 'date_desc'
+  priceRange.value = 'all'
+  dateRange.value = 'all'
+  shippingMethod.value = 'all'
+}
+
+/* Reset filters when tab changes */
+watch(active, () => {
+  clearFilters()
+})
+
+/* Helper to check if order is within date range */
+function isWithinDateRange(order) {
+  if (dateRange.value === 'all') return true
+  
+  const orderDate = order.createdAt?.toDate ? order.createdAt.toDate() : new Date(order.createdAt)
+  const now = new Date()
+  const diffDays = Math.floor((now - orderDate) / (1000 * 60 * 60 * 24))
+  
+  switch (dateRange.value) {
+    case '7days': return diffDays <= 7
+    case '30days': return diffDays <= 30
+    case '90days': return diffDays <= 90
+    case '6months': return diffDays <= 180
+    case '1year': return diffDays <= 365
+    default: return true
+  }
+}
+
+/* Helper to check if order is within price range */
+function isWithinPriceRange(order) {
+  if (priceRange.value === 'all') return true
+  
+  const total = orderGrand(order)
+  
+  switch (priceRange.value) {
+    case '0-50': return total >= 0 && total <= 50
+    case '50-100': return total > 50 && total <= 100
+    case '100-200': return total > 100 && total <= 200
+    case '200-500': return total > 200 && total <= 500
+    case '500+': return total > 500
+    default: return true
+  }
+}
+
+/* Helper to check shipping method */
+function matchesShippingMethod(order) {
+  if (shippingMethod.value === 'all') return true
+  
+  const method = (order?.shipping?.method || '').toLowerCase()
+  return method === shippingMethod.value.toLowerCase()
+}
+
+/* Update visibleOrders to include filtering and sorting */
 const visibleOrders = computed(() => {
   const q = queryStr.value.trim().toLowerCase()
-  const base = active.value === 'all'
+  
+  // Base filter by tab
+  let base = active.value === 'all'
     ? orders.value
     : orders.value.filter(o => statusOf(o) === active.value)
-  const filtered = q
-    ? base.filter(o => {
+  
+  // Apply search filter
+  if (q) {
+    base = base.filter(o => {
       const hay = [o.orderId, o.products?.[0]?.shopName, ...(o.products || []).map(p => p.item_name)].join(' ').toLowerCase()
       return hay.includes(q)
     })
-    : base
-  return filtered.sort((a, b) => {
-    const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : +new Date(a.createdAt || 0)
-    const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : +new Date(b.createdAt || 0)
-    return tb - ta
-  })
+  }
+  
+  // Apply price range filter
+  base = base.filter(o => isWithinPriceRange(o))
+  
+  // Apply date range filter
+  base = base.filter(o => isWithinDateRange(o))
+  
+  // Apply shipping method filter
+  base = base.filter(o => matchesShippingMethod(o))
+  
+  // Apply sorting
+  const sorted = [...base]
+  
+  switch (sortBy.value) {
+    case 'date_desc':
+      sorted.sort((a, b) => {
+        const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : +new Date(a.createdAt || 0)
+        const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : +new Date(b.createdAt || 0)
+        return tb - ta
+      })
+      break
+    case 'date_asc':
+      sorted.sort((a, b) => {
+        const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : +new Date(a.createdAt || 0)
+        const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : +new Date(b.createdAt || 0)
+        return ta - tb
+      })
+      break
+    case 'total_desc':
+      sorted.sort((a, b) => orderGrand(b) - orderGrand(a))
+      break
+    case 'total_asc':
+      sorted.sort((a, b) => orderGrand(a) - orderGrand(b))
+      break
+  }
+  
+  return sorted
+})
+
+/* Reset page when filters change */
+watch([sortBy, priceRange, dateRange, shippingMethod], () => {
+  page.value = 1
 })
 
 const pageSize = 10
