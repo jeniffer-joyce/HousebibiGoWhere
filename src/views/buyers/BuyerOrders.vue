@@ -120,7 +120,7 @@
         <!-- Orders List -->
         <div v-else class="space-y-6">
           <article
-            v-for="o in visibleOrders"
+            v-for="o in pagedOrders"
             :key="o.id"
             class="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
           >
@@ -293,6 +293,35 @@
               </div>
             </div>
           </article>
+        </div>
+      <!-- Pagination -->
+        <div
+          v-if="!loading && visibleOrders.length > 0"
+          class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+        >
+          <p>
+            Showing {{ page }} of {{ totalPages || 1 }} – 
+            <span class="font-medium">{{ pageStart }}</span>–<span class="font-medium">{{ pageEnd }}</span> of
+            <span class="font-medium">{{ visibleOrders.length }}</span> results
+          </p>
+          <div class="flex gap-2">
+            <button
+              :disabled="page === 1"
+              @click="page--;scrollToTop()"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                     disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            >
+              Previous
+            </button>
+            <button
+              :disabled="page === totalPages || totalPages === 0"
+              @click="page++; scrollToTop()"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                     disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </main>
@@ -533,7 +562,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
@@ -660,6 +689,24 @@ const visibleOrders = computed(() => {
     return tb - ta
   })
 })
+
+const pageSize = 10
+const page = ref(1)
+const totalPages = computed(() => Math.ceil(visibleOrders.value.length / pageSize))
+const pagedOrders = computed(() => visibleOrders.value.slice((page.value-1)*pageSize, page.value*pageSize))
+const pageStart = computed(() => visibleOrders.value.length ? (page.value-1)*pageSize+1 : 0)
+const pageEnd = computed(() => Math.min(page.value*pageSize, visibleOrders.value.length))
+
+watch([queryStr, active], () => {
+  page.value = 1
+})
+
+function scrollToTop() {
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth' // Use 'auto' for instant scroll, 'smooth' for animated
+  })
+}
 
 /* subtotal helper if totals missing */
 function orderGrand(o) {
