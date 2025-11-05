@@ -223,28 +223,28 @@
 
       <!-- Pagination -->
       <div
-        v-if="!loading"
+        v-if="!loading && filtered.length > 0"
         class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
       >
         <p>
-          Showing <span class="font-medium">{{ pageStart }}</span> of 1 – 
+          Showing {{ page }} of {{ totalPages || 1 }} – 
           <span class="font-medium">{{ pageEnd }}</span> of
           <span class="font-medium">{{ filtered.length }}</span> results
         </p>
         <div class="flex gap-2">
           <button
             :disabled="page === 1"
-            @click="page--"
+            @click="page--;scrollToTop()"
             class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
-                   disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                  disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
           >
             Previous
           </button>
           <button
             :disabled="page === totalPages || totalPages === 0"
-            @click="page++"
+            @click="page++;scrollToTop()"
             class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
-                   disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                  disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
           >
             Next
           </button>
@@ -704,7 +704,7 @@
 
 <script setup>
 import { getAuth } from 'firebase/auth'
-import { ref, computed, onMounted, onBeforeUnmount, reactive } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, reactive, watch } from 'vue'
 import { auth, db, storage } from '@/firebase/firebase_config'
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import {
@@ -737,6 +737,13 @@ function showToast(o){
     message:o.message||'',
     duration:o.duration||3000
   }
+}
+
+function scrollToTop() {
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth' // Use 'auto' for instant scroll, 'smooth' for animated
+  })
 }
 
 /** Make sure the signed-in seller actually owns the order before uploading evidence */
@@ -891,6 +898,10 @@ const decisionDotClass = computed(() => {
   if (s === 'approved') return 'bg-green-600'
   if (s === 'declined') return 'bg-rose-600'
   return 'bg-amber-600'
+})
+
+watch([queryStr, stateFilter], () => {
+  page.value = 1
 })
 
 

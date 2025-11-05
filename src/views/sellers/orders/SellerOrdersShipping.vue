@@ -235,13 +235,13 @@
     >
       <p>
         Showing {{ page }} of {{ totalPages || 1 }} – 
-        <span class="font-medium">{{ pageStart }}</span>–<span class="font-medium">{{ pageEnd }}</span> of
+        <span class="font-medium">{{ pageEnd }}</span> of
         <span class="font-medium">{{ sortedRows.length }}</span> results
       </p>
       <div class="flex gap-2">
         <button
           :disabled="page === 1"
-          @click="page--"
+          @click="page--; scrollToTop()"
           class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
                 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         >
@@ -249,7 +249,7 @@
         </button>
         <button
           :disabled="page === totalPages || totalPages === 0"
-          @click="page++"
+          @click="page++; scrollToTop()"
           class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
                 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         >
@@ -499,6 +499,12 @@ const pageEnd = computed(() => Math.min(page.value*pageSize, sortedRows.value.le
 watch([searchStr, sortMode], () => {  // Also watch searchStr instead of just sortMode
   page.value = 1
 })
+function scrollToTop() {
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth' // Use 'auto' for instant scroll, 'smooth' for animated
+  })
+}
 
 // --- SLA helpers: end of day in SGT + overdue check ---
 function endOfDayMs(dateLike) {
