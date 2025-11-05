@@ -19,7 +19,7 @@
             class="w-full sm:w-72 rounded-md border border-slate-300 px-3 py-2 text-sm
                    bg-white text-slate-800 placeholder:text-slate-400
                    dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
-            placeholder="Search Product Name, Parent SKU, SKU, Item ID"
+            placeholder="Search Product Name or Item ID"
           />
           <svg class="pointer-events-none absolute right-2 top-2.5 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -54,8 +54,8 @@
                border-slate-200 dark:border-slate-700
                rounded-t-2xl">
         <div class="col-span-5">Product(s)</div>
-        <div class="col-span-1">L30d Sales</div>
-        <div class="col-span-1">L30d Sales Trend</div>
+        <div class="col-span-1">Total Sales</div>
+        <div class="col-span-1">Variants</div>
         <div class="col-span-2">Price</div>
         <div class="col-span-2">Stock</div>
         <div class="col-span-1">Action</div>
@@ -75,16 +75,13 @@
           <div class="lg:hidden space-y-4">
             <!-- Product Info -->
             <div class="flex gap-3">
-              <img :src="p.img_url || 'https://via.placeholder.com/48x48?text=%20'" alt="" class="h-12 w-12 flex-shrink-0 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
+              <img :src="p.img_url || p.thumbnail || 'https://via.placeholder.com/48x48?text=%20'" alt="" class="h-12 w-12 flex-shrink-0 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
               <div class="min-w-0 flex-1">
                 <div class="font-medium whitespace-normal break-words leading-tight text-slate-900 dark:text-white">
-                  {{ p.item_name || p.name || '—' }}
-                </div>
-                <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Parent SKU: {{ p.parentSKU || '—' }}
+                  {{ p.item_name || '—' }}
                 </div>
                 <div class="text-xs text-slate-500 dark:text-slate-400">
-                  Item ID: {{ p.itemId || p.id }}
+                  Item ID: {{ p.id }}
                 </div>
               </div>
             </div>
@@ -92,56 +89,38 @@
             <!-- Stats Grid (Mobile) -->
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">L30d Sales</div>
-                <div class="text-sm font-semibold text-slate-900 dark:text-white">{{ p.l30dSales || 0 }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Sales</div>
+                <div class="text-sm font-semibold text-slate-900 dark:text-white">{{ p.totalSales || 0 }}</div>
               </div>
               <div>
-                <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Trend</div>
-                <span
-                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
-                  :class="trendPill(p).cls"
-                >
-                  {{ trendPill(p).label }}
-                </span>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Variants</div>
+                <div class="text-sm font-semibold text-slate-900 dark:text-white">{{ p.variantCount }}</div>
               </div>
               <div>
                 <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Price</div>
-                <div class="text-sm font-semibold text-slate-900 dark:text-white">{{ money(p.price) }}</div>
+                <div class="text-sm font-semibold text-slate-900 dark:text-white">{{ formatPrice(p) }}</div>
               </div>
               <div>
                 <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Stock</div>
-                <span
-                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
-                  :class="stockPill(p).cls"
-                  :title="stockPill(p).title"
-                >
-                  <span class="h-2 w-2 rounded-full" :class="stockPill(p).dot"></span>
-                  {{ stockPill(p).label }}
-                </span>
+                <div class="text-sm font-semibold" :class="stockStatusText(p).color">
+                  {{ stockStatusText(p).label }}
+                </div>
               </div>
             </div>
 
             <!-- Actions (Mobile) -->
             <div class="flex gap-2">
               <button
-                class="flex-1 rounded-md border px-3 py-1.5 text-sm transition
-                       border-slate-300 text-slate-700 hover:bg-slate-50
-                       dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
-                @click="editProduct(p)"
+                class="flex-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 transition"
+                @click="openStockUpModal(p)"
               >
-                Edit
-              </button>
-              <button
-                class="flex-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
-                @click="boostProduct(p)"
-              >
-                Boosting
+                Stock Up
               </button>
               <button
                 class="flex-1 rounded-md border px-3 py-1.5 text-sm transition
                        border-slate-300 text-slate-700 hover:bg-slate-50
                        dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
-                @click="moreActions(p)"
+                @click="openMoreMenu(p, $event)"
               >
                 More
               </button>
@@ -153,53 +132,39 @@
             <!-- Product(s) -->
             <div class="col-span-5">
               <div class="flex gap-3">
-                <img :src="p.img_url || 'https://via.placeholder.com/48x48?text=%20'" alt="" class="h-12 w-12 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
+                <img :src="p.img_url || p.thumbnail || 'https://via.placeholder.com/48x48?text=%20'" alt="" class="h-12 w-12 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
                 <div class="min-w-0">
                   <div class="font-medium whitespace-normal break-words leading-tight text-slate-900 dark:text-white">
-                    {{ p.item_name || p.name || '—' }}
-                  </div>
-
-                  <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                    Parent SKU: {{ p.parentSKU || '—' }}
+                    {{ p.item_name || '—' }}
                   </div>
                   <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                    Item ID: {{ p.itemId || p.id }}
+                    Item ID: {{ p.id }}
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- L30d Sales -->
+            <!-- Total Sales -->
             <div class="col-span-1 text-sm font-semibold text-slate-900 dark:text-white">
-              {{ p.l30dSales || 0 }}
+              {{ p.totalSales || 0 }}
             </div>
 
-            <!-- L30d Sales Trend -->
-            <div class="col-span-1 self-start">
-              <span
-                class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
-                :class="trendPill(p).cls"
-              >
-                {{ trendPill(p).label }}
-              </span>
+            <!-- Variants -->
+            <div class="col-span-1 text-sm font-semibold text-slate-900 dark:text-white">
+              {{ p.variantCount }}
             </div>
 
             <!-- Price -->
             <div class="col-span-2 self-start">
               <span class="inline-block text-sm font-semibold text-slate-900 dark:text-white">
-                {{ money(p.price) }}
+                {{ formatPrice(p) }}
               </span>
             </div>
 
             <!-- Stock -->
             <div class="col-span-2 self-start">
-              <span
-                class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
-                :class="stockPill(p).cls"
-                :title="stockPill(p).title"
-              >
-                <span class="h-2 w-2 rounded-full" :class="stockPill(p).dot"></span>
-                {{ stockPill(p).label }}
+              <span class="text-sm font-semibold" :class="stockStatusText(p).color">
+                {{ stockStatusText(p).label }}
               </span>
             </div>
 
@@ -207,26 +172,17 @@
             <div class="col-span-1 self-start">
               <div class="flex flex-col items-stretch gap-2 w-full">
                 <button
-                  class="w-full rounded-md border px-3 py-1.5 text-sm transition
-                         border-slate-300 text-slate-700 hover:bg-slate-50
-                         dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
-                  @click="editProduct(p)"
+                  class="w-full rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 transition"
+                  @click="openStockUpModal(p)"
                 >
-                  Edit
-                </button>
-
-                <button
-                  class="w-full rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
-                  @click="boostProduct(p)"
-                >
-                  Boosting
+                  Stock Up
                 </button>
 
                 <button
                   class="w-full rounded-md border px-3 py-1.5 text-sm transition
                          border-slate-300 text-slate-700 hover:bg-slate-50
                          dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
-                  @click="moreActions(p)"
+                  @click="openMoreMenu(p, $event)"
                 >
                   More
                 </button>
@@ -236,118 +192,599 @@
         </div>
       </div>
     </div>
+
+    <!-- More Actions Dropdown Menu -->
+    <Teleport to="body">
+      <div
+        v-if="showMoreMenu"
+        class="fixed inset-0 z-40"
+        @click="closeMoreMenu"
+      ></div>
+      <div
+        v-if="showMoreMenu"
+        class="fixed z-50 w-56 rounded-lg border bg-white shadow-lg
+               dark:border-slate-700 dark:bg-slate-800"
+        :style="{ top: `${menuPosition.y}px`, left: `${menuPosition.x}px` }"
+      >
+        <div class="py-1">
+          <button
+            class="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700
+                   text-slate-700 dark:text-slate-200 flex items-center gap-2"
+            @click="openReduceStockModal"
+          >
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+            </svg>
+            Reduce Stock
+          </button>
+          
+          <button
+            class="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700
+                   text-slate-700 dark:text-slate-200 flex items-center gap-2"
+            @click="openPriceEditModal"
+          >
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Edit Price
+          </button>
+          
+          <button
+            class="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700
+                   text-slate-700 dark:text-slate-200 flex items-center gap-2"
+            @click="openVariantModal"
+          >
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            Manage Variants
+          </button>
+          
+          <hr class="my-1 border-slate-200 dark:border-slate-700" />
+          
+          <button
+            class="w-full px-4 py-2 text-left text-sm hover:bg-rose-50 dark:hover:bg-rose-900/20
+                   text-rose-700 dark:text-rose-400 flex items-center gap-2"
+            @click="confirmDelete"
+          >
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete Product
+          </button>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Stock Up Modal -->
+    <Teleport to="body">
+      <div
+        v-if="showStockUpModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        @click.self="closeStockUpModal"
+      >
+        <div class="w-full max-w-lg rounded-xl bg-white dark:bg-slate-800 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div class="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Stock Up Inventory</h3>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ selectedProduct?.item_name }}</p>
+          </div>
+
+          <div class="px-6 py-4 space-y-4">
+            <div v-if="!isMultiVariant" class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Current Stock</label>
+                <input type="text" :value="getCurrentStock()" disabled
+                  class="w-full rounded-md border border-slate-300 dark:border-slate-600 
+                         bg-slate-100 dark:bg-slate-700 px-3 py-2 text-sm text-slate-500 dark:text-slate-400" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Add Quantity</label>
+                <input v-model.number="stockAdjustment" type="number" min="0"
+                  class="w-full rounded-md border border-slate-300 dark:border-slate-600 
+                         bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
+                  placeholder="Enter quantity to add" />
+              </div>
+              <div class="rounded-lg bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
+                <p class="text-sm text-blue-700 dark:text-blue-300">
+                  New stock will be: <strong>{{ getCurrentStock() + (stockAdjustment || 0) }}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div v-else class="space-y-3">
+              <div v-for="(variant, idx) in variantAdjustments" :key="idx" 
+                   class="p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-medium text-slate-900 dark:text-white">
+                    {{ variant.size || `Option ${idx + 1}` }}
+                  </span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400">Current: {{ variant.currentStock }}</span>
+                </div>
+                <div class="flex gap-2">
+                  <input v-model.number="variant.adjustment" type="number" min="0"
+                    class="flex-1 rounded-md border border-slate-300 dark:border-slate-600 
+                           bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
+                    placeholder="Add quantity" />
+                  <div class="flex items-center px-3 text-sm text-slate-600 dark:text-slate-400">
+                    → {{ variant.currentStock + (variant.adjustment || 0) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-200 dark:border-slate-700 px-6 py-4 flex gap-3">
+            <button @click="closeStockUpModal"
+              class="flex-1 rounded-md border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm
+                     text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+              Cancel
+            </button>
+            <button @click="saveStockAdjustment" :disabled="saving"
+              class="flex-1 rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 transition">
+              {{ saving ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Reduce Stock Modal -->
+    <Teleport to="body">
+      <div
+        v-if="showReduceStockModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        @click.self="closeReduceStockModal"
+      >
+        <div class="w-full max-w-lg rounded-xl bg-white dark:bg-slate-800 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div class="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Reduce Stock</h3>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ selectedProduct?.item_name }}</p>
+          </div>
+
+          <div class="px-6 py-4 space-y-4">
+            <div v-if="!isMultiVariant" class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Current Stock</label>
+                <input type="text" :value="getCurrentStock()" disabled
+                  class="w-full rounded-md border border-slate-300 dark:border-slate-600 
+                         bg-slate-100 dark:bg-slate-700 px-3 py-2 text-sm text-slate-500 dark:text-slate-400" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Reduce By</label>
+                <input v-model.number="stockReduction" type="number" min="0" :max="getCurrentStock()"
+                  class="w-full rounded-md border border-slate-300 dark:border-slate-600 
+                         bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
+                  placeholder="Enter quantity to reduce" />
+              </div>
+              <div class="rounded-lg bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
+                <p class="text-sm text-amber-700 dark:text-amber-300">
+                  New stock will be: <strong>{{ Math.max(0, getCurrentStock() - (stockReduction || 0)) }}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div v-else class="space-y-3">
+              <div v-for="(variant, idx) in variantReductions" :key="idx" 
+                   class="p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-medium text-slate-900 dark:text-white">
+                    {{ variant.size || `Option ${idx + 1}` }}
+                  </span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400">Current: {{ variant.currentStock }}</span>
+                </div>
+                <div class="flex gap-2">
+                  <input v-model.number="variant.reduction" type="number" min="0" :max="variant.currentStock"
+                    class="flex-1 rounded-md border border-slate-300 dark:border-slate-600 
+                           bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
+                    placeholder="Reduce by" />
+                  <div class="flex items-center px-3 text-sm text-slate-600 dark:text-slate-400">
+                    → {{ Math.max(0, variant.currentStock - (variant.reduction || 0)) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-200 dark:border-slate-700 px-6 py-4 flex gap-3">
+            <button @click="closeReduceStockModal"
+              class="flex-1 rounded-md border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm
+                     text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+              Cancel
+            </button>
+            <button @click="saveStockReduction" :disabled="saving"
+              class="flex-1 rounded-md bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700 transition">
+              {{ saving ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Price Edit Modal -->
+    <Teleport to="body">
+      <div
+        v-if="showPriceEditModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        @click.self="closePriceEditModal"
+      >
+        <div class="w-full max-w-lg rounded-xl bg-white dark:bg-slate-800 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div class="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Edit Price</h3>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ selectedProduct?.item_name }}</p>
+          </div>
+
+          <div class="px-6 py-4 space-y-4">
+            <div v-if="!isMultiVariant" class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Price (S$)
+                </label>
+                <input v-model.number="priceEdit" type="number" min="0" step="0.01"
+                  class="w-full rounded-md border border-slate-300 dark:border-slate-600 
+                         bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
+                  placeholder="Enter new price" />
+              </div>
+            </div>
+
+            <div v-else class="space-y-3">
+              <div v-for="(variant, idx) in variantPrices" :key="idx" 
+                   class="p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div class="mb-2">
+                  <label class="text-sm font-medium text-slate-900 dark:text-white">
+                    {{ variant.size || `Option ${idx + 1}` }}
+                  </label>
+                </div>
+                <input v-model.number="variant.price" type="number" min="0" step="0.01"
+                  class="w-full rounded-md border border-slate-300 dark:border-slate-600 
+                         bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
+                  placeholder="Price (S$)" />
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-200 dark:border-slate-700 px-6 py-4 flex gap-3">
+            <button @click="closePriceEditModal"
+              class="flex-1 rounded-md border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm
+                     text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+              Cancel
+            </button>
+            <button @click="savePriceEdit" :disabled="saving"
+              class="flex-1 rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 transition">
+              {{ saving ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Variant Management Modal -->
+    <Teleport to="body">
+      <div
+        v-if="showVariantModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        @click.self="closeVariantModal"
+      >
+        <div class="w-full max-w-2xl rounded-xl bg-white dark:bg-slate-800 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div class="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Manage Variants</h3>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ selectedProduct?.item_name }}</p>
+          </div>
+
+          <div class="px-6 py-4 space-y-4">
+            <!-- Existing Variants -->
+            <div v-if="variantEdits.length > 0" class="space-y-3">
+              <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Existing Variants</h4>
+              <div v-for="(variant, idx) in variantEdits" :key="idx" 
+                   class="p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex gap-3 items-start">
+                <div class="flex-1 grid grid-cols-3 gap-3">
+                  <div>
+                    <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Name</label>
+                    <input v-model="variant.size" type="text"
+                      class="w-full rounded-md border border-slate-300 dark:border-slate-600 
+                             bg-white dark:bg-slate-900 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100"
+                      placeholder="e.g., Small" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Price (S$)</label>
+                    <input v-model.number="variant.price" type="number" min="0" step="0.01"
+                      class="w-full rounded-md border border-slate-300 dark:border-slate-600 
+                             bg-white dark:bg-slate-900 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100"
+                      placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Stock</label>
+                    <input v-model.number="variant.quantity" type="number" min="0"
+                      class="w-full rounded-md border border-slate-300 dark:border-slate-600 
+                             bg-white dark:bg-slate-900 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100"
+                      placeholder="0" />
+                  </div>
+                </div>
+                <button @click="removeVariant(idx)"
+                  class="mt-6 p-1.5 rounded-md text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20">
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Add New Variant -->
+            <div class="space-y-3">
+              <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Add New Variant</h4>
+              <div class="p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Name</label>
+                    <input v-model="newVariant.size" type="text"
+                      class="w-full rounded-md border border-slate-300 dark:border-slate-600 
+                             bg-white dark:bg-slate-900 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100"
+                      placeholder="e.g., Large" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Price (S$)</label>
+                    <input v-model.number="newVariant.price" type="number" min="0" step="0.01"
+                      class="w-full rounded-md border border-slate-300 dark:border-slate-600 
+                             bg-white dark:bg-slate-900 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100"
+                      placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Stock</label>
+                    <input v-model.number="newVariant.quantity" type="number" min="0"
+                      class="w-full rounded-md border border-slate-300 dark:border-slate-600 
+                             bg-white dark:bg-slate-900 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100"
+                      placeholder="0" />
+                  </div>
+                </div>
+                <button @click="addVariant"
+                  class="mt-3 w-full rounded-md border-2 border-dashed border-slate-300 dark:border-slate-600 
+                         px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:border-blue-400 
+                         hover:text-blue-600 dark:hover:text-blue-400 transition">
+                  + Add Variant
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-lg bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
+              <p class="text-xs text-blue-700 dark:text-blue-300">
+                <strong>Note:</strong> Changes to variants will update your product structure. Make sure all variant names, prices, and stock levels are correct before saving.
+              </p>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-200 dark:border-slate-700 px-6 py-4 flex gap-3">
+            <button @click="closeVariantModal"
+              class="flex-1 rounded-md border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm
+                     text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+              Cancel
+            </button>
+            <button @click="saveVariants" :disabled="saving"
+              class="flex-1 rounded-md bg-purple-600 px-4 py-2 text-sm text-white hover:bg-purple-700 transition">
+              {{ saving ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Delete Confirmation Modal -->
+    <Teleport to="body">
+      <div
+        v-if="showDeleteModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        @click.self="cancelDelete"
+      >
+        <div class="w-full max-w-md rounded-xl bg-white dark:bg-slate-800 shadow-xl">
+          <div class="px-6 py-4">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/40">
+                <svg class="h-5 w-5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Delete Product</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400">This action cannot be undone</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-6 py-4 border-y border-slate-200 dark:border-slate-700">
+            <p class="text-sm text-slate-700 dark:text-slate-300">
+              Are you sure you want to delete <strong class="font-semibold">{{ productToDelete?.item_name }}</strong>?
+              This will permanently remove the product from your inventory.
+            </p>
+            
+            <div v-if="productToDelete" class="mt-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700">
+              <div class="flex gap-3">
+                <img 
+                  :src="productToDelete.img_url || productToDelete.thumbnail || 'https://via.placeholder.com/48x48?text=%20'" 
+                  alt="" 
+                  class="h-12 w-12 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" 
+                />
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm font-medium text-slate-900 dark:text-white">
+                    {{ productToDelete.item_name }}
+                  </div>
+                  <div class="text-xs text-slate-500 dark:text-slate-400">
+                    Stock: {{ productToDelete.totalStock }} | Sales: {{ productToDelete.totalSales || 0 }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-6 py-4 flex gap-3">
+            <button @click="cancelDelete" :disabled="deleting"
+              class="flex-1 rounded-md border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm
+                     text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+              Cancel
+            </button>
+            <button @click="executeDelete" :disabled="deleting"
+              class="flex-1 rounded-md bg-rose-600 px-4 py-2 text-sm text-white hover:bg-rose-700 transition">
+              {{ deleting ? 'Deleting...' : 'Delete Product' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useToast } from '@/composables/useToast'
+import { 
+  getSellerProducts, 
+  updateMyProduct,
+  deleteMyProduct,
+  initInventoryAuthBridge 
+} from '@/firebase/services/sellers/seller_product'
 
 const { success, error: toastError } = useToast()
 
-/* ---------------- state ---------------- */
+/* ---------------- State ---------------- */
 const loading = ref(true)
 const allProducts = ref([])
 const searchStr = ref('')
 const sortMode = ref('name_asc')
 
-/* Mock data - replace with your actual data source */
-onMounted(() => {
-  setTimeout(() => {
-    allProducts.value = [
-      {
-        id: '24079752465',
-        itemId: '24079752465',
-        parentSKU: '-',
-        name: 'Pencil',
-        item_name: 'Pencil',
-        img_url: 'https://via.placeholder.com/48x48?text=Pencil',
-        price: 11.00,
-        stock: 33,
-        l30dSales: 11,
-        l30dTrend: 0
-      },
-      {
-        id: '25979747528',
-        itemId: '25979747528',
-        parentSKU: '-',
-        name: 'Pen',
-        item_name: 'Pen',
-        img_url: 'https://via.placeholder.com/48x48?text=Pen',
-        price: 31.00,
-        stock: 1,
-        l30dSales: 14,
-        l30dTrend: 0
-      },
-      {
-        id: '24079752466',
-        itemId: '24079752466',
-        parentSKU: '-',
-        name: 'Pencil',
-        item_name: 'Pencil',
-        img_url: 'https://via.placeholder.com/48x48?text=Pencil',
-        price: 0.10,
-        stock: 0,
-        l30dSales: 11,
-        l30dTrend: 0
-      }
-    ]
+// More Menu State
+const showMoreMenu = ref(false)
+const menuPosition = ref({ x: 0, y: 0 })
+const selectedProduct = ref(null)
+
+// Stock Up Modal State
+const showStockUpModal = ref(false)
+const stockAdjustment = ref(0)
+const variantAdjustments = ref([])
+
+// Reduce Stock Modal State
+const showReduceStockModal = ref(false)
+const stockReduction = ref(0)
+const variantReductions = ref([])
+
+// Price Edit Modal State
+const showPriceEditModal = ref(false)
+const priceEdit = ref(0)
+const variantPrices = ref([])
+
+// Variant Management Modal State
+const showVariantModal = ref(false)
+const variantEdits = ref([])
+const newVariant = ref({ size: '', price: 0, quantity: 0 })
+
+// Delete Modal State
+const showDeleteModal = ref(false)
+const productToDelete = ref(null)
+
+// Saving state
+const saving = ref(false)
+const deleting = ref(false)
+
+/* ---------------- Inventory Watcher ---------------- */
+let inventoryUnsubscribe = null
+
+onMounted(async () => {
+  try {
+    inventoryUnsubscribe = initInventoryAuthBridge()
+    await loadProducts()
+  } catch (err) {
+    console.error('Failed to initialize inventory:', err)
+    toastError('Failed to load inventory')
+  } finally {
     loading.value = false
-  }, 500)
+  }
+
+  const refreshInterval = setInterval(loadProducts, 10000)
+  
+  onUnmounted(() => {
+    clearInterval(refreshInterval)
+    if (inventoryUnsubscribe) {
+      try {
+        inventoryUnsubscribe()
+      } catch (e) {
+        console.warn('Error unsubscribing inventory watcher:', e)
+      }
+    }
+  })
 })
 
-/* ---------------- helpers (display) ---------------- */
-const money = n => 'S$' + (Math.round((n||0)*100)/100).toFixed(2)
-
-/* Trend pill */
-const trendPill = (p) => {
-  const trend = p.l30dTrend || 0
-  if (trend === 0) return {
-    label: '0%',
-    cls: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-  }
-  if (trend > 0) return {
-    label: `+${trend}%`,
-    cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-  }
-  return {
-    label: `${trend}%`,
-    cls: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
-  }
-}
-
-/* Stock pill */
-const stockPill = (p) => {
-  const stock = p.stock || 0
-  if (stock === 0) return {
-    label: 'Sold out',
-    cls: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
-    dot: 'bg-rose-600',
-    title: 'Out of stock'
-  }
-  if (stock < 10) return {
-    label: stock.toString(),
-    cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-    dot: 'bg-amber-600',
-    title: 'Low stock'
-  }
-  return {
-    label: stock.toString(),
-    cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-    dot: 'bg-emerald-600',
-    title: 'In stock'
+/* ---------------- Data Loading ---------------- */
+async function loadProducts() {
+  try {
+    const products = await getSellerProducts()
+    
+    allProducts.value = products.map(p => {
+      const isMulti = Array.isArray(p.size) && p.size.length > 0
+      
+      return {
+        ...p,
+        isMultiVariant: isMulti,
+        variantCount: isMulti ? p.size.length : 1,
+        totalStock: isMulti 
+          ? (p.quantity || []).reduce((sum, q) => sum + (Number(q) || 0), 0)
+          : (Number(p.quantity) || 0),
+        totalSales: Number(p.totalSales) || 0
+      }
+    })
+  } catch (err) {
+    console.error('Failed to load products:', err)
+    if (loading.value) {
+      toastError('Failed to load products')
+    }
   }
 }
 
-/* ---------------- search + sort ---------------- */
+/* ---------------- Display Helpers ---------------- */
+const formatPrice = (p) => {
+  if (!p) return 'S$0.00'
+  
+  if (Array.isArray(p.price) && p.price.length > 0) {
+    const prices = p.price.filter(pr => pr != null).map(pr => Number(pr) || 0)
+    const min = Math.min(...prices)
+    const max = Math.max(...prices)
+    
+    if (min === max) {
+      return `S${min.toFixed(2)}`
+    }
+    return `S${min.toFixed(2)} - S${max.toFixed(2)}`
+  }
+  
+  const price = Number(p.price) || 0
+  return `S${price.toFixed(2)}`
+}
+
+const stockStatusText = (p) => {
+  const stock = p.totalStock || 0
+  
+  if (stock === 0) {
+    return {
+      label: 'No Stock',
+      color: 'text-rose-700 dark:text-rose-400'
+    }
+  }
+  
+  if (stock < 10) {
+    return {
+      label: `Low Stock - ${stock}`,
+      color: 'text-amber-700 dark:text-amber-400'
+    }
+  }
+  
+  return {
+    label: `In Stock - ${stock}`,
+    color: 'text-emerald-700 dark:text-emerald-400'
+  }
+}
+
+/* ---------------- Search + Sort ---------------- */
 const filteredRows = computed(() => {
   const q = searchStr.value.trim().toLowerCase()
   if (!q) return allProducts.value
+  
   return allProducts.value.filter(p => {
     const hay = [
-      p.name || p.item_name,
-      p.parentSKU,
-      p.itemId,
+      p.item_name,
       p.id
     ].join(' ').toLowerCase()
     return hay.includes(q)
@@ -357,40 +794,378 @@ const filteredRows = computed(() => {
 const sortedRows = computed(() => {
   const rows = [...filteredRows.value]
   const mode = sortMode.value
+  
   if (mode === 'name_asc') {
-    rows.sort((a,b) => (a.item_name || a.name || '').localeCompare(b.item_name || b.name || ''))
+    rows.sort((a,b) => (a.item_name || '').localeCompare(b.item_name || ''))
   } else if (mode === 'name_desc') {
-    rows.sort((a,b) => (b.item_name || b.name || '').localeCompare(a.item_name || a.name || ''))
+    rows.sort((a,b) => (b.item_name || '').localeCompare(a.item_name || ''))
   } else if (mode === 'stock_low') {
-    rows.sort((a,b) => (a.stock || 0) - (b.stock || 0))
+    rows.sort((a,b) => (a.totalStock || 0) - (b.totalStock || 0))
   } else if (mode === 'stock_high') {
-    rows.sort((a,b) => (b.stock || 0) - (a.stock || 0))
+    rows.sort((a,b) => (b.totalStock || 0) - (a.totalStock || 0))
   } else if (mode === 'price_low') {
-    rows.sort((a,b) => (a.price || 0) - (b.price || 0))
+    const getMinPrice = p => {
+      if (Array.isArray(p.price)) return Math.min(...p.price.map(pr => Number(pr) || 0))
+      return Number(p.price) || 0
+    }
+    rows.sort((a,b) => getMinPrice(a) - getMinPrice(b))
   } else if (mode === 'price_high') {
-    rows.sort((a,b) => (b.price || 0) - (a.price || 0))
+    const getMaxPrice = p => {
+      if (Array.isArray(p.price)) return Math.max(...p.price.map(pr => Number(pr) || 0))
+      return Number(p.price) || 0
+    }
+    rows.sort((a,b) => getMaxPrice(b) - getMaxPrice(a))
   }
+  
   return rows
 })
 
-/* ---------------- actions ---------------- */
-function editProduct(p) {
-  success(`Opening editor for ${p.item_name || p.name}`)
-  // Navigate to edit page or open edit modal
+/* ---------------- More Menu ---------------- */
+function openMoreMenu(product, event) {
+  selectedProduct.value = product
+  
+  const rect = event.target.getBoundingClientRect()
+  const menuWidth = 224
+  const menuHeight = 250
+  
+  let x = rect.right + 8
+  let y = rect.top
+  
+  if (x + menuWidth > window.innerWidth) {
+    x = rect.left - menuWidth - 8
+  }
+  
+  if (y + menuHeight > window.innerHeight) {
+    y = window.innerHeight - menuHeight - 16
+  }
+  
+  menuPosition.value = { x, y }
+  showMoreMenu.value = true
 }
 
-function boostProduct(p) {
-  success(`Boosting ${p.item_name || p.name}`)
-  // Open boosting modal or navigate to boost page
+function closeMoreMenu() {
+  showMoreMenu.value = false
 }
 
-function moreActions(p) {
-  success(`More actions for ${p.item_name || p.name}`)
-  // Show dropdown with additional actions
+/* ---------------- Stock Up Modal ---------------- */
+const isMultiVariant = computed(() => {
+  return selectedProduct.value?.isMultiVariant || false
+})
+
+function openStockUpModal(product) {
+  closeMoreMenu()
+  selectedProduct.value = product
+  stockAdjustment.value = 0
+  
+  if (product.isMultiVariant) {
+    variantAdjustments.value = (product.size || []).map((size, idx) => ({
+      size,
+      currentStock: (product.quantity || [])[idx] || 0,
+      adjustment: 0
+    }))
+  }
+  
+  showStockUpModal.value = true
+}
+
+function closeStockUpModal() {
+  showStockUpModal.value = false
+  selectedProduct.value = null
+  stockAdjustment.value = 0
+  variantAdjustments.value = []
+}
+
+function getCurrentStock() {
+  if (!selectedProduct.value) return 0
+  return Number(selectedProduct.value.quantity) || 0
+}
+
+async function saveStockAdjustment() {
+  if (!selectedProduct.value) return
+  
+  saving.value = true
+  
+  try {
+    const productId = selectedProduct.value.id
+    
+    if (isMultiVariant.value) {
+      const newQuantities = variantAdjustments.value.map(v => 
+        v.currentStock + (v.adjustment || 0)
+      )
+      
+      await updateMyProduct(productId, {
+        quantity: newQuantities
+      })
+      
+      success('Stock updated successfully!')
+    } else {
+      const newStock = getCurrentStock() + (stockAdjustment.value || 0)
+      
+      await updateMyProduct(productId, {
+        quantity: newStock
+      })
+      
+      success('Stock updated successfully!')
+    }
+    
+    await loadProducts()
+    closeStockUpModal()
+    
+  } catch (err) {
+    console.error('Failed to update stock:', err)
+    toastError('Failed to update stock: ' + err.message)
+  } finally {
+    saving.value = false
+  }
+}
+
+/* ---------------- Reduce Stock Modal ---------------- */
+function openReduceStockModal() {
+  closeMoreMenu()
+  stockReduction.value = 0
+  
+  if (selectedProduct.value.isMultiVariant) {
+    variantReductions.value = (selectedProduct.value.size || []).map((size, idx) => ({
+      size,
+      currentStock: (selectedProduct.value.quantity || [])[idx] || 0,
+      reduction: 0
+    }))
+  }
+  
+  showReduceStockModal.value = true
+}
+
+function closeReduceStockModal() {
+  showReduceStockModal.value = false
+  stockReduction.value = 0
+  variantReductions.value = []
+}
+
+async function saveStockReduction() {
+  if (!selectedProduct.value) return
+  
+  saving.value = true
+  
+  try {
+    const productId = selectedProduct.value.id
+    
+    if (isMultiVariant.value) {
+      const newQuantities = variantReductions.value.map(v => 
+        Math.max(0, v.currentStock - (v.reduction || 0))
+      )
+      
+      await updateMyProduct(productId, {
+        quantity: newQuantities
+      })
+      
+      success('Stock reduced successfully!')
+    } else {
+      const newStock = Math.max(0, getCurrentStock() - (stockReduction.value || 0))
+      
+      await updateMyProduct(productId, {
+        quantity: newStock
+      })
+      
+      success('Stock reduced successfully!')
+    }
+    
+    await loadProducts()
+    closeReduceStockModal()
+    
+  } catch (err) {
+    console.error('Failed to reduce stock:', err)
+    toastError('Failed to reduce stock: ' + err.message)
+  } finally {
+    saving.value = false
+  }
+}
+
+/* ---------------- Price Edit Modal ---------------- */
+function openPriceEditModal() {
+  closeMoreMenu()
+  
+  if (selectedProduct.value.isMultiVariant) {
+    variantPrices.value = (selectedProduct.value.size || []).map((size, idx) => ({
+      size,
+      price: (selectedProduct.value.price || [])[idx] || 0
+    }))
+  } else {
+    priceEdit.value = Number(selectedProduct.value.price) || 0
+  }
+  
+  showPriceEditModal.value = true
+}
+
+function closePriceEditModal() {
+  showPriceEditModal.value = false
+  priceEdit.value = 0
+  variantPrices.value = []
+}
+
+async function savePriceEdit() {
+  if (!selectedProduct.value) return
+  
+  saving.value = true
+  
+  try {
+    const productId = selectedProduct.value.id
+    
+    if (isMultiVariant.value) {
+      const newPrices = variantPrices.value.map(v => Number(v.price) || 0)
+      
+      await updateMyProduct(productId, {
+        price: newPrices
+      })
+      
+      success('Price updated successfully!')
+    } else {
+      await updateMyProduct(productId, {
+        price: Number(priceEdit.value) || 0
+      })
+      
+      success('Price updated successfully!')
+    }
+    
+    await loadProducts()
+    closePriceEditModal()
+    
+  } catch (err) {
+    console.error('Failed to update price:', err)
+    toastError('Failed to update price: ' + err.message)
+  } finally {
+    saving.value = false
+  }
+}
+
+/* ---------------- Variant Management Modal ---------------- */
+function openVariantModal() {
+  closeMoreMenu()
+  
+  if (selectedProduct.value.isMultiVariant) {
+    variantEdits.value = (selectedProduct.value.size || []).map((size, idx) => ({
+      size,
+      price: (selectedProduct.value.price || [])[idx] || 0,
+      quantity: (selectedProduct.value.quantity || [])[idx] || 0
+    }))
+  } else {
+    // Convert single product to variant format
+    variantEdits.value = [{
+      size: 'Default',
+      price: Number(selectedProduct.value.price) || 0,
+      quantity: Number(selectedProduct.value.quantity) || 0
+    }]
+  }
+  
+  newVariant.value = { size: '', price: 0, quantity: 0 }
+  showVariantModal.value = true
+}
+
+function closeVariantModal() {
+  showVariantModal.value = false
+  variantEdits.value = []
+  newVariant.value = { size: '', price: 0, quantity: 0 }
+}
+
+function addVariant() {
+  if (!newVariant.value.size.trim()) {
+    toastError('Please enter a variant name')
+    return
+  }
+  
+  variantEdits.value.push({
+    size: newVariant.value.size.trim(),
+    price: Number(newVariant.value.price) || 0,
+    quantity: Number(newVariant.value.quantity) || 0
+  })
+  
+  newVariant.value = { size: '', price: 0, quantity: 0 }
+}
+
+function removeVariant(idx) {
+  if (variantEdits.value.length <= 1) {
+    toastError('Product must have at least one variant')
+    return
+  }
+  
+  variantEdits.value.splice(idx, 1)
+}
+
+async function saveVariants() {
+  if (!selectedProduct.value) return
+  
+  if (variantEdits.value.length === 0) {
+    toastError('Product must have at least one variant')
+    return
+  }
+  
+  saving.value = true
+  
+  try {
+    const productId = selectedProduct.value.id
+    
+    const sizes = variantEdits.value.map(v => v.size)
+    const prices = variantEdits.value.map(v => Number(v.price) || 0)
+    const quantities = variantEdits.value.map(v => Number(v.quantity) || 0)
+    
+    await updateMyProduct(productId, {
+      size: sizes,
+      price: prices,
+      quantity: quantities
+    })
+    
+    success('Variants updated successfully!')
+    await loadProducts()
+    closeVariantModal()
+    
+  } catch (err) {
+    console.error('Failed to update variants:', err)
+    toastError('Failed to update variants: ' + err.message)
+  } finally {
+    saving.value = false
+  }
+}
+
+/* ---------------- Delete Product ---------------- */
+function confirmDelete() {
+  closeMoreMenu()
+  productToDelete.value = selectedProduct.value
+  showDeleteModal.value = true
+}
+
+function cancelDelete() {
+  showDeleteModal.value = false
+  productToDelete.value = null
+}
+
+async function executeDelete() {
+  if (!productToDelete.value) return
+  
+  deleting.value = true
+  
+  try {
+    await deleteMyProduct(productToDelete.value.id)
+    success(`Successfully deleted ${productToDelete.value.item_name}`)
+    
+    await loadProducts()
+    
+    showDeleteModal.value = false
+    productToDelete.value = null
+    
+  } catch (err) {
+    console.error('Failed to delete product:', err)
+    toastError('Failed to delete product: ' + err.message)
+  } finally {
+    deleting.value = false
+  }
 }
 </script>
 
 <style scoped>
-/* Optional: crisp preview */
-img { image-rendering: auto; }
+img { 
+  image-rendering: auto;
+}
+
+.divide-y > div {
+  transition: background-color 0.2s ease;
+}
 </style>

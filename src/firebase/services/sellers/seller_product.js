@@ -1,5 +1,5 @@
 // ============================================================================
-// seller_product.js
+// seller_product.js - UPDATED
 // ============================================================================
 // Public API (used by BusinessHomepage.vue & AddProductModal.vue):
 //   - getSellerProducts()
@@ -8,20 +8,15 @@
 //   - getMyProduct(productId)
 //   - updateMyProduct(productId, patch)
 //   - deleteMyProduct(productId)
-//   - initInventoryAuthBridge()                 ← NEW (opt-in)
-//   - ensureInventoryWatcher()                  ← NEW (idempotent)
-//   - startInventoryWatcherForCurrentSeller()   ← NEW (advanced)
-//   - stopInventoryWatcher()                    ← NEW
+//   - initInventoryAuthBridge()
+//   - ensureInventoryWatcher()
+//   - startInventoryWatcherForCurrentSeller()
+//   - stopInventoryWatcher()
 //
-// Notes:
-//   • Seller info is read from /businesses/{uid}
-//   • Products live in /products filtered by sellerId == uid
-//   • Images now consistently handled as: images[] + img_url(thumbnail)
-//     - We merge primary img_url + additional_images when saving
-//     - We also read legacy shapes (img_url string/array, images[], additional_images[])
-//   • Timestamps normalized to ISO strings on reads
-//   • Inventory bridge is LAZY-LOADED from ./inventory_management.js to avoid
-//     circular imports and blank screens. No auto side-effects.
+// Changes:
+//   • totalSales is now always retrieved from Firestore products collection
+//   • Defaults to 0 if field doesn't exist
+//   • createProduct now initializes totalSales: 0
 // ============================================================================
 
 import { auth, db } from '@/firebase/firebase_config'
@@ -34,7 +29,7 @@ import {
   getDoc,
   addDoc,
   updateDoc,
-  deleteDoc,              // ← for deleteMyProduct
+  deleteDoc,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
@@ -151,8 +146,11 @@ export async function getSellerProducts() {
         // Images
         images,
         thumbnail,
-        img_url: thumbnail,                 // legacy single
+        img_url: thumbnail,
         imageSource: data.imageSource || '',
+
+        // ⭐ ALWAYS retrieve totalSales from Firestore
+        totalSales: Number(data.totalSales) || 0,
       })
     })
 
@@ -204,6 +202,7 @@ export async function createProduct(productData = {}) {
       availability: productData.availability ?? true,
       images,
       img_url: thumbnail, // keep single for legacy consumers
+      totalSales: 0, // ⭐ Initialize totalSales to 0
     }
 
     if (typeof payload.item_name === 'string') payload.item_name = payload.item_name.trim()
@@ -242,10 +241,16 @@ async function ensureOwnedProduct(productId) {
 /** Retrieve a single owned product (for edit modal prefill). */
 export async function getMyProduct(productId) {
   const { snap } = await ensureOwnedProduct(productId)
-  return { id: snap.id, ...snap.data() }
+  const data = snap.data() || {}
+  
+  return { 
+    id: snap.id, 
+    ...data,
+    totalSales: Number(data.totalSales) || 0  // ⭐ Ensure totalSales is included
+  }
 }
 
-/** Update one owned product — partial updates allowed. */
+/** Update one owned product – partial updates allowed. */
 export async function updateMyProduct(productId, patch = {}) {
   const { ref } = await ensureOwnedProduct(productId)
   const clean = {}
@@ -260,6 +265,11 @@ export async function updateMyProduct(productId, patch = {}) {
   if ('size' in patch) clean.size = patch.size ?? null
   if ('price' in patch) clean.price = patch.price
   if ('quantity' in patch) clean.quantity = patch.quantity
+
+  // ⭐ Allow totalSales to be updated (though usually managed by inventory system)
+  if ('totalSales' in patch) {
+    clean.totalSales = Number(patch.totalSales) || 0
+  }
 
   // Images: accept either (img_url + additional_images) or productImages[]
   if (Array.isArray(patch.productImages)) {
@@ -308,7 +318,6 @@ let _detachFn = null
 async function _ensureInventoryModule() {
   if (_invModuleLoaded) return true
   try {
-    // IMPORTANT: relative path from THIS file. No top-level import to avoid cycles.
     const mod = await import('./inventory_management.js')
     _attachFn = mod?.attachInventoryWatcher ?? null
     _detachFn = mod?.detachInventoryWatcher ?? null
@@ -361,7 +370,7 @@ export function stopInventoryWatcher() {
 }
 
 /**
- * Bridge auth → watcher. Call once (e.g., in a page’s onMounted).
+ * Bridge auth → watcher. Call once (e.g., in a page's onMounted).
  *
  * Usage in your Vue:
  *   import { initInventoryAuthBridge } from '@/firebase/services/sellers/seller_product'
