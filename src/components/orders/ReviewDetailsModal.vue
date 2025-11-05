@@ -22,6 +22,27 @@
               Order <span class="font-medium">#{{ order?.orderId }}</span>
               · {{ order?.products?.[0]?.shopName || 'Shop' }}
             </p>
+             <!-- Review timestamps -->
+            <div v-if="reviews.length" class="mt-2 flex flex-wrap items-center gap-2">
+              <!-- Original -->
+              <span
+              class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5
+                      text-[10px] sm:text-xs font-medium text-slate-700
+                      dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                <span class="material-symbols-outlined text-sm">history</span>
+                Reviewed at: {{ _formatTime(reviews[0].createdAt) }}
+              </span>
+
+              <!-- Updated -->
+              <span
+                v-if="_isUpdated(reviews[0])"
+                class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5
+                      text-[10px] sm:text-xs font-semibold text-blue-700
+                      dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
+                <span class="material-symbols-outlined text-sm">update</span>
+                Updated review at: {{ _formatTime(reviews[0].updatedAt) }}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -171,6 +192,31 @@ const props = defineProps({
   order: { type: Object, default: null }
 })
 defineEmits(['close', 'edit'])
+
+/* ---------- Timestamp helpers ---------- */
+function _tsToSeconds(ts) {
+  if (!ts) return 0
+  if (typeof ts.seconds === 'number') return ts.seconds // Firestore Timestamp
+  const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts)
+  return Math.floor(d.getTime() / 1000)
+}
+
+function _isUpdated(doc) {
+  const c = _tsToSeconds(doc?.createdAt)
+  const u = _tsToSeconds(doc?.updatedAt)
+  return u > c
+}
+
+function _formatTime(ts) {
+  const d = ts?.toDate ? ts.toDate() : new Date(ts)
+  return d.toLocaleString('en-SG', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
 /* Local state */
 const loading = ref(false)
