@@ -371,6 +371,16 @@
                       <p class="font-semibold text-sm sm:text-base text-slate-900 dark:text-white">{{ rv.displayName(r)
                       }}</p>
                       <p class="text-xs text-slate-500 dark:text-slate-400">{{ rv.formatTime(r.createdAt) }}</p>
+                      <!-- Updated pill (only when edited) -->
+                    <div v-if="rv.isUpdated(r)" class="mt-1">
+                        <span
+                          class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5
+                                text-[10px] sm:text-xs font-semibold text-blue-700
+                                dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
+                          <span class="material-symbols-outlined text-sm">update</span>
+                          Updated review at: {{ rv.formatTime(r.updatedAt) }}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -603,6 +613,19 @@ function niceTime(ts) {
   })
 }
 
+function tsToSeconds(ts) {
+  if (!ts) return 0
+  if (typeof ts.seconds === 'number') return ts.seconds
+  const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts)
+  return Math.floor(d.getTime() / 1000)
+}
+
+function isUpdated(r) {
+  const c = tsToSeconds(r?.createdAt)
+  const u = tsToSeconds(r?.updatedAt)
+  return u > c
+}
+
 // Reviews reactive state
 const rv = reactive({
   raw: [],
@@ -651,7 +674,7 @@ const rv = reactive({
     }
     return r.buyerPhoto || `https://ui-avatars.com/api?name=${encodeURIComponent(r.buyerName || 'User')}&background=10b981&color=fff&size=64`
   },
-  formatTime: niceTime
+  formatTime: niceTime, isUpdated
 })
 
 // Follow functionality
@@ -894,6 +917,7 @@ onMounted(async () => {
       const rev = { id: ds.id, ...ds.data() }
       const base = {
         createdAt: rev.createdAt,
+        updatedAt: rev.updatedAt || null,
         sellerService: Number(rev.sellerService || 0),
         delivery: Number(rev.delivery || 0),
         buyerId: rev.buyerId

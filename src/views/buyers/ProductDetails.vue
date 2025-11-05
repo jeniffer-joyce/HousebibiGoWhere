@@ -466,6 +466,7 @@ watch(
                     const row = {
                         key: `${docSnap.id}-${idx}`,
                         createdAt: rev.createdAt,
+                        updatedAt: rev.updatedAt || null,
                         buyerId: rev.buyerId,
                         productId: it.productId,
                         productName: null,
@@ -525,6 +526,19 @@ function prFormatTime(ts) {
         year: 'numeric', month: 'short', day: 'numeric',
         hour: '2-digit', minute: '2-digit'
     })
+}
+
+function prTsToSeconds(ts) {
+  if (!ts) return 0
+  if (typeof ts.seconds === 'number') return ts.seconds // Firestore Timestamp
+  const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts)
+  return Math.floor(d.getTime() / 1000)
+}
+
+function prIsUpdated(r) {
+  const c = prTsToSeconds(r?.createdAt)
+  const u = prTsToSeconds(r?.updatedAt)
+  return u > c
 }
 
 // Sizes present in reviews
@@ -1023,6 +1037,18 @@ console.log('🔍 ProductDetails Route Info:', {
                                 </span>
                             </template>
                             <span class="ml-1 text-[10px] sm:text-xs text-gray-500">{{ r.rating }}/5</span>
+                        </div>
+
+                        <!-- Original / Updated timestamp pills -->
+                        <div class="mt-2 flex flex-wrap items-center gap-2 pl-0 sm:pl-15">
+                          <!-- Updated pill (only when updatedAt exists and is newer) -->
+                          <span
+                            v-if="prIsUpdated(r)"
+                            class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
+                            <span class="material-symbols-outlined text-sm">update</span>
+                            Updated review at: {{ prFormatTime(r.updatedAt) }}
+                          </span>
+                          <!-- (Optional) If you want to show an 'edited' badge even if equal timestamps, remove prIsUpdated and use r.updatedAt -->
                         </div>
                     </div>
 
