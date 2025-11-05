@@ -60,7 +60,6 @@ exports.createCheckoutSession = onRequest(
           subtotal: (totalAmount - shippingFee).toFixed(2),
           total: totalAmount.toFixed(2),
           userId: userId,
-          // Only add essential info that won't exceed character limit
           ...(clientMetadata && { ...clientMetadata })
         };
 
@@ -109,40 +108,55 @@ exports.createCheckoutSession = onRequest(
           success_url: successUrl,
           cancel_url: cancelUrl,
           customer_email: decodedToken.email || undefined,
-          metadata: metadata, // ✅ USE LIGHTWEIGHT METADATA HERE
+          metadata: metadata,
           shipping_address_collection: {
             allowed_countries: ["SG"],
           },
           billing_address_collection: "required"
         };
 
-        // Save order details to Firestore for later retrieval
-        // (In case you need full item details beyond metadata)
-        const orderRef = await admin.firestore().collection("orders").add({
-          userId: userId,
-          items: items,
-          shippingFee: shippingFee,
-          totalAmount: totalAmount,
-          deliveryAddress: deliveryAddress,
-          savedCard: savedCard || null,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          status: "pending", // Will be updated when payment succeeds
-          stripeSessionId: null // Will be updated after session creation
+        // ✅ GROUP ITEMS BY SELLERID
+        const itemsBySeller = {};
+        items.forEach(item => {
+          if (!itemsBySeller[item.sellerId]) {
+            itemsBySeller[item.sellerId] = [];
+          }
+          itemsBySeller[item.sellerId].push(item);
         });
 
-        // Create session
+        // ✅ CREATE STRIPE SESSION FIRST
         const session = await stripe.checkout.sessions.create(sessionConfig);
 
-        // ✅ UPDATE ORDER WITH SESSION ID
-        await orderRef.update({
-          stripeSessionId: session.id
+        // ✅ CREATE ORDERS FOR EACH SELLER
+        const orderPromises = Object.entries(itemsBySeller).map(async ([sellerId, sellerItems]) => {
+          const orderRef = await admin.firestore().collection("orders").add({
+            userId: userId,
+            sellerId: sellerId, // ✅ SELLER ID
+            items: sellerItems,
+            shippingFee: shippingFee,
+            totalAmount: totalAmount,
+            deliveryAddress: deliveryAddress,
+            savedCard: savedCard ? {
+              last4: savedCard.last4 || '',
+              cardholderName: savedCard.cardholderName || ''
+            } : null,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            status: "pending",
+            stripeSessionId: session.id
+          });
+
+          console.log(`✅ Order created for seller ${sellerId}:`, orderRef.id);
+          return orderRef.id;
         });
 
-        console.log('✅ Checkout session created:', session.id);
+        // Wait for all orders to be created
+        const orderIds = await Promise.all(orderPromises);
+        console.log('✅ All orders created:', orderIds);
 
         return res.status(200).json({
           sessionId: session.id,
           url: session.url,
+          orderIds: orderIds
         });
 
       } catch (error) {
