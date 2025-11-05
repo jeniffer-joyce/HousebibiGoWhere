@@ -81,163 +81,165 @@
       </div>
     </div>
 
-    <!-- Modal -->
-    <transition name="fade">
-      <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center" @keydown.esc="closeModal">
-        <div class="absolute inset-0 bg-black/40" @click="closeModal"></div>
+    <!-- Modal with Teleport -->
+    <teleport to="body">
+      <transition name="fade">
+        <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" @keydown.esc="closeModal">
+          <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="closeModal"></div>
 
-        <div class="relative z-10 w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900">
-          <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
-              {{ editIndex === -1 ? 'New Address' : 'Edit Address' }}
-            </h3>
-            <button @click="closeModal" class="rounded-md p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
-          </div>
-
-          <!-- Form -->
-          <form @submit.prevent="addOrUpdateAddress" class="grid grid-cols-1 gap-4">
-            <!-- Full Name -->
-            <div>
-              <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
-              <input
-                v-model.trim="form.fullName"
-                :disabled="saving"
-                class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                :class="t.fullName && !fullNameValid ? 'border-red-500' : ''"
-                @blur="t.fullName = true"
-                placeholder="e.g. Sarah Johnson"
-              />
-              <p v-if="t.fullName && !fullNameValid" class="text-xs text-red-600">Full name is required.</p>
+          <div class="relative z-10 w-full max-w-2xl my-8 rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900">
+            <div class="mb-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+                {{ editIndex === -1 ? 'New Address' : 'Edit Address' }}
+              </h3>
+              <button @click="closeModal" class="rounded-md p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
             </div>
 
-            <!-- Phone -->
-            <div>
-              <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Phone Number</label>
-              <div class="flex">
-                <span class="inline-flex items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 px-3 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  +65
-                </span>
-                <input
-                  v-model="form.phoneLocal"
-                  inputmode="numeric"
-                  maxlength="8"
-                  :disabled="saving"
-                  class="w-full rounded-r-lg border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                  @input="sanitizePhone()"
-                  :class="t.phone && !phoneValid ? 'border-red-500' : ''"
-                  @blur="t.phone = true"
-                  placeholder="9xxxxxxx"
-                />
-              </div>
-              <p v-if="t.phone && !phoneValid" class="text-xs text-red-600">Must start with 8 or 9 and contain exactly 8 digits.</p>
-            </div>
-
-            <!-- Postal Code & Street -->
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <!-- Form -->
+            <form @submit.prevent="addOrUpdateAddress" class="grid grid-cols-1 gap-4">
+              <!-- Full Name -->
               <div>
-                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Postal Code</label>
+                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
                 <input
-                  v-model.trim="form.postalCode"
-                  inputmode="numeric"
-                  maxlength="6"
+                  v-model.trim="form.fullName"
                   :disabled="saving"
                   class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                  @input="form.postalCode=(form.postalCode||'').replace(/\\D/g,'').slice(0,6)"
-                  @blur="t.postal = true"
-                  :class="t.postal && !postalValid ? 'border-red-500' : ''"
-                  placeholder="e.g. 238858"
+                  :class="t.fullName && !fullNameValid ? 'border-red-500' : ''"
+                  @blur="t.fullName = true"
+                  placeholder="e.g. Sarah Johnson"
                 />
-                <p v-if="t.postal && !postalValid" class="text-xs text-red-600">Enter a valid 6-digit postal code.</p>
+                <p v-if="t.fullName && !fullNameValid" class="text-xs text-red-600">Full name is required.</p>
               </div>
 
-              <div class="sm:col-span-2">
-                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Street / Block</label>
-                <input
-                  v-model.trim="form.streetName"
-                  :disabled="saving"
-                  class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                  @blur="t.street = true"
-                  :class="t.street && !streetValid ? 'border-red-500' : ''"
-                  placeholder="e.g. 123 Orchard Road"
-                />
-                <p v-if="t.street && !streetValid" class="text-xs text-red-600">Street / Block is required.</p>
-              </div>
-
-              <!-- Unit Number -->
-              <div class="sm:col-span-3">
-                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Unit Number</label>
+              <!-- Phone -->
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Phone Number</label>
                 <div class="flex">
-                  <span class="inline-flex items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 px-3 text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">#</span>
+                  <span class="inline-flex items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 px-3 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    +65
+                  </span>
                   <input
-                    v-model="form.unitNumber"
+                    v-model="form.phoneLocal"
+                    inputmode="numeric"
+                    maxlength="8"
                     :disabled="saving"
                     class="w-full rounded-r-lg border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                    @input="sanitizeUnit"
-                    placeholder="10-234 (optional)"
+                    @input="sanitizePhone()"
+                    :class="t.phone && !phoneValid ? 'border-red-500' : ''"
+                    @blur="t.phone = true"
+                    placeholder="9xxxxxxx"
                   />
                 </div>
-                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Digits and one dash only (e.g. 10-234).</p>
+                <p v-if="t.phone && !phoneValid" class="text-xs text-red-600">Must start with 8 or 9 and contain exactly 8 digits.</p>
               </div>
-            </div>
 
-            <!-- Type + Default -->
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 items-center">
-              <div>
-                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Address Type</label>
-                <select
-                  v-model="form.type"
-                  :disabled="saving"
-                  class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                  :class="t.type && !typeValid ? 'border-red-500' : ''"
-                  @blur="t.type = true"
+              <!-- Postal Code & Street -->
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div>
+                  <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Postal Code</label>
+                  <input
+                    v-model.trim="form.postalCode"
+                    inputmode="numeric"
+                    maxlength="6"
+                    :disabled="saving"
+                    class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    @input="form.postalCode=(form.postalCode||'').replace(/\\D/g,'').slice(0,6)"
+                    @blur="t.postal = true"
+                    :class="t.postal && !postalValid ? 'border-red-500' : ''"
+                    placeholder="e.g. 238858"
+                  />
+                  <p v-if="t.postal && !postalValid" class="text-xs text-red-600">Enter a valid 6-digit postal code.</p>
+                </div>
+
+                <div class="sm:col-span-2">
+                  <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Street / Block</label>
+                  <input
+                    v-model.trim="form.streetName"
+                    :disabled="saving"
+                    class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    @blur="t.street = true"
+                    :class="t.street && !streetValid ? 'border-red-500' : ''"
+                    placeholder="e.g. 123 Orchard Road"
+                  />
+                  <p v-if="t.street && !streetValid" class="text-xs text-red-600">Street / Block is required.</p>
+                </div>
+
+                <!-- Unit Number -->
+                <div class="sm:col-span-3">
+                  <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Unit Number</label>
+                  <div class="flex">
+                    <span class="inline-flex items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 px-3 text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">#</span>
+                    <input
+                      v-model="form.unitNumber"
+                      :disabled="saving"
+                      class="w-full rounded-r-lg border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                      @input="sanitizeUnit"
+                      placeholder="10-234 (optional)"
+                    />
+                  </div>
+                  <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Digits and one dash only (e.g. 10-234).</p>
+                </div>
+              </div>
+
+              <!-- Type + Default -->
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 items-center">
+                <div>
+                  <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Address Type</label>
+                  <select
+                    v-model="form.type"
+                    :disabled="saving"
+                    class="w-full rounded-lg border px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    :class="t.type && !typeValid ? 'border-red-500' : ''"
+                    @blur="t.type = true"
+                  >
+                    <option value="" disabled>Select</option>
+                    <option value="home">Home</option>
+                    <option value="work">Work</option>
+                    <option value="others">Others</option>
+                  </select>
+                  <p v-if="t.type && !typeValid" class="text-xs text-red-600">Please choose a type.</p>
+                </div>
+
+                <div class="flex items-center gap-2 pt-6 sm:pt-0">
+                  <input
+                    id="mkdef"
+                    type="checkbox"
+                    v-model="form.makeDefault"
+                    :disabled="defaultDisabled"
+                    class="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                  />
+                  <label for="mkdef" class="text-sm text-slate-700 dark:text-slate-300">Set as default address</label>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="mt-2 flex items-center gap-3">
+                <button
+                  type="submit"
+                  :disabled="saving || !formOk"
+                  class="rounded-lg bg-primary px-5 py-2 font-semibold text-white hover:bg-primary/90 disabled:opacity-60"
                 >
-                  <option value="" disabled>Select</option>
-                  <option value="home">Home</option>
-                  <option value="work">Work</option>
-                  <option value="others">Others</option>
-                </select>
-                <p v-if="t.type && !typeValid" class="text-xs text-red-600">Please choose a type.</p>
+                  {{ saving ? 'Saving…' : editIndex === -1 ? 'Add Address' : 'Save Changes' }}
+                </button>
+                <button
+                  type="button"
+                  @click="closeModal"
+                  class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+                <p v-if="success" class="text-sm text-emerald-600">{{ success }}</p>
+                <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
               </div>
-
-              <div class="flex items-center gap-2 pt-6 sm:pt-0">
-                <input
-                  id="mkdef"
-                  type="checkbox"
-                  v-model="form.makeDefault"
-                  :disabled="defaultDisabled"
-                  class="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
-                />
-                <label for="mkdef" class="text-sm text-slate-700 dark:text-slate-300">Set as default address</label>
-              </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="mt-2 flex items-center gap-3">
-              <button
-                type="submit"
-                :disabled="saving || !formOk"
-                class="rounded-lg bg-primary px-5 py-2 font-semibold text-white hover:bg-primary/90 disabled:opacity-60"
-              >
-                {{ saving ? 'Saving…' : editIndex === -1 ? 'Add Address' : 'Save Changes' }}
-              </button>
-              <button
-                type="button"
-                @click="closeModal"
-                class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
-              >
-                Cancel
-              </button>
-              <p v-if="success" class="text-sm text-emerald-600">{{ success }}</p>
-              <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
-      </div>
-    </transition>
+      </transition>
+    </teleport>
   </section>
 </template>
 

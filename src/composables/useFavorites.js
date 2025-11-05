@@ -48,6 +48,7 @@ export function useFavorites() {
           id: prodSnap.id,
           item_name: data.item_name || 'Unnamed Product',
           sellerName: data.sellerName || 'Unknown Seller',
+          seller_id: data.seller_id || data.sellerId || data.sellerID,
           price: data.price || 0,
           img_url: data.img_url || 'https://via.placeholder.com/150',
           rating: data.rating || 0,
@@ -128,7 +129,11 @@ export function useFavorites() {
       }
     } else {
       // Add new product to favorites
-      const newProd = { ...product, isFavorite: true }
+      const newProd = { 
+        ...product, 
+        seller_id: product.seller_id || product.sellerId || product.sellerID, // ✅ ENSURE seller_id is included
+        isFavorite: true 
+      }
       favoriteProducts.value.push(newProd)
       await updateDoc(userRef, { favourites: arrayUnion(product.id) })
     }
