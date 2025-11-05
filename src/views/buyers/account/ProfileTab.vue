@@ -14,13 +14,40 @@
           <p class="text-sm text-slate-500 dark:text-slate-400">
             {{ form.email || '—' }}
           </p>
+          
+          <!-- Hidden file input -->
+          <input
+            ref="fileInput"
+            type="file"
+            accept="image/*"
+            class="hidden"
+            @change="handleFileSelect"
+          />
+          
           <button
             type="button"
-            disabled
-            class="mt-4 w-full rounded-lg bg-primary px-4 py-2 font-semibold text-white opacity-60"
+            @click="triggerFileInput"
+            :disabled="uploading"
+            class="mt-4 w-full rounded-lg bg-primary px-4 py-2 font-semibold text-white hover:bg-primary/90 disabled:opacity-60 transition-opacity"
           >
-            Change Photo
+            {{ uploading ? 'Uploading...' : 'Change Photo' }}
           </button>
+          
+          <!-- Upload progress -->
+          <div v-if="uploading" class="mt-2 w-full">
+            <div class="w-full bg-slate-200 rounded-full h-2 dark:bg-slate-700">
+              <div
+                class="bg-primary h-2 rounded-full transition-all duration-300"
+                :style="{ width: uploadProgress + '%' }"
+              ></div>
+            </div>
+            <p class="text-xs text-center text-slate-500 mt-1">{{ uploadProgress }}%</p>
+          </div>
+          
+          <!-- Upload status messages -->
+          <p v-if="uploadSuccess" class="mt-2 text-xs text-emerald-600">{{ uploadSuccess }}</p>
+          <p v-if="uploadError" class="mt-2 text-xs text-red-600">{{ uploadError }}</p>
+          
           <p class="mt-2 text-xs text-slate-400">Buyer since {{ memberSince }}</p>
         </div>
       </div>
@@ -173,10 +200,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { auth, db } from '@/firebase/firebase_config'
+import { auth, db, storage } from '@/firebase/firebase_config'
 import {
   doc, getDoc, setDoc, serverTimestamp, query, where, getDocs, collection
 } from 'firebase/firestore'
+import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
+import { updateProfile } from 'firebase/auth'
+import { user } from '@/store/user.js'
 
 const isEditing = ref(false)
 const saving = ref(false)
@@ -184,6 +214,13 @@ const success = ref('')
 const error = ref('')
 const emailNotice = ref('')
 const t = ref({ username: false, displayName: false, email: false, phone: false, birthday: false })
+
+// Photo upload states
+const uploading = ref(false)
+const uploadProgress = ref(0)
+const uploadSuccess = ref('')
+const uploadError = ref('')
+const fileInput = ref(null)
 
 const form = ref({
   username: '',
@@ -249,6 +286,131 @@ function toggleEdit() {
   }
 }
 
+// Photo upload functions
+function triggerFileInput() {
+  uploadSuccess.value = ''
+  uploadError.value = ''
+  fileInput.value?.click()
+}
+
+async function handleFileSelect(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    uploadError.value = 'Please select an image file.'
+    return
+  }
+
+  // Validate file size (max 5MB)
+  const maxSize = 5 * 1024 * 1024 // 5MB
+  if (file.size > maxSize) {
+    uploadError.value = 'Image must be less than 5MB.'
+    return
+  }
+
+  const u = auth.currentUser
+  if (!u) {
+    uploadError.value = 'You are not signed in.'
+    return
+  }
+
+  uploading.value = true
+  uploadProgress.value = 0
+  uploadSuccess.value = ''
+  uploadError.value = ''
+
+  try {
+    // Delete old photo if it exists and is not the default
+    if (avatar.value && !avatar.value.includes('avatar.png')) {
+      try {
+        // Extract the old filename from the URL
+        const oldUrl = avatar.value
+        const oldPath = decodeURIComponent(oldUrl.split('/o/')[1]?.split('?')[0] || '')
+        if (oldPath && oldPath.startsWith('profile-photos/')) {
+          const oldPhotoRef = storageRef(storage, oldPath)
+          await deleteObject(oldPhotoRef)
+        }
+      } catch (deleteError) {
+        console.log('No old photo to delete or error deleting:', deleteError)
+      }
+    }
+
+    // Create a reference to the storage location
+    const fileExtension = file.name.split('.').pop()
+    const fileName = `profile-photos/${u.uid}.${fileExtension}`
+    const photoRef = storageRef(storage, fileName)
+
+    // Upload the file with progress tracking
+    const uploadTask = uploadBytesResumable(photoRef, file)
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        // Track upload progress
+        uploadProgress.value = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
+      },
+      (uploadError) => {
+        // Handle upload errors
+        console.error('Upload error:', uploadError)
+        uploadError.value = 'Failed to upload image. Please try again.'
+        uploading.value = false
+      },
+      async () => {
+        // Upload completed successfully
+        try {
+          // Get the download URL
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
+
+          // Update Firebase Auth profile
+          await updateProfile(u, {
+            photoURL: downloadURL
+          })
+
+          // Update Firestore user document
+          await setDoc(
+            doc(db, 'users', u.uid),
+            {
+              photoURL: downloadURL,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          )
+
+          // Update local avatar state
+          avatar.value = downloadURL
+          
+          // ✅ Update the user store immediately for instant UI update
+          user.avatar = downloadURL
+
+          uploadSuccess.value = 'Photo updated successfully!'
+          uploading.value = false
+          uploadProgress.value = 0
+
+          // Clear success message after 3 seconds
+          setTimeout(() => {
+            uploadSuccess.value = ''
+          }, 3000)
+        } catch (updateError) {
+          console.error('Error updating profile:', updateError)
+          uploadError.value = 'Failed to update profile. Please try again.'
+          uploading.value = false
+        }
+      }
+    )
+  } catch (err) {
+    console.error('Upload error:', err)
+    uploadError.value = 'An error occurred. Please try again.'
+    uploading.value = false
+  }
+
+  // Clear the file input
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
 onMounted(async () => {
   await auth.currentUser?.reload()
   const u = auth.currentUser
@@ -270,6 +432,11 @@ onMounted(async () => {
     form.value.phone = d.phone || ''
     form.value.gender = d.gender || ''
     form.value.birthday = d.birthday || ''
+    
+    // Use photoURL from Firestore if available
+    if (d.photoURL) {
+      avatar.value = d.photoURL
+    }
   } else {
     form.value.displayName = u.displayName || ''
     form.value.email = u.email || ''
@@ -318,6 +485,12 @@ async function save() {
     const taken = result.docs.some((d) => d.id !== u.uid)
     if (taken) throw new Error('username-taken')
 
+    // Update Firebase Auth displayName
+    await updateProfile(u, {
+      displayName: form.value.displayName.trim()
+    })
+
+    // Update Firestore user document
     await setDoc(
       doc(db, 'users', u.uid),
       {
@@ -332,6 +505,9 @@ async function save() {
       { merge: true }
     )
 
+    // ✅ Update the user store immediately for instant UI update
+    user.name = form.value.displayName.trim()
+
     success.value = 'Profile updated.'
     isEditing.value = false
     original.value = JSON.parse(JSON.stringify(form.value))
@@ -344,4 +520,3 @@ async function save() {
   }
 }
 </script>
-
