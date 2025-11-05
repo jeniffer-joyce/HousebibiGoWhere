@@ -323,12 +323,57 @@ const cancelledOrders = computed(() =>
   }).length
 )
 
-const totalReviews = computed(() => reviews.value.length)
+const totalReviews = computed(() => {
+  // Count the number of review documents, not individual ratings
+  const count = reviews.value.length
+  console.log('📊 Total review documents:', count)
+  return count
+})
 
 const averageRating = computed(() => {
   if (totalReviews.value === 0) return '0.0'
-  const sum = reviews.value.reduce((acc, review) => acc + (Number(review.rating) || 0), 0)
-  return (sum / totalReviews.value).toFixed(1)
+  
+  // Collect all valid ratings from reviews
+  const allRatings = []
+  
+  reviews.value.forEach(review => {
+    // Check if review has items array with ratings
+    if (review.items && Array.isArray(review.items)) {
+      review.items.forEach(item => {
+        if (item.rating && typeof item.rating === 'number' && item.rating >= 1 && item.rating <= 5) {
+          allRatings.push(item.rating)
+        }
+      })
+    }
+    
+    // Also check for top-level rating
+    if (review.rating && typeof review.rating === 'number' && review.rating >= 1 && review.rating <= 5) {
+      allRatings.push(review.rating)
+    }
+    
+    // Check for sellerService rating
+    if (review.sellerService && typeof review.sellerService === 'number' && review.sellerService >= 1 && review.sellerService <= 5) {
+      allRatings.push(review.sellerService)
+    }
+    
+    // Check for delivery rating
+    if (review.delivery && typeof review.delivery === 'number' && review.delivery >= 1 && review.delivery <= 5) {
+      allRatings.push(review.delivery)
+    }
+  })
+  
+  if (allRatings.length === 0) return '0.0'
+  
+  const sum = allRatings.reduce((acc, rating) => acc + rating, 0)
+  const average = sum / allRatings.length
+  
+  console.log('📊 Rating calculation:', {
+    totalReviews: reviews.value.length,
+    allRatings: allRatings,
+    average: average.toFixed(1)
+  })
+  
+  return average.toFixed(1)
 })
 
 const totalRevenue = computed(() => {
@@ -382,6 +427,7 @@ async function loadAnalyticsData() {
     const uid = auth.currentUser?.uid
     if (!uid) {
       showToast('error', 'Error', 'You must be logged in to view analytics')
+      loading.value = false
       return
     }
 
@@ -393,6 +439,8 @@ async function loadAnalyticsData() {
     const productsSnap = await getDocs(productsQuery)
     const sellerProductIds = productsSnap.docs.map(doc => doc.id)
 
+    console.log('🏪 Seller product IDs:', sellerProductIds)
+
     if (sellerProductIds.length === 0) {
       orders.value = []
       reviews.value = []
@@ -400,29 +448,77 @@ async function loadAnalyticsData() {
       return
     }
 
-    // Get orders - need to fetch all and filter client-side due to Firestore limitations
-    // Get orders by sellerId directly
-    const ordersQuery = query(
-      collection(db, 'orders'),
-      where('sellerId', '==', uid),
-      orderBy('createdAt', 'desc')
-    )
-    const ordersSnap = await getDocs(ordersQuery)
-    
-    // Filter orders that contain seller's products
-    orders.value = ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    // Get orders - Query by sellerId first (according to Firestore rules)
+    // Then filter client-side for products
+    try {
+      const ordersQuery = query(
+        collection(db, 'orders'),
+        where('sellerId', '==', uid),
+        orderBy('createdAt', 'desc')
+      )
+      const ordersSnap = await getDocs(ordersQuery)
+      
+      // Map orders
+      orders.value = ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      
+      console.log('📦 Loaded orders:', orders.value.length)
+    } catch (orderError) {
+      console.error('❌ Error loading orders:', orderError)
+      // Fallback: try without orderBy if index not set up
+      try {
+        const ordersQuerySimple = query(
+          collection(db, 'orders'),
+          where('sellerId', '==', uid)
+        )
+        const ordersSnapSimple = await getDocs(ordersQuerySimple)
+        orders.value = ordersSnapSimple.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        console.log('📦 Loaded orders (simple query):', orders.value.length)
+      } catch (fallbackError) {
+        console.error('❌ Fallback order query also failed:', fallbackError)
+        orders.value = []
+        showToast('error', 'Orders Error', 'Unable to load orders. Check console for details.')
+      }
+    }
 
-    // Get reviews for seller's products
-    const reviewsQuery = query(
-      collection(db, 'reviews'),
-      where('sellerId', '==', uid)
-    )
-    const reviewsSnap = await getDocs(reviewsQuery)
-    reviews.value = reviewsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    // Get reviews - Query by sellerId to comply with Firestore rules
+    try {
+      const reviewsQuery = query(
+        collection(db, 'reviews'),
+        where('sellerId', '==', uid)
+      )
+      const reviewsSnap = await getDocs(reviewsQuery)
+      reviews.value = reviewsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      
+      console.log('📊 Loaded reviews:', reviews.value.length, reviews.value)
+      
+      // Log sample review for debugging
+      if (reviews.value.length > 0) {
+        console.log('📝 Sample review:', {
+          rating: reviews.value[0].rating,
+          type: typeof reviews.value[0].rating,
+          sellerId: reviews.value[0].sellerId,
+          hasItems: 'items' in reviews.value[0],
+          hasSellerService: 'sellerService' in reviews.value[0],
+          hasDelivery: 'delivery' in reviews.value[0]
+        })
+      }
+    } catch (reviewError) {
+      console.error('❌ Error loading reviews:', reviewError)
+      console.error('Error details:', {
+        code: reviewError.code,
+        message: reviewError.message
+      })
+      reviews.value = []
+      
+      // Show user-friendly error
+      if (reviewError.code === 'permission-denied') {
+        showToast('warning', 'Reviews Access', 'Unable to load reviews. This might be due to Firestore permissions.')
+      }
+    }
 
   } catch (error) {
     console.error('❌ Error loading analytics data:', error)
-    showToast('error', 'Error', 'Failed to load analytics data')
+    showToast('error', 'Error', 'Failed to load analytics data: ' + (error.message || 'Unknown error'))
   } finally {
     loading.value = false
   }
@@ -467,11 +563,36 @@ function prepareRatingsDistributionData() {
   const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
   
   reviews.value.forEach(review => {
-    const rating = Math.round(Number(review.rating) || 0)
-    if (rating >= 1 && rating <= 5) {
-      distribution[rating]++
+    // Check items array for ratings
+    if (review.items && Array.isArray(review.items)) {
+      review.items.forEach(item => {
+        const rating = Math.round(Number(item.rating) || 0)
+        if (rating >= 1 && rating <= 5) {
+          distribution[rating]++
+        }
+      })
+    }
+    
+    // Also check top-level rating
+    const topRating = Math.round(Number(review.rating) || 0)
+    if (topRating >= 1 && topRating <= 5) {
+      distribution[topRating]++
+    }
+    
+    // Check sellerService rating
+    const serviceRating = Math.round(Number(review.sellerService) || 0)
+    if (serviceRating >= 1 && serviceRating <= 5) {
+      distribution[serviceRating]++
+    }
+    
+    // Check delivery rating
+    const deliveryRating = Math.round(Number(review.delivery) || 0)
+    if (deliveryRating >= 1 && deliveryRating <= 5) {
+      distribution[deliveryRating]++
     }
   })
+
+  console.log('📊 Rating distribution:', distribution)
 
   return {
     labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
