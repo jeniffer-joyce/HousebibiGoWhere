@@ -602,20 +602,28 @@ async function proceedToPayment() {
       deliveryAddress: selectedAddress.value,
       savedCard: selectedCard.value ? {
             last4: selectedCard.value.last4 || '',
-            holderName: selectedCard.value.cardholderName || ''
+            cardholderName: selectedCard.value.cardholderName || ''
           } : null
     })
 
     const baseUrl = window.location.origin
     const token = await auth.currentUser.getIdToken()
 
+    // ✅ FIX: Don't include full items array in metadata
     const paymentData = {
-      items,
+      items, // Pass items separately (not in metadata)
       shippingFee: SHIPPING_FEE,
       totalAmount: grandTotal,
       deliveryAddress: selectedAddress.value,
       successUrl: `${baseUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${baseUrl}/checkout`
+      cancelUrl: `${baseUrl}/checkout`,
+      // ✅ METADATA: Only essential info that won't exceed 500 chars
+      metadata: {
+        itemCount: selectedCartItems.value.length,
+        subtotal: itemsTotal.toFixed(2),
+        total: grandTotal.toFixed(2),
+        userId: auth.currentUser.uid
+      }
     }
 
     if (selectedCard.value) {

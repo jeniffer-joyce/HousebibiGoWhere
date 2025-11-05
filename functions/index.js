@@ -24,7 +24,7 @@ exports.createCheckoutSession = onRequest(
       }
 
       try {
-        // Verify authentication (for callable, you use context.auth; in HTTPS, check Bearer)
+        // Verify authentication
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
           return res.status(401).json({ error: "Unauthorized" });
@@ -43,8 +43,8 @@ exports.createCheckoutSession = onRequest(
 
         const stripe = require("stripe")(stripeKey);
 
-        // Unpack parameters
-        const { items, shippingFee, totalAmount, deliveryAddress, successUrl, cancelUrl, savedCard } = req.body;
+        // ✅ UNPACK PARAMETERS FROM REQUEST
+        const { items, shippingFee, totalAmount, deliveryAddress, successUrl, cancelUrl, savedCard, metadata: clientMetadata } = req.body;
 
         // Validate required fields
         if (!items || !Array.isArray(items) || items.length === 0) {
@@ -54,7 +54,19 @@ exports.createCheckoutSession = onRequest(
           return res.status(400).json({ error: "Delivery address is required" });
         }
 
-        // Create line items as in your update
+        // ✅ CREATE LIGHTWEIGHT METADATA (max 500 chars)
+        const metadata = {
+          itemCount: String(items.length),
+          subtotal: (totalAmount - shippingFee).toFixed(2),
+          total: totalAmount.toFixed(2),
+          userId: userId,
+          // Only add essential info that won't exceed character limit
+          ...(clientMetadata && { ...clientMetadata })
+        };
+
+        console.log('📊 Metadata size:', JSON.stringify(metadata).length, 'chars');
+
+        // Create line items
         const lineItems = items.map((item) => ({
           price_data: {
             currency: "sgd",
@@ -89,7 +101,7 @@ exports.createCheckoutSession = onRequest(
           });
         }
 
-        // Session config
+        // ✅ SESSION CONFIG WITH LIGHTWEIGHT METADATA
         const sessionConfig = {
           payment_method_types: ["card"],
           line_items: lineItems,
@@ -97,36 +109,36 @@ exports.createCheckoutSession = onRequest(
           success_url: successUrl,
           cancel_url: cancelUrl,
           customer_email: decodedToken.email || undefined,
-          metadata: {
-            userId,
-            items: JSON.stringify(items.map(item => ({
-              productId: item.productId,
-              sellerId: item.sellerId,
-              name: item.name,
-              price: item.price,
-              quantity: item.quantity,
-              size: item.size,
-              sizeIndex: item.sizeIndex,
-              shopName: item.shopName
-            }))),
-            shippingFee: shippingFee?.toString() || '0',
-            totalAmount: totalAmount?.toString() || '0',
-            deliveryAddress: JSON.stringify(deliveryAddress || {}),
-          },
+          metadata: metadata, // ✅ USE LIGHTWEIGHT METADATA HERE
           shipping_address_collection: {
             allowed_countries: ["SG"],
           },
           billing_address_collection: "required"
         };
 
-        // Saved card logic, if used (see your current logic, simplified as per HTTPS)
-        if (savedCard) {
-          // ... (Optionally re-implement as in your update if needed)
-          // For security, generally do not process raw card data on backend
-        }
+        // Save order details to Firestore for later retrieval
+        // (In case you need full item details beyond metadata)
+        const orderRef = await admin.firestore().collection("orders").add({
+          userId: userId,
+          items: items,
+          shippingFee: shippingFee,
+          totalAmount: totalAmount,
+          deliveryAddress: deliveryAddress,
+          savedCard: savedCard || null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          status: "pending", // Will be updated when payment succeeds
+          stripeSessionId: null // Will be updated after session creation
+        });
 
         // Create session
         const session = await stripe.checkout.sessions.create(sessionConfig);
+
+        // ✅ UPDATE ORDER WITH SESSION ID
+        await orderRef.update({
+          stripeSessionId: session.id
+        });
+
+        console.log('✅ Checkout session created:', session.id);
 
         return res.status(200).json({
           sessionId: session.id,
@@ -134,7 +146,7 @@ exports.createCheckoutSession = onRequest(
         });
 
       } catch (error) {
-        console.error("Error creating checkout session:", error);
+        console.error("❌ Error creating checkout session:", error);
         return res.status(500).json({ error: error.message });
       }
     });
