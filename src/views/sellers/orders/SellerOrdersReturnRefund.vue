@@ -228,7 +228,7 @@
       >
         <p>
           Showing {{ page }} of {{ totalPages || 1 }} – 
-          <span class="font-medium">{{ pageStart }}</span>–<span class="font-medium">{{ pageEnd }}</span> of
+          <span class="font-medium">{{ pageEnd }}</span> of
           <span class="font-medium">{{ filtered.length }}</span> results
         </p>
         <div class="flex gap-2">
