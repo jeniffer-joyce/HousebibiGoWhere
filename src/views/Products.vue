@@ -4,38 +4,34 @@ import { useProducts } from '@/composables/useProducts.js'
 import { db, auth } from '@/firebase/firebase_config'
 import { user } from '@/store/user.js'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
-import ToastNotification from '@/components/ToastNotification.vue' // Import toast
+import ToastNotification from '@/components/ToastNotification.vue'
 import { RouterLink } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
 
-// Import useFavorites
 import { useFavorites } from '@/composables/useFavorites.js'
 
-// Fetch products from Firestore
 const { products, loading, error } = useProducts()
-
-// Use favorites composable
 const { favoriteProducts, toggleProductFavorite, loadFavoriteProducts } = useFavorites()
 
-// Toast notification state
 const showToast = ref(false)
 const toastConfig = reactive({
   type: 'warning',
   title: 'Login Required',
   message: 'Please log in or sign up to add items to your wishlist'
 })
-// Filters data
+
+const RATING_OPTIONS = ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars']
+
 const filters = ref({
-  category: [], // dynamically populated from button_categories
+  category: [],
   price: ['Under $20', '$20 - $50', '$50 - $100', 'Over $100'],
-  seller: [], // dynamically populated
-  rating: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+  seller: [],
+  rating: [...RATING_OPTIONS],
 })
 
-// Track selected filter option
 const selectedFilters = reactive({
   category: null,
   price: null,
@@ -43,64 +39,49 @@ const selectedFilters = reactive({
   rating: null,
 })
 
-// Sort selection
 const selectedSort = ref('Most Popular')
-
-// Track which dropdown is open
 const openFilter = ref(null)
 
-// Selected filter pills for display
 const selectedFilterArray = computed(() => {
   return Object.entries(selectedFilters).filter(([key, val]) => val)
 })
 
-// Handle wishlist button click
 function handleWishlistClick(product) {
   if (!user.isLoggedIn) {
-    // Show toast notification
     showToast.value = true
   } else {
-    // TODO: Add to wishlist logic for logged-in users
     console.log('Adding to wishlist:', product)
-    // You can implement actual wishlist functionality here later
   }
 }
 
-// Close toast notification
 function closeToast() {
   showToast.value = false
 }
-// Toggle dropdown open/close
+
 function toggleDropdown(key) {
   openFilter.value = openFilter.value === key ? null : key
 }
 
-// Select an option
 function selectOption(key, option) {
   selectedFilters[key] = option
   openFilter.value = null
 }
 
-// Clear all filters
 function clearAllFilters() {
   Object.keys(selectedFilters).forEach(key => selectedFilters[key] = null)
   openFilter.value = null
 }
 
-// Clear individual filter
 function clearFilter(key) {
   selectedFilters[key] = null
 }
 
-// Close dropdown when clicking outside
 function handleClickOutside(event) {
   if (!event.target.closest('.filter-dropdown')) {
     openFilter.value = null
   }
 }
 
-// Load categories from button_categories collection
-// Store category data with both name and slug
 const categoryList = ref([])
 
 async function loadCategories() {
@@ -109,27 +90,17 @@ async function loadCategories() {
     const categoriesQuery = query(categoriesRef, orderBy('order', 'asc'))
     const snapshot = await getDocs(categoriesQuery)
     
-    // Store full category objects
     categoryList.value = snapshot.docs.map(doc => ({
       name: doc.data().name,
       slug: doc.data().slug
     }))
     
-    // Display names in dropdown
     filters.value.category = categoryList.value.map(cat => cat.name)
   } catch (error) {
     console.error('Error loading categories:', error)
   }
 }
 
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-  loadCategories()
-})
-
-onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
-
-// Normalize products to handle array/single price
 const normalizedProducts = computed(() => {
   return products.value.map(product => {
     let sizesArray = []
@@ -142,7 +113,6 @@ const normalizedProducts = computed(() => {
       sizesArray = [{ price: 0 }]
     }
 
-    // ✅ Ensure rating is a number, default to 0 if missing
     const rating = typeof product.rating === 'number' ? product.rating : 0
 
     return {
@@ -153,34 +123,51 @@ const normalizedProducts = computed(() => {
   })
 })
 
-// Dynamically populate seller filter based on available products
 const availableSellers = computed(() => {
   const sellersSet = new Set()
   normalizedProducts.value.forEach(p => sellersSet.add(p.sellerName))
   return Array.from(sellersSet)
 })
 
-// Update filters.seller when products load or change
+// Store dropdown button refs for positioning
+const dropdownButtonRefs = ref({})
+
+// Computed property to get dropdown position
+// Computed property to get dropdown position (relative to button)
+const getDropdownPosition = computed(() => {
+  return (key) => {
+    return {
+      top: '100%',
+      left: '0',
+      marginTop: '0.5rem'
+    }
+  }
+})
+
+
+const dropdownOptions = computed(() => ({
+  category: categoryList.value.map(cat => cat.name),
+  price: ['Under $20', '$20 - $50', '$50 - $100', 'Over $100'],
+  seller: availableSellers.value,
+  rating: RATING_OPTIONS
+}))
+
 watch([products, normalizedProducts], () => {
   filters.value.seller = availableSellers.value
 }, { immediate: true })
 
-// Final displayed products: filtered + sorted
 const displayedProducts = computed(() => {
   let list = [...normalizedProducts.value]
 
-  // Apply filters
   list = list.filter(product => {
     const prices = product.sizes.map(s => s.price)
     const min = Math.min(...prices)
     const max = Math.max(...prices)
 
     const matchesCategory = !selectedFilters.category || (() => {
-  // Find the category object by name
-    const selectedCat = categoryList.value.find(cat => cat.name === selectedFilters.category)
-    // Match product's category (slug) with selected category's slug
-    return selectedCat && product.category === selectedCat.slug
-  })()
+      const selectedCat = categoryList.value.find(cat => cat.name === selectedFilters.category)
+      return selectedCat && product.category === selectedCat.slug
+    })()
 
     const matchesPrice =
       !selectedFilters.price ||
@@ -198,7 +185,6 @@ const displayedProducts = computed(() => {
     return matchesCategory && matchesPrice && matchesSeller && matchesRating
   })
 
-  // Apply sorting
   switch (selectedSort.value) {
     case 'Price: Low to High':
       list.sort((a, b) => Math.min(...a.sizes.map(s => s.price)) - Math.min(...b.sizes.map(s => s.price)))
@@ -217,19 +203,16 @@ const displayedProducts = computed(() => {
   return list
 })
 
-// NEW: Pagination state
 const currentPage = ref(1)
-const itemsPerPage = ref(12) // products per page
+const itemsPerPage = ref(12)
 const totalPages = computed(() => Math.ceil(displayedProducts.value.length / itemsPerPage.value))
 
-// NEW: Paginated products
 const paginatedProducts = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value
   const end = start + itemsPerPage.value
   return displayedProducts.value.slice(start, end)
 })
 
-// NEW: Generate visible page numbers (show 1, 2, …, last)
 const visiblePages = computed(() => {
   const pages = []
   const maxVisible = 5
@@ -255,7 +238,6 @@ const visiblePages = computed(() => {
   return pages
 })
 
-// NEW: Handle page navigation
 function goToPage(page) {
   if (page === '...') return
   currentPage.value = page
@@ -269,23 +251,19 @@ function prevPage() {
   if (currentPage.value > 1) currentPage.value--
 }
 
-// ✅ Helper function to get rating display
 function getRatingDisplay(rating) {
   const numRating = typeof rating === 'number' ? rating : 0
   return numRating > 0 ? numRating.toFixed(1) : 'No rating'
 }
 
-// ✅ CONSOLIDATED onMounted - Only ONE onMounted block
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   loadCategories()
   
-  // Load favorites if user is logged in
   if (user.value?.uid) {
     loadFavoriteProducts(user.value.uid)
   }
   
-  // ✅ Restore page from URL query parameter
   const pageFromQuery = parseInt(route.query.page)
   if (pageFromQuery && pageFromQuery > 0) {
     currentPage.value = pageFromQuery
@@ -294,17 +272,15 @@ onMounted(() => {
 
 watch(currentPage, (newPage) => {
   router.replace({
-    name: 'Products',  // ✅ FIXED: Use correct route name
+    name: 'Products',
     query: { page: newPage }
   })
 })
 
-// Reset to page 1 when filters/sort change
 watch([selectedFilters, selectedSort], () => {
   currentPage.value = 1
 })
 
-// Debug watcher
 watch(paginatedProducts, (products) => {
   console.log('📄 Current page:', currentPage.value)
   console.log('📦 Products on page:', products.length)
@@ -317,11 +293,10 @@ watch(paginatedProducts, (products) => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
 })
-
 </script>
 
 <template>
-<main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
   <div class="flex items-center gap-2 text-sm text-subtle-light dark:text-subtle-dark mb-6">
     <RouterLink to="/" class="text-sm font-medium text-slate-700 hover:text-primary dark:text-slate-300 dark:hover:text-primary">Home</RouterLink>
     <span class="material-symbols-outlined text-base">chevron_right</span>
@@ -330,8 +305,8 @@ onBeforeUnmount(() => {
 
   <div class="flex flex-col lg:flex-row gap-8">
     <!-- Sidebar filters -->
-    <aside class="w-full lg:w-1/4">
-      <div class="sticky top-28">
+    <aside class="w-full lg:w-1/4 overflow-visible">
+      <div class="sticky top-28 overflow-visible">
         <h2 class="text-2xl font-bold mb-6">Products</h2>
         <div class="space-y-6">
           <div>
@@ -351,21 +326,24 @@ onBeforeUnmount(() => {
 
             <!-- Filter Dropdowns -->
             <div class="flex flex-wrap gap-2">
-              <div v-for="(options, key) in filters" :key="key" class="relative filter-dropdown">
-                <button @click.stop="toggleDropdown(key)" 
-                        class="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium bg-background-light dark:bg-background-dark hover:bg-primary/10 dark:hover:bg-primary/20">
+              <div v-for="(options, key) in dropdownOptions" :key="key" class="relative filter-dropdown">
+                <button 
+                  :ref="el => { if (el) dropdownButtonRefs[key] = el }"
+                  @click.stop="toggleDropdown(key)" 
+                  class="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium bg-background-light dark:bg-background-dark hover:bg-primary/10 dark:hover:bg-primary/20">
                   {{ selectedFilters[key] || key.charAt(0).toUpperCase() + key.slice(1) }}
                   <span class="material-symbols-outlined text-lg transition-transform duration-200"
                         :class="{ 'rotate-180': openFilter === key }">expand_more</span>
                 </button>
 
-                <div v-if="openFilter === key" class="absolute mt-2 bg-background-light dark:bg-background-dark border rounded-lg shadow-lg z-10 w-40">
+                <div v-if="openFilter === key" class="absolute mt-2 bg-background-light dark:bg-background-dark border rounded-lg shadow-lg z-[9999] w-40 top-full left-0">
                   <div v-for="option in options" :key="option" @click="selectOption(key, option)"
-                       class="px-4 py-2 hover:bg-primary/10 dark:hover:bg-primary/20 cursor-pointer">
+                      class="px-4 py-2 hover:bg-primary/10 dark:hover:bg-primary/20 cursor-pointer">
                     {{ option }}
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
 
@@ -388,7 +366,7 @@ onBeforeUnmount(() => {
     </aside>
 
     <!-- Products Grid -->
-    <div class="flex-1">
+    <div class="flex-1 min-h-[60vh]">
       <!-- Loading -->
       <div v-if="loading" class="text-center py-16">
         <span class="text-gray-500 dark:text-gray-400">Loading products...</span>
@@ -495,77 +473,72 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
+      <!-- 🔹 Enhanced Pagination Controls -->
+      <div class="flex flex-wrap justify-center items-center gap-2 mt-8 text-sm">
+        <!-- Prev -->
+        <button
+          @click="prevPage"
+          :disabled="currentPage === 1"
+          class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40"
+        >
+          ‹ Prev
+        </button>
 
-
-        <!-- 🔹 Enhanced Pagination Controls -->
-        <div class="flex flex-wrap justify-center items-center gap-2 mt-8 text-sm">
-          <!-- Prev -->
+        <!-- Page numbers -->
+        <template v-for="(page, idx) in visiblePages" :key="idx">
           <button
-            @click="prevPage"
-            :disabled="currentPage === 1"
-            class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40"
+            v-if="page !== '...'"
+            @click="goToPage(page)"
+            :class="[
+              'px-3 py-1 rounded transition',
+              currentPage === page
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+            ]"
           >
-            ‹ Prev
+            {{ page }}
           </button>
+          <span v-else class="px-2 select-none">…</span>
+        </template>
 
-          <!-- Page numbers -->
-          <template v-for="(page, idx) in visiblePages" :key="idx">
-            <button
-              v-if="page !== '...'"
-              @click="goToPage(page)"
-              :class="[
-                'px-3 py-1 rounded transition',
-                currentPage === page
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-              ]"
+        <!-- Next -->
+        <button
+          @click="nextPage"
+          :disabled="currentPage === totalPages"
+          class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40"
+        >
+          Next ›
+        </button>
+
+        <!-- Last -->
+        <button
+          @click="goToPage(totalPages)"
+          :disabled="currentPage === totalPages"
+          class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40"
+        >
+          Last »
+        </button>
+
+        <!-- Go to page dropdown -->
+        <div class="ml-4 flex items-center gap-2">
+          <label for="goto" class="text-gray-600 dark:text-gray-300">Go to page:</label>
+          <select
+            id="goto"
+            v-model.number="currentPage"
+            class="border rounded px-2 py-1 bg-gray-100 dark:bg-gray-800"
+          >
+            <option
+              v-for="n in totalPages"
+              :key="n"
+              :value="n"
             >
-              {{ page }}
-            </button>
-            <span v-else class="px-2 select-none">…</span>
-          </template>
-
-          <!-- Next -->
-          <button
-            @click="nextPage"
-            :disabled="currentPage === totalPages"
-            class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40"
-          >
-            Next ›
-          </button>
-
-          <!-- Last -->
-          <button
-            @click="goToPage(totalPages)"
-            :disabled="currentPage === totalPages"
-            class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40"
-          >
-            Last »
-          </button>
-
-          <!-- Go to page dropdown -->
-          <div class="ml-4 flex items-center gap-2">
-            <label for="goto" class="text-gray-600 dark:text-gray-300">Go to page:</label>
-            <select
-              id="goto"
-              v-model.number="currentPage"
-              class="border rounded px-2 py-1 bg-gray-100 dark:bg-gray-800"
-            >
-              <option
-                v-for="n in totalPages"
-                :key="n"
-                :value="n"
-              >
-                {{ n }}
-              </option>
-            </select>
-          </div>
+              {{ n }}
+            </option>
+          </select>
         </div>
       </div>
     </div>
 
-
-  
     <!-- Toast Notification -->
     <ToastNotification
       :show="showToast"
@@ -575,5 +548,6 @@ onBeforeUnmount(() => {
       :duration="4000"
       @close="closeToast"
     />
+  </div>
 </main>
 </template>
