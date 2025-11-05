@@ -564,31 +564,33 @@ async function proceedToPayment() {
 
   try {
     const items = selectedCartItems.value.map(item => {
-      let sizeName = item.size || null
-      if (
-        !sizeName &&
-        item.sizeIndex !== null &&
-        item.sizeIndex !== undefined &&
-        item.availableSizes &&
-        item.availableSizes.length > 0
-      ) {
-        sizeName = item.availableSizes[item.sizeIndex] || null
-      }
+        let sizeName = item.size || null
+        if (
+            !sizeName &&
+            item.sizeIndex !== null &&
+            item.sizeIndex !== undefined &&
+            item.availableSizes &&
+            item.availableSizes.length > 0
+        ) {
+            sizeName = item.availableSizes[item.sizeIndex] || null
+        }
 
-      return {
-        name: item.item_name,
-        price: item.price,
-        quantity: item.quantity,
-        image: item.img_url || null,
-        size: sizeName,
-        sizeIndex: item.sizeIndex !== undefined ? item.sizeIndex : null,
-        productId: item.productId,
-        sellerId: item.sellerId || item.seller_id || item.sellerUid,  // ✅ ADD THIS
-        sellerUsername: item.sellerUsername || item.seller_username,  // ✅ ADD THIS
-        shopName: item.shopName || item.shop_name,                   // ✅ ADD THIS        
-        shopName: item.shopName || item.sellerName || item.businessName || null
-      }
-    })
+        return {
+            cartItemId: item.cartItemId,  // ✅ ADD THIS
+            item_name: item.item_name,    // ✅ Use item_name not name
+            price: item.price,
+            quantity: item.quantity,
+            img_url: item.img_url || null, // ✅ Use img_url not image
+            size: sizeName,
+            sizeIndex: item.sizeIndex !== undefined ? item.sizeIndex : null,
+            productId: item.productId,
+            sellerId: item.sellerId || '',  // ✅ Default to empty string
+            sellerUsername: item.sellerUsername || '',
+            shopName: item.shopName || '',
+            availableSizes: item.availableSizes || null  // ✅ Add this
+        }
+        })
+
 
     const itemsTotal = selectedCartItems.value.reduce(
       (sum, item) => sum + item.price * item.quantity,

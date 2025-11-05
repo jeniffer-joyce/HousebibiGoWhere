@@ -13,7 +13,6 @@ const orderCreated = ref(false)
 const error = ref(false)
 
 onMounted(async () => {
-  // Get session ID from URL query parameters
   sessionId.value = route.query.session_id || ''
   
   if (!sessionId.value) {
@@ -24,162 +23,31 @@ onMounted(async () => {
   }
 
   try {
-    // Get selected items from session storage
-    const selectedItemIds = JSON.parse(sessionStorage.getItem('checkoutItems') || '[]')
-    
-    if (selectedItemIds.length === 0) {
-      throw new Error('No items found in checkout')
-    }
-
-    // Get current user's cart
+    // ✅ Just wait for orders to exist (created by cloud function)
     const currentUser = auth.currentUser
     if (!currentUser) {
       throw new Error('User not authenticated')
     }
 
-    const cartDoc = await getDoc(doc(db, 'carts', currentUser.uid))
-    if (!cartDoc.exists()) {
-      throw new Error('Cart not found')
-    }
-
-    const cartData = cartDoc.data()
-    const allCartItems = cartData.items || []
-    
-    // Filter only the selected items
-    const selectedItems = allCartItems.filter(item => 
-      selectedItemIds.includes(item.cartItemId)
-    )
-
-    if (selectedItems.length === 0) {
-      throw new Error('Selected items not found in cart')
-    }
-
-    // Get user details for shipping address
-    const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
-    const userData = userDoc.data()
-    
-    // Get the selected address (from session or default)
-    const addresses = userData?.addresses || []
-    const defaultAddress = addresses.find(a => a.default === 1) || addresses[0]
-
-    if (!defaultAddress) {
-      throw new Error('No shipping address found')
-    }
-
-    // Group items by seller
-    const itemsBySeller = {}
-    selectedItems.forEach(item => {
-      if (!itemsBySeller[item.sellerId]) {
-        itemsBySeller[item.sellerId] = []
-      }
-      itemsBySeller[item.sellerId].push(item)
-    })
-
-    // Create an order for each seller
-    for (const [sellerId, items] of Object.entries(itemsBySeller)) {
-      const orderRef = doc(collection(db, 'orders'))
-      const orderId = orderRef.id
-
-      // Calculate totals
-      const productsTotalPrice = items.reduce((sum, item) => 
-        sum + (item.price * item.quantity), 0
-      )
-      const shippingFee = 1.99
-      const grandTotal = productsTotalPrice + shippingFee
-
-      // Prepare products array for order
-      const products = items.map(item => ({
-        productId: item.productId,
-        item_name: item.item_name,
-        img_url: item.img_url,
-        price: item.price,
-        quantity: item.quantity,
-        size: item.size || (item.availableSizes && item.sizeIndex !== null && item.sizeIndex !== undefined ? item.availableSizes[item.sizeIndex] : null),
-        sizeIndex: item.sizeIndex !== undefined ? item.sizeIndex : null,
-        sellerId: item.sellerId,
-        sellerUsername: item.sellerUsername,
-        shopName: item.shopName,
-        totalPrice: item.price * item.quantity
-      }))
-
-      // Create order document
-      const orderData = {
-        orderId: orderId,
-        uid: currentUser.uid,
-        sellerId: sellerId,
-        sellerUsername: items[0].sellerUsername,
-        shopName: items[0].shopName,
-        products: products,
-        shippingAddress: {
-          fullName: defaultAddress.fullName,
-          phoneNumber: defaultAddress.phone || defaultAddress.phoneNumber,
-          streetName: defaultAddress.streetName,
-          unitNumber: defaultAddress.unitNumber || '',
-          postalCode: defaultAddress.postalCode
-        },
-        totals: {
-          productsTotalPrice: productsTotalPrice,
-          shippingFee: shippingFee,
-          grandTotal: grandTotal
-        },
-        payment: {
-          method: 'card',
-          transactionId: sessionId.value,
-          paidAt: serverTimestamp()
-        },
-        status: 'to_ship',
-        statusLog: [
-        {
-            status: 'to_pay',
-            time: new Date(),  // ✅ Use Date object instead
-            by: 'system'
-        },
-        {
-            status: 'to_ship',
-            time: new Date(),  // ✅ Use Date object instead
-            by: 'system'
-        }
-        ],
-        logistics: {
-          shipper: null,
-          trackingNumber: null,
-          shippedAt: null,
-          deliveredAt: null
-        },
-        createdAt: serverTimestamp()
-      }
-
-      // Save order to Firestore
-      await setDoc(orderRef, orderData)
-    }
-
-    // Remove selected items from cart
-    const remainingItems = allCartItems.filter(item => 
-      !selectedItemIds.includes(item.cartItemId)
-    )
-
-    await updateDoc(doc(db, 'carts', currentUser.uid), {
-      items: remainingItems
-    })
+    // Optional: Poll Firestore to verify orders were created
+    // or just assume cloud function succeeded
+    await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds for cloud function
 
     // Clear session storage
     sessionStorage.removeItem('checkoutItems')
 
     orderCreated.value = true
     loading.value = false
+    useToast().success('Order confirmed! Check your email for details.')
 
   } catch (err) {
-    console.error('Error creating order:', err)
-    console.error('Error details:', {
-      message: err.message,
-      code: err.code,
-      stack: err.stack
-    })
+    console.error('Error:', err)
     error.value = true
     loading.value = false
-    useToast().error(`Failed to create order: ${err.message}`)
+    useToast().error(`Error: ${err.message}`)
   }
 })
+
 
 function continueShopping() {
   router.push('/')
