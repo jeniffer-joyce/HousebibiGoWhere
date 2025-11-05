@@ -1,24 +1,23 @@
-
 <!-- src/views/sellers/orders/SellerOrdersToShip.vue -->
 <template>
   <section class="space-y-4">
     <!-- Header -->
-    <header class="flex items-center justify-between">
+    <header class="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
       <div>
-        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">To Ship</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400">
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">To Ship</h2>
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
           Manage new orders in <span class="font-medium">To Process</span>, or reprint AWB under
           <span class="font-medium">Processed</span>.
         </p>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <!-- Search -->
         <div class="relative">
           <input
             v-model="searchQuery"
             type="text"
-            class="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm
+            class="w-full sm:w-64 md:w-72 rounded-md border border-slate-300 px-3 py-2 text-sm
                    bg-white text-slate-800 placeholder:text-slate-400
                    dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             placeholder="Search order, buyer, product…"
@@ -45,9 +44,9 @@
     </header>
 
     <!-- Tabs -->
-    <div class="flex gap-2">
+    <div class="flex flex-wrap gap-2">
       <button
-        class="rounded-full px-3 py-1 text-sm transition"
+        class="rounded-full px-3 py-1.5 sm:py-1 text-sm transition touch-manipulation"
         :class="tab==='all'
           ? 'bg-blue-600 text-white'
           : 'border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100'"
@@ -57,7 +56,7 @@
       </button>
 
       <button
-        class="rounded-full px-3 py-1 text-sm transition"
+        class="rounded-full px-3 py-1.5 sm:py-1 text-sm transition touch-manipulation"
         :class="tab==='to_process'
           ? 'bg-blue-600 text-white'
           : 'border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100'"
@@ -67,7 +66,7 @@
       </button>
 
       <button
-        class="rounded-full px-3 py-1 text-sm transition"
+        class="rounded-full px-3 py-1.5 sm:py-1 text-sm transition touch-manipulation"
         :class="tab==='processed'
           ? 'bg-blue-600 text-white'
           : 'border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100'"
@@ -77,8 +76,8 @@
       </button>
     </div>
 
-    <!-- Table -->
-    <div class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+    <!-- Table - Desktop View (hidden on mobile) -->
+    <div class="hidden lg:block rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
       <!-- Header row (grid = 5 / 1 / 1 / 2 / 2 / 1) -->
       <div
         class="grid grid-cols-12 gap-3 border-b px-4 py-3 text-sm font-semibold
@@ -296,30 +295,226 @@
       </div>
     </div>
 
+    <!-- Card View - Mobile (visible on mobile and tablet) -->
+    <div class="lg:hidden space-y-3">
+      <!-- Empty state -->
+      <div v-if="!sorted.length" class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+        No orders available
+      </div>
+
+      <!-- Order Cards -->
+      <div v-else v-for="o in paged" :key="o.id" class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4">
+        <!-- Product Info -->
+        <div class="flex gap-3 mb-3">
+          <img :src="thumbnail(o)" alt="" class="h-16 w-16 sm:h-20 sm:w-20 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700 flex-shrink-0" />
+          <div class="min-w-0 flex-1">
+            <div class="font-medium text-sm sm:text-base leading-tight text-slate-900 dark:text-white mb-1">
+              {{ titleLine(o) }}
+            </div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
+              <div>Order #{{ o.id }}</div>
+              <div>Buyer: {{ o.buyer?.name || o.shippingAddress?.fullName || '—' }}</div>
+              <div>{{ fmtDate(o.createdAt) }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 gap-3 mb-3 text-sm">
+          <div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Total</div>
+            <div class="font-semibold text-slate-900 dark:text-white">{{ money(total(o)) }}</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Products</div>
+            <div class="font-semibold text-slate-900 dark:text-white">{{ (o.products || []).length }}</div>
+          </div>
+        </div>
+
+        <!-- Status & Countdown -->
+        <div class="space-y-2 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-500 dark:text-slate-400">Status:</span>
+            <span
+              class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold
+                     bg-sky-100 text-sky-700
+                     dark:bg-sky-900/40 dark:text-sky-300"
+            >
+              <span class="h-2 w-2 rounded-full bg-sky-600"></span>
+              {{ o.shipping?.dropoff?.completed || o.shipping?.pickup?.completed ? 'Shipping' : 'To ship' }}
+            </span>
+          </div>
+          
+          <div class="flex items-start gap-2">
+            <span class="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 mt-1">Ship-by:</span>
+            <span
+              class="inline-block rounded-full px-2 py-1 text-xs font-semibold leading-tight
+                     break-words"
+              :class="toShipCountdownInfo(o).cls"
+              :title="toShipCountdownInfo(o).title"
+            >
+              {{ toShipCountdownInfo(o).text }}
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-500 dark:text-slate-400">Channel:</span>
+            <span class="inline-flex items-center whitespace-nowrap rounded-full
+                         bg-blue-50 text-blue-700
+                         dark:bg-blue-950/40 dark:text-blue-300
+                         px-2 py-0.5 text-xs font-medium">
+              HouseBiBi Express
+            </span>
+          </div>
+        </div>
+
+        <!-- Helper text -->
+        <div class="text-xs text-slate-500 dark:text-slate-400 mb-3 p-2 bg-slate-50 dark:bg-slate-800/40 rounded">
+          <template v-if="o.shipping?.arranged && o.shipping?.method === 'dropoff' && !o.shipping?.dropoff?.completed">
+            Drop off at any HouseBiBi Express counter within {{ o.shipping?.dropoff?.windowDays || 3 }} days.
+          </template>
+
+          <template v-else-if="o.shipping?.arranged && o.shipping?.method === 'pickup' && !o.shipping?.pickup?.completed">
+            Pick-up scheduled
+            <span v-if="o.shipping?.pickup?.date">on {{ o.shipping.pickup.date }}</span>
+            <span v-if="o.shipping?.pickup?.slot"> • {{ o.shipping.pickup.slot }}</span>.
+            Be ready for the courier.
+          </template>
+
+          <template v-else>
+            To avoid late shipment, please ship out before {{ deadline(o).deadlineStr }}.
+          </template>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button 
+            class="flex-1 rounded-md border px-3 py-2.5 text-sm transition touch-manipulation
+                   border-slate-300 text-slate-700 hover:bg-slate-50
+                   dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
+            @click="toggleExpand(o.id)"
+          >
+            {{ expanded[o.id] ? 'Hide items' : `View items (${(o.products||[]).length})` }}
+          </button>
+
+          <button
+            class="flex-1 rounded-md border px-3 py-2.5 text-sm transition touch-manipulation
+                   border-slate-300 text-slate-700 hover:bg-slate-50
+                   dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
+            @click="toggleActions(o.id)"
+          >
+            View Actions
+          </button>
+        </div>
+
+        <!-- Expanded items table -->
+        <div v-if="expanded[o.id]"
+             class="mt-3 rounded-lg border border-slate-200 bg-slate-50
+                    dark:border-slate-700 dark:bg-slate-800/40 p-2 overflow-x-auto">
+          <table class="w-full text-xs min-w-[300px]">
+            <thead>
+              <tr class="text-slate-500 dark:text-slate-400">
+                <th class="text-left font-medium py-1 px-1">Item</th>
+                <th class="text-left font-medium py-1 px-1">Variant</th>
+                <th class="text-right font-medium py-1 px-1">Qty</th>
+                <th class="text-right font-medium py-1 px-1">Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(p, i) in (o.products||[])" :key="i">
+                <td class="py-1 px-1 text-slate-800 dark:text-slate-200">{{ p.item_name || p.name }}</td>
+                <td class="py-1 px-1 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ p.size || '-' }}</td>
+                <td class="py-1 px-1 text-right text-slate-700 dark:text-slate-300">{{ p.quantity ?? p.qty ?? 1 }}</td>
+                <td class="py-1 px-1 text-right whitespace-nowrap tabular-nums text-slate-900 dark:text-white">{{ money(p.price || 0) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Actions Dropdown (when open) -->
+        <div
+          v-if="openActionsFor === o.id"
+          class="mt-3 rounded-xl border border-slate-200 bg-white shadow-lg
+                 dark:border-slate-700 dark:bg-slate-800"
+        >
+          <ul class="py-1 text-sm text-slate-700 dark:text-slate-200">
+            <!-- Not arranged yet -->
+            <li v-if="!o.shipping?.arranged">
+              <button class="w-full px-3 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 touch-manipulation" @click="openChooser(o)">
+                Arrange Shipment
+              </button>
+            </li>
+
+            <!-- Arranged: Drop-off path -->
+            <template v-else-if="o.shipping?.method === 'dropoff' && !o.shipping?.dropoff?.completed">
+              <li>
+                <button class="w-full px-3 py-3 text-left text-emerald-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 touch-manipulation" @click="openConfirmHandover(o)">
+                  Drop-off Done
+                </button>
+              </li>
+              <li>
+                <button class="w-full px-3 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 touch-manipulation" @click="reprintWaybill(o)">
+                  Reprint Waybill
+                </button>
+              </li>
+              <li>
+                <button class="w-full px-3 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 touch-manipulation" @click="openDropoffLocations()">
+                  Locations
+                </button>
+              </li>
+            </template>
+
+            <!-- Arranged: Pickup path -->
+            <template v-else-if="o.shipping?.method === 'pickup' && !o.shipping?.pickup?.completed">
+              <li>
+                <button class="w-full px-3 py-3 text-left text-emerald-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 touch-manipulation" @click="openConfirmHandover(o)">
+                  Pick-up Done
+                </button>
+              </li>
+              <li>
+                <button class="w-full px-3 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 touch-manipulation" @click="reprintWaybill(o)">
+                  Reprint Waybill
+                </button>
+              </li>
+            </template>
+
+            <!-- Already completed handover -->
+            <template v-else>
+              <li>
+                <button class="w-full px-3 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 touch-manipulation" @click="reprintWaybill(o)">
+                  Reprint Waybill
+                </button>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <!-- Pagination -->
     <div
       v-if="sorted.length > 0"
-      class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+      class="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-500 dark:text-slate-400"
     >
-      <p>
-        Showing {{ page }} of {{ totalPages || 1 }} – 
-        <span class="font-medium">{{ pageStart }}</span>–<span class="font-medium">{{ pageEnd }}</span> of
+      <p class="text-center sm:text-left">
+        Showing {{ page }} of {{ totalPages || 1 }} — 
+        <span class="font-medium">{{ pageEnd }}</span> of
         <span class="font-medium">{{ sorted.length }}</span> results
       </p>
-      <div class="flex gap-2">
+      <div class="flex gap-2 w-full sm:w-auto">
         <button
           :disabled="page === 1"
-          @click="page--"
-          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
-                disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+          @click="page--; scrollToTop()"
+          class="flex-1 sm:flex-initial rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700
+                disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 touch-manipulation"
         >
           Previous
         </button>
         <button
           :disabled="page === totalPages || totalPages === 0"
-          @click="page++"
-          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
-                disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+          @click="page++; scrollToTop()"
+          class="flex-1 sm:flex-initial rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700
+                disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 touch-manipulation"
         >
           Next
         </button>
@@ -334,22 +529,22 @@
         class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
         @click.self="closeAll"
       >
-        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900">
+        <div class="w-full max-w-lg rounded-2xl bg-white p-4 sm:p-6 shadow-xl dark:bg-slate-900">
           <div class="mb-4 flex items-start justify-between">
             <div>
-              <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Ship Order</h3>
-              <p class="text-sm text-slate-500 dark:text-slate-400">#{{ current?.id }}</p>
+              <h3 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">Ship Order</h3>
+              <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">#{{ current?.id }}</p>
             </div>
-            <button class="text-slate-500 dark:text-slate-400" @click="closeAll">✕</button>
+            <button class="text-slate-500 dark:text-slate-400 text-xl touch-manipulation" @click="closeAll">✕</button>
           </div>
 
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <button class="rounded-xl border p-4 text-left hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-500" @click="confirm('dropoff')">
+            <button class="rounded-xl border p-4 text-left hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-500 touch-manipulation" @click="confirm('dropoff')">
               <div class="mb-1 font-medium text-slate-900 dark:text-white">I Will Dropoff</div>
               <p class="text-sm text-slate-500 dark:text-slate-400">Print waybill and drop off at partner counter.</p>
             </button>
 
-            <button class="rounded-xl border p-4 text-left hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-500" @click="openPickup(current)">
+            <button class="rounded-xl border p-4 text-left hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-500 touch-manipulation" @click="openPickup(current)">
               <div class="mb-1 font-medium text-slate-900 dark:text-white">I Will Arrange Pickup</div>
               <p class="text-sm text-slate-500 dark:text-slate-400">Courier collects from your address.</p>
             </button>
@@ -363,23 +558,23 @@
         class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
         @click.self="closeAll"
       >
-        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900">
+        <div class="w-full max-w-lg rounded-2xl bg-white p-4 sm:p-6 shadow-xl dark:bg-slate-900">
           <div class="mb-4 flex items-start justify-between">
             <div>
-              <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Arrange Pickup</h3>
-              <p class="text-sm text-slate-500 dark:text-slate-400">#{{ current?.id }}</p>
+              <h3 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">Arrange Pickup</h3>
+              <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">#{{ current?.id }}</p>
             </div>
-            <button class="text-slate-500 dark:text-slate-400" @click="closeAll">✕</button>
+            <button class="text-slate-500 dark:text-slate-400 text-xl touch-manipulation" @click="closeAll">✕</button>
           </div>
 
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label class="text-sm text-slate-800 dark:text-slate-200">
               Date
-              <input type="date" v-model="pickup.date" :min="minDate" class="mt-1 w-full rounded border px-2 py-1 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" />
+              <input type="date" v-model="pickup.date" :min="minDate" class="mt-1 w-full rounded border px-2 py-2.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 touch-manipulation" />
             </label>
             <label class="text-sm text-slate-800 dark:text-slate-200">
               Timeslot
-              <select v-model="pickup.slot" class="mt-1 w-full rounded border px-2 py-1 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+              <select v-model="pickup.slot" class="mt-1 w-full rounded border px-2 py-2.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 touch-manipulation">
                 <option value="9-12">9AM – 12PM</option>
                 <option value="12-15">12PM – 3PM</option>
                 <option value="15-18">3PM – 6PM</option>
@@ -387,13 +582,13 @@
             </label>
             <label class="col-span-full text-sm text-slate-800 dark:text-slate-200">
               Remark
-              <input v-model="pickup.remark" placeholder="Optional" class="mt-1 w-full rounded border px-2 py-1 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" />
+              <input v-model="pickup.remark" placeholder="Optional" class="mt-1 w-full rounded border px-2 py-2.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 touch-manipulation" />
             </label>
           </div>
 
-          <div class="mt-4 flex justify-end gap-2">
-            <button class="rounded-md border px-3 py-2 text-sm dark:border-slate-600 dark:text-slate-200" @click="closeAll">Back</button>
-            <button class="rounded-md bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-60" :disabled="confirming" @click="confirm('pickup')">
+          <div class="mt-4 flex flex-col sm:flex-row justify-end gap-2">
+            <button class="rounded-md border px-3 py-2.5 text-sm dark:border-slate-600 dark:text-slate-200 touch-manipulation" @click="closeAll">Back</button>
+            <button class="rounded-md bg-blue-600 px-3 py-2.5 text-sm text-white disabled:opacity-60 touch-manipulation" :disabled="confirming" @click="confirm('pickup')">
               {{ confirming ? 'Confirming…' : 'Confirm' }}
             </button>
           </div>
@@ -406,12 +601,12 @@
         class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
         @click.self="closeConfirmHandover"
       >
-        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900">
+        <div class="w-full max-w-md rounded-2xl bg-white p-4 sm:p-6 shadow-xl dark:bg-slate-900">
           <div class="mb-3">
-            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+            <h3 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
               {{ isPickup(current) ? 'Confirm Pick-up' : 'Confirm Drop-off' }}
             </h3>
-            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            <p class="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
               Confirm that you have {{ isPickup(current) ? 'handed the parcel to the courier for pick-up' : 'dropped off' }}
               <span class="font-medium">Order #{{ current?.id }}</span>
               at a <span class="font-medium">HouseBiBi Express</span> {{ isPickup(current) ? 'pick-up' : 'counter' }}?
@@ -423,10 +618,10 @@
             <li>Packed securely, matches declared items</li>
           </ul>
 
-          <div class="flex justify-end gap-2">
-            <button class="rounded-md border px-3 py-2 text-sm dark:border-slate-600 dark:text-slate-200" @click="closeConfirmHandover">Back</button>
+          <div class="flex flex-col sm:flex-row justify-end gap-2">
+            <button class="rounded-md border px-3 py-2.5 text-sm dark:border-slate-600 dark:text-slate-200 touch-manipulation" @click="closeConfirmHandover">Back</button>
             <button
-              class="rounded-md bg-green-600 px-3 py-2 text-sm text-white disabled:opacity-60"
+              class="rounded-md bg-green-600 px-3 py-2.5 text-sm text-white disabled:opacity-60 touch-manipulation"
               :disabled="confirming"
               @click="markHandoverDone"
             >
@@ -442,24 +637,24 @@
         class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
         @click.self="closeLocations"
       >
-        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900">
+        <div class="w-full max-w-lg rounded-2xl bg-white p-4 sm:p-6 shadow-xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
           <div class="mb-3 flex items-start justify-between">
             <div>
-              <h3 class="text-lg font-semibold text-slate-900 dark:text-white">HouseBiBi Express Drop-off</h3>
-              <p class="text-sm text-slate-500 dark:text-slate-400">Drop off within 3 days of arranging shipment.</p>
+              <h3 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">HouseBiBi Express Drop-off</h3>
+              <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Drop off within 3 days of arranging shipment.</p>
             </div>
-            <button class="text-slate-500 dark:text-slate-400" @click="closeLocations">✕</button>
+            <button class="text-slate-500 dark:text-slate-400 text-xl touch-manipulation" @click="closeLocations">✕</button>
           </div>
 
           <div class="space-y-3">
             <div v-for="loc in LOCATIONS" :key="loc.id" class="rounded-lg border p-3 dark:border-slate-700">
-              <div class="font-medium text-slate-900 dark:text-white">{{ loc.name }}</div>
-              <div class="text-sm text-slate-600 dark:text-slate-300">{{ loc.address }}</div>
+              <div class="font-medium text-sm sm:text-base text-slate-900 dark:text-white">{{ loc.name }}</div>
+              <div class="text-xs sm:text-sm text-slate-600 dark:text-slate-300">{{ loc.address }}</div>
             </div>
           </div>
 
           <div class="mt-4 text-right">
-            <button class="rounded-md border px-3 py-2 text-sm dark:border-slate-600 dark:text-slate-200" @click="closeLocations">Close</button>
+            <button class="rounded-md border px-3 py-2.5 text-sm dark:border-slate-600 dark:text-slate-200 touch-manipulation" @click="closeLocations">Close</button>
           </div>
         </div>
       </div>
@@ -470,24 +665,24 @@
         class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
         @click.self="closeWaybill"
       >
-        <div class="w-full max-w-4xl rounded-2xl bg-white p-0 shadow-2xl dark:bg-slate-900">
-          <div class="flex items-center justify-between border-b px-4 py-3 dark:border-slate-700">
+        <div class="w-full max-w-4xl rounded-2xl bg-white p-0 shadow-2xl dark:bg-slate-900 max-h-[90vh] overflow-hidden flex flex-col">
+          <div class="flex items-center justify-between border-b px-4 py-3 dark:border-slate-700 flex-shrink-0">
             <div>
-              <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Waybill / Air Waybill</h3>
+              <h3 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">Waybill / Air Waybill</h3>
               <p class="text-xs text-slate-500 dark:text-slate-400">Order #{{ waybillOrder?.id }}</p>
             </div>
             <div class="flex items-center gap-2">
-              <button class="rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800/60" @click="printCurrentWaybill">Print</button>
-              <button class="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white" @click="closeWaybill">Back</button>
+              <button class="rounded-md border px-3 py-2 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800/60 touch-manipulation" @click="printCurrentWaybill">Print</button>
+              <button class="rounded-md bg-blue-600 px-3 py-2 text-sm text-white touch-manipulation" @click="closeWaybill">Back</button>
             </div>
           </div>
 
           <!-- Printable area -->
-          <div id="waybill-print-area" class="max-h-[70vh] overflow-auto p-6">
-            <div class="sheet border border-slate-200 p-6 dark:border-slate-700">
-              <div class="mb-3 flex items-start justify-between text-[13px] text-slate-600 dark:text-slate-300">
+          <div id="waybill-print-area" class="overflow-auto p-4 sm:p-6 flex-1">
+            <div class="sheet border border-slate-200 p-4 sm:p-6 dark:border-slate-700">
+              <div class="mb-3 flex flex-col sm:flex-row items-start justify-between gap-3 text-xs sm:text-[13px] text-slate-600 dark:text-slate-300">
                 <div><strong class="text-slate-900 dark:text-white">{{ shopName(waybillOrder) }}</strong><br/>Waybill / Air Waybill</div>
-                <div class="text-right">
+                <div class="sm:text-right">
                   <div>Order: <strong>{{ waybillOrder?.id }}</strong></div>
                   <div>AWB: <strong>{{ awb }}</strong></div>
                   <div>Channel: <strong>HouseBiBi Express</strong></div>
@@ -497,48 +692,50 @@
 
               <div class="mb-2 rounded-lg border border-dashed border-slate-300 p-3 dark:border-slate-600">
                 <div class="text-sm font-semibold text-slate-900 dark:text-white">Ship To:</div>
-                <div class="text-sm text-slate-800 dark:text-slate-200">{{ shipToName(waybillOrder) }}</div>
-                <div class="text-sm text-slate-800 dark:text-slate-200">{{ shipToAddr(waybillOrder) }}</div>
+                <div class="text-xs sm:text-sm text-slate-800 dark:text-slate-200">{{ shipToName(waybillOrder) }}</div>
+                <div class="text-xs sm:text-sm text-slate-800 dark:text-slate-200">{{ shipToAddr(waybillOrder) }}</div>
               </div>
 
               <div class="mb-2 rounded-lg border border-dashed border-slate-300 p-3 dark:border-slate-600">
-                <div class="text-sm text-slate-800 dark:text-slate-200">
+                <div class="text-xs sm:text-sm text-slate-800 dark:text-slate-200">
                   <strong>Shipping Method:</strong> {{ waybillOpts?.method?.toUpperCase?.() || 'DROPOFF' }}
                 </div>
-                <div v-if="waybillOpts?.method==='pickup'" class="text-sm text-slate-700 dark:text-slate-300">
+                <div v-if="waybillOpts?.method==='pickup'" class="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
                   Pickup Date: {{ waybillOpts?.pickup?.date || '' }} • Timeslot: {{ waybillOpts?.pickup?.slot || '' }}
                 </div>
-                <div v-else class="text-sm text-slate-700 dark:text-slate-300">Drop-off: Please drop within 3 days at partner counter</div>
+                <div v-else class="text-xs sm:text-sm text-slate-700 dark:text-slate-300">Drop-off: Please drop within 3 days at partner counter</div>
               </div>
 
-              <table class="w-full border-collapse text-sm">
-                <thead>
-                  <tr class="bg-slate-50 dark:bg-slate-800/60">
-                    <th class="border border-slate-200 px-2 py-1 text-left dark:border-slate-700">#</th>
-                    <th class="border border-slate-200 px-2 py-1 text-left dark:border-slate-700">Item</th>
-                    <th class="border border-slate-200 px-2 py-1 text-left dark:border-slate-700">Variant</th>
-                    <th class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">Qty</th>
-                    <th class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">Unit Price</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(p,i) in (waybillOrder?.products||[])" :key="i">
-                    <td class="border border-slate-200 px-2 py-1 dark:border-slate-700">{{ i+1 }}</td>
-                    <td class="border border-slate-200 px-2 py-1 dark:border-slate-700">{{ p.item_name || p.name }}</td>
-                    <td class="border border-slate-200 px-2 py-1 dark:border-slate-700">{{ p.size || '-' }}</td>
-                    <td class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">{{ p.quantity ?? p.qty ?? 1 }}</td>
-                    <td class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">{{ money(p.price || 0) }}</td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <th colspan="4" class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">Total</th>
-                    <th class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">{{ money(total(waybillOrder)) }}</th>
-                  </tr>
-                </tfoot>
-              </table>
+              <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-xs sm:text-sm min-w-[400px]">
+                  <thead>
+                    <tr class="bg-slate-50 dark:bg-slate-800/60">
+                      <th class="border border-slate-200 px-2 py-1 text-left dark:border-slate-700">#</th>
+                      <th class="border border-slate-200 px-2 py-1 text-left dark:border-slate-700">Item</th>
+                      <th class="border border-slate-200 px-2 py-1 text-left dark:border-slate-700">Variant</th>
+                      <th class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">Qty</th>
+                      <th class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">Unit Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(p,i) in (waybillOrder?.products||[])" :key="i">
+                      <td class="border border-slate-200 px-2 py-1 dark:border-slate-700">{{ i+1 }}</td>
+                      <td class="border border-slate-200 px-2 py-1 dark:border-slate-700">{{ p.item_name || p.name }}</td>
+                      <td class="border border-slate-200 px-2 py-1 dark:border-slate-700">{{ p.size || '-' }}</td>
+                      <td class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">{{ p.quantity ?? p.qty ?? 1 }}</td>
+                      <td class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">{{ money(p.price || 0) }}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th colspan="4" class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">Total</th>
+                      <th class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">{{ money(total(waybillOrder)) }}</th>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
 
-              <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">Generated by HousebibiGoWhere — attach this page to the parcel.</div>
+              <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">Generated by HousebibiGoWhere – attach this page to the parcel.</div>
             </div>
           </div>
         </div>
@@ -612,6 +809,12 @@ const pageEnd = computed(() => Math.min(page.value*pageSize, sorted.value.length
 watch([searchQuery, sortMode, tab], () => {  
   page.value = 1
 })
+function scrollToTop() {
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth' // Use 'auto' for instant scroll, 'smooth' for animated
+  })
+}
 
 /* Rows: base -> filtered (by tab/search) -> sorted (by dropdown) */
 const base = computed(() =>

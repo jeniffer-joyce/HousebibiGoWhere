@@ -64,8 +64,7 @@
 
       <!-- Rows -->
       <div v-else class="divide-y divide-slate-100 dark:divide-slate-800">
-        <div
-          v-for="o in sortedRows" :key="o.id"
+        <div v-for="o in paged" :key="o.id"
           class="grid grid-cols-12 gap-3 px-4 py-4"
         >
           <!-- Product(s) -->
@@ -166,11 +165,40 @@
         </div>
       </div>
     </div>
+    <!-- Pagination -->
+    <div
+      v-if="ready && sortedRows.length > 0"
+      class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+    >
+      <p>
+        Showing {{ page }} of {{ totalPages || 1 }} – 
+        <span class="font-medium">{{ pageEnd }}</span> of
+        <span class="font-medium">{{ sortedRows.length }}</span> results
+      </p>
+      <div class="flex gap-2">
+        <button
+          :disabled="page === 1"
+          @click="page--; scrollToTop()"
+          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+        >
+          Previous
+        </button>
+        <button
+          :disabled="page === totalPages || totalPages === 0"
+          @click="page++; scrollToTop()"
+          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+                 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+        >
+          Next
+        </button>
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { useSellerOrders } from '@/composables/useSellerOrders'
 
 const { orders, ready } = useSellerOrders()
@@ -179,6 +207,24 @@ const { orders, ready } = useSellerOrders()
 const searchStr = ref('')
 const sortMode = ref('created_desc')
 const expanded = reactive({})
+
+const pageSize = 10
+const page = ref(1)
+const totalPages = computed(() => Math.ceil(sortedRows.value.length / pageSize))
+const paged = computed(() => sortedRows.value.slice((page.value-1)*pageSize, page.value*pageSize))
+const pageStart = computed(() => sortedRows.value.length ? (page.value-1)*pageSize+1 : 0)
+const pageEnd = computed(() => Math.min(page.value*pageSize, sortedRows.value.length))
+
+watch([searchStr, sortMode], () => {
+  page.value = 1
+})
+
+function scrollToTop() {
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth' // Use 'auto' for instant scroll, 'smooth' for animated
+  })
+}
 
 /* ---------------- helpers ---------------- */
 const money = n => 'S$' + (Math.round((n||0)*100)/100).toFixed(2)
