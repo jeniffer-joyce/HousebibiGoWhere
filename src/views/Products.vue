@@ -142,9 +142,13 @@ const normalizedProducts = computed(() => {
       sizesArray = [{ price: 0 }]
     }
 
+    // ✅ Ensure rating is a number, default to 0 if missing
+    const rating = typeof product.rating === 'number' ? product.rating : 0
+
     return {
       ...product,
-      sizes: sizesArray
+      sizes: sizesArray,
+      rating: rating
     }
   })
 })
@@ -265,6 +269,12 @@ function prevPage() {
   if (currentPage.value > 1) currentPage.value--
 }
 
+// ✅ Helper function to get rating display
+function getRatingDisplay(rating) {
+  const numRating = typeof rating === 'number' ? rating : 0
+  return numRating > 0 ? numRating.toFixed(1) : 'No rating'
+}
+
 // ✅ CONSOLIDATED onMounted - Only ONE onMounted block
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
@@ -300,6 +310,7 @@ watch(paginatedProducts, (products) => {
   console.log('📦 Products on page:', products.length)
   if (products[0]) {
     console.log('First product:', products[0].item_name)
+    console.log('First product rating:', products[0].rating)
   }
 }, { immediate: true })
 
@@ -403,7 +414,7 @@ onBeforeUnmount(() => {
             :to="{
             name: 'ProductDetails',
             params: { id: item.id },
-            query: { fromProductsPage: true, shop: item.sellerID, productsPage: currentPage }
+            query: { fromProductsPage: true, shop: item.seller_username || item.sellerId || item.seller_id, productsPage: currentPage }
           }"
             class="block overflow-hidden rounded-lg bg-background-light dark:bg-background-dark"
           >
@@ -431,16 +442,28 @@ onBeforeUnmount(() => {
                 }}
               </p>
 
+              <!-- ✅ Fixed Rating Display -->
               <div class="flex items-center mt-1">
-                <span v-for="n in 5" :key="n" class="text-yellow-500 text-sm">
-                  <span v-if="n <= item.rating">★</span>
-                  <span v-else class="text-gray-300 dark:text-gray-600">★</span>
-                </span>
-                <span
-                  class="ml-2 text-xs text-subtle-dark dark:text-subtle-dark"
-                >
-                  {{ item.rating }}/5
-                </span>
+                <template v-if="item.rating > 0">
+                  <!-- Stars -->
+                  <span v-for="n in 5" :key="n" class="text-yellow-500 text-sm">
+                    <span v-if="n <= Math.floor(item.rating)">★</span>
+                    <span v-else-if="n === Math.ceil(item.rating) && item.rating % 1 !== 0" class="relative inline-block">
+                      <span class="text-gray-300 dark:text-gray-600">★</span>
+                      <span class="absolute left-0 top-0 overflow-hidden" :style="`width: ${(item.rating % 1) * 100}%`">★</span>
+                    </span>
+                    <span v-else class="text-gray-300 dark:text-gray-600">★</span>
+                  </span>
+                  <!-- Rating number -->
+                  <span class="ml-2 text-xs text-gray-600 dark:text-gray-400">
+                    {{ item.rating.toFixed(1) }}/5
+                  </span>
+                </template>
+                <template v-else>
+                  <!-- No rating yet -->
+                  <span v-for="n in 5" :key="n" class="text-gray-300 dark:text-gray-600 text-sm">★</span>
+                  <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">No rating</span>
+                </template>
               </div>
             </div>
           </RouterLink>

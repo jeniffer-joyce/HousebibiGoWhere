@@ -1,13 +1,15 @@
 // src/composables/useProduct.js
-import { ref, computed } from 'vue'
-import { getSellerProducts, getSellerInfo } from '@/firebase/services/sellers/products'
+import { ref, computed, watch, onUnmounted } from 'vue'
+import { doc, onSnapshot } from 'firebase/firestore'
+import { db } from '@/firebase/firebase_config'
+import { getSellerInfo } from '@/firebase/services/sellers/products'
 
 export function useProduct(productId) {
     const product = ref(null)
     const seller = ref(null)
     const loading = ref(true)
-    // const selectedImage = ref(0)
     const productError = ref(null)
+    let unsubscribeProduct = null
 
     // Format price
     const formattedPrice = computed(() => {
@@ -43,7 +45,7 @@ export function useProduct(productId) {
     const stock = computed(() => {
         if (!product.value) return []
 
-        // If product has images array, use it
+        // If product has quantity array, use it
         if (product.value.quantity && Array.isArray(product.value.quantity)) {
             return product.value.quantity
         }
@@ -55,76 +57,88 @@ export function useProduct(productId) {
     const mainImage = computed(() => {
         const images = productImages.value
         if (images.length === 0) return ''
-        return images[selectedImage.value] || images[0]
+        return images[0]
     })
 
-
-
-    // // Availability status
-    // const stockStatus = computed(() => {
-    //     if (!product.value) return { text: 'Loading...', color: 'text-gray-500' }
-
-    //     // const totalQuantity = Array.isArray(product.value.quantity) ? product.value.quantity.reduce((s, n) => s + (+n || 0), 0) : +product.value.quantity || 0
-
-    //     if (totalQuantity <= 0) {
-    //         return {
-
-    //             text: 'Out of stock',
-    //             color: 'text-red-600'
-    //         }
-    //     } else if (totalQuantity <= 10) {
-    //         return {
-
-    //             text: 'Limited availability',
-    //             color: 'text-yellow-600'
-    //         }
-    //     } else {
-    //         return {
-    //             text: `In stock (${totalQuantity} available)`,
-    //             color: 'text-green-600'
-    //         }
-    //     }
-
-    // })
-
-    // Load product data
+    // ✅ Real-time product loading with onSnapshot
     async function loadProduct() {
-    try {
-        loading.value = true
-        productError.value = null
+        try {
+            loading.value = true
+            productError.value = null
 
-        // Fetch all products (you might want to optimize this to fetch single product)
-        const products = await getSellerProducts()
+            if (!productId.value) {
+                productError.value = 'No product ID provided'
+                loading.value = false
+                return
+            }
 
-        // Find the specific product by ID
-        product.value = products.find(p => p.id === productId.value)
+            // Clean up previous listener if exists
+            if (unsubscribeProduct) {
+                unsubscribeProduct()
+            }
 
-        if (!product.value) {
-            productError.value = 'Product not found'
-            return
+            // ✅ Set up real-time listener for this specific product
+            const productRef = doc(db, 'products', productId.value)
+            
+            unsubscribeProduct = onSnapshot(
+                productRef,
+                async (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data()
+                        product.value = {
+                            id: docSnap.id,
+                            ...data,
+                            // ✅ Ensure rating is always a number
+                            rating: typeof data.rating === 'number' ? data.rating : 0
+                        }
+
+                        console.log('✅ Product loaded/updated:', product.value.item_name)
+                        console.log('⭐ Product rating:', product.value.rating)
+
+                        // Fetch seller information if sellerID exists
+                        if (product.value.sellerID) {
+                            try {
+                                seller.value = await getSellerInfo(product.value.sellerID)
+                            } catch (sellerErr) {
+                                console.error('Error loading seller:', sellerErr)
+                            }
+                        }
+
+                        loading.value = false
+                    } else {
+                        productError.value = 'Product not found'
+                        product.value = null
+                        loading.value = false
+                    }
+                },
+                (err) => {
+                    console.error('❌ Error loading product:', err)
+                    productError.value = err.message || 'Failed to load product'
+                    loading.value = false
+                }
+            )
+
+        } catch (err) {
+            console.error('❌ Error setting up product listener:', err)
+            productError.value = err.message || 'Failed to load product'
+            loading.value = false
         }
-
-        // FIXED: Changed from sellerId to sellerID (uppercase ID)
-        if (product.value.sellerID) {
-            // Fetch seller information
-            seller.value = await getSellerInfo(product.value.sellerID)
-        }
-
-    } catch (err) {
-        console.error('Error loading product:', err)
-        productError.value = err.message || 'Failed to load product'
-    } finally {
-        loading.value = false
     }
-}
 
+    // Watch for productId changes and reload
+    watch(productId, () => {
+        if (productId.value) {
+            loadProduct()
+        }
+    }, { immediate: true })
 
-    // // Change selected image
-    // function selectImage(index) {
-    //     if (index >= 0 && index < productImages.value.length) {
-    //         selectedImage.value = index
-    //     }
-    // }
+    // ✅ Clean up listener on unmount
+    onUnmounted(() => {
+        if (unsubscribeProduct) {
+            unsubscribeProduct()
+            console.log('🔌 Product listener unsubscribed')
+        }
+    })
 
     return {
         // State
@@ -132,7 +146,6 @@ export function useProduct(productId) {
         seller,
         loading,
         productError,
-        // selectedImage,
 
         // Computed
         formattedPrice,
@@ -141,7 +154,6 @@ export function useProduct(productId) {
         stock,
 
         // Methods
-        loadProduct,
-        // selectImage
+        loadProduct
     }
 }

@@ -181,38 +181,55 @@ onMounted(() => {
         </h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
           <div v-for="product in filteredProducts" :key="product.id"
-               class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
-            <div class="relative w-full h-48 sm:h-56 md:h-48 lg:h-52">
-              <img :src="product.img_url" :alt="product.item_name" class="w-full h-full object-cover" />
-              <button 
-                @click="toggleProductFavorite(product)"
-                title="Unfavourite this product"
-                class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors"
-              >
-                <svg :class="['h-6 w-6 transition-colors', product.isFavorite ? 'text-red-500 fill-current' : 'text-slate-400']"
-                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-                </svg>
-              </button>
-            </div>
-            <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between">
-              <div>
-                <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-1">{{ product.item_name }}</h3>
-                <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">{{ product.sellerName }}</p>
-                <p class="font-bold">
-                  {{
-                    (() => {
-                      if (!product.sizes || !product.sizes.length) return '$0';
-                      const prices = product.sizes.map(s => s.price);
-                      const min = Math.min(...prices);
-                      const max = Math.max(...prices);
-                      return min === max ? `$${min}` : `$${min} - $${max}`;
-                    })()
-                  }}
-                </p>
+               class="relative bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group">
+            
+            <!-- Clickable Product Link -->
+            <RouterLink 
+              :to="{ name: 'ProductDetails', params: { id: product.id }, query: { fromFavourites: 'true', shop: product.seller_id || product.sellerId || product.sellerID,  // ✅ ADD THIS
+      productsPage: 1 }}"
+              class="block"
+            >
+              <div class="relative w-full h-48 sm:h-56 md:h-48 lg:h-52 overflow-hidden">
+                <img 
+                  :src="product.img_url" 
+                  :alt="product.item_name" 
+                  class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                />
               </div>
-            </div>
+              
+              <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-primary transition-colors">
+                    {{ product.item_name }}
+                  </h3>
+                  <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">{{ product.sellerName }}</p>
+                  <p class="font-bold text-slate-900 dark:text-white">
+                    {{
+                      (() => {
+                        if (!product.sizes || !product.sizes.length) return '$0';
+                        const prices = product.sizes.map(s => s.price);
+                        const min = Math.min(...prices);
+                        const max = Math.max(...prices);
+                        return min === max ? `$${min}` : `$${min} - $${max}`;
+                      })()
+                    }}
+                  </p>
+                </div>
+              </div>
+            </RouterLink>
+
+            <!-- Favorite button (positioned absolutely to stay outside the link) -->
+            <button 
+              @click.prevent="toggleProductFavorite(product)"
+              title="Unfavourite this product"
+              class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 hover:scale-110 transition-all duration-200 z-10"
+            >
+              <svg :class="['h-6 w-6 transition-colors', product.isFavorite ? 'text-red-500 fill-current' : 'text-slate-400']"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>

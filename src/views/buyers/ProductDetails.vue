@@ -23,6 +23,8 @@ const success = ref('')
 const route = useRoute()
 const router = useRouter()
 
+const navigationSource = ref(null)
+
 defineProps({
   productId: String
 })
@@ -60,40 +62,70 @@ async function toggleFavorite() {
 
 
 // Track navigation history
-const showGoToShop = computed(() => route.query.fromProductsPage === 'true')
+const showGoToShop = computed(() => 
+  route.query.fromProductsPage === 'true' || route.query.fromFavourites === 'true'
+)
 const shopUsername = computed(() => route.query.shop)
 const productsPage = computed(() => route.query.productsPage || 1)
-const fromShopPage = computed(() => route.query.fromShop === 'true') 
+const fromShopPage = computed(() => route.query.fromShop === 'true')
+const fromFavourites = computed(() => route.query.fromFavourites === 'true') // ✅ NEW LINE
+
+console.log('Shop value from query:', route.query.shop)
+console.log('All query params:', route.query)
 
 // Determine what the back button should do
 const backButtonConfig = computed(() => {
-  // If came from shop page, go back to shop
-  if (fromShopPage.value && shopUsername.value) {
+  console.log('🔍 Computing backButtonConfig:', {
+    navigationSource: navigationSource.value,
+    shopUsername: shopUsername.value,
+    productsPage: productsPage.value,
+    routeQuery: route.query
+  })
+  
+  // ✅ Use navigationSource instead of query params
+  if (navigationSource.value === 'favourites') {
+    return {
+      show: true,
+      label: 'Back to Favourites',
+      icon: 'favorite',
+      action: () => {
+        console.log('✅ Navigating back to favourites')
+        router.push('/buyer-favourites')
+      }
+    }
+  }
+  
+  if (navigationSource.value === 'shop' && shopUsername.value) {
     return {
       show: true,
       label: 'Back to Shop',
       icon: 'storefront',
-      action: () => router.push({
-        path: `/shop-details/${shopUsername.value}`,
-        query: route.query.productsPage ? { productsPage: route.query.productsPage } : {}
-      })
+      action: () => {
+        console.log('✅ Navigating back to shop:', shopUsername.value)
+        router.push({
+          path: `/shop-details/${shopUsername.value}`,
+          query: route.query.productsPage ? { productsPage: route.query.productsPage } : {}
+        })
+      }
     }
   }
   
-  // If came from products page, go back to products with page number
-  if (showGoToShop.value && productsPage.value) {
+  if (navigationSource.value === 'products' && productsPage.value) {
     return {
       show: true,
       label: 'Back to Products',
       icon: 'grid_view',
-      action: () => router.push({
-        name: 'Products',
-        query: { page: productsPage.value }  // Preserve page number
-      })
+      action: () => {
+        console.log('✅ Navigating back to products, page:', productsPage.value)
+        router.push({
+          name: 'Products',
+          query: { page: productsPage.value }
+        })
+      }
     }
   }
   
-  // Default: no back button
+  console.log('❌ No valid back button configuration found')
   return { show: false }
 })
 
@@ -102,29 +134,42 @@ function goToShop() {
   console.log('🚀 goToShop called:', {
     shopUsername: shopUsername.value,
     productId: route.params.id,
-    productsPage: productsPage.value
+    productsPage: productsPage.value,
+    fromFavourites: fromFavourites.value,
+    navigationSource: navigationSource.value  // Add this for debugging
   })
   
   if (shopUsername.value) {
+    // ✅ Build query object to preserve navigation source
+    const query = {
+      fromProduct: route.params.id
+    }
+    
+    // Preserve productsPage if it exists
+    if (productsPage.value) {
+      query.productsPage = productsPage.value
+    }
+    
+    // ✅ Preserve fromFavourites if it exists
+    if (fromFavourites.value) {
+      query.fromFavourites = 'true'
+    }
+    
+    // ✅ Preserve fromProductsPage if it exists (for Products → Product → Shop flow)
+    if (route.query.fromProductsPage === 'true') {
+      query.fromProductsPage = 'true'
+    }
+    
+    console.log('🚀 Navigating to shop with query:', query)
+    
     router.push({
       path: `/shop-details/${shopUsername.value}`,
-      query: {
-        fromProduct: route.params.id,
-        productsPage: productsPage.value
-      }
+      query: query
     })
   } else {
     console.error('❌ No shopUsername available')
   }
 }
-
-console.log('🔍 Navigation Debug:', {
-  showGoToShop: showGoToShop.value,
-  shopUsername: shopUsername.value,
-  productsPage: productsPage.value,
-  fromShopPage: fromShopPage.value,
-  backButtonConfig: backButtonConfig.value
-})
 
 // Get product ID from route params
 const productId = computed(() => route.params.id)
@@ -146,6 +191,33 @@ const {
 // Load product on mount
 onMounted(async () => {
   await loadProduct()
+
+  // ✅ Capture navigation source - prioritize query params, then fall back to stored value
+  const storedSource = sessionStorage.getItem('productNavSource')
+  
+  if (route.query.fromFavourites === 'true') {
+    navigationSource.value = 'favourites'
+    sessionStorage.setItem('productNavSource', 'favourites')
+    console.log('📍 Set navigation source from query: favourites')
+  } else if (route.query.fromShop === 'true') {
+    navigationSource.value = 'shop'
+    sessionStorage.setItem('productNavSource', 'shop')
+    console.log('📍 Set navigation source from query: shop')
+  } else if (route.query.fromProductsPage === 'true') {
+    navigationSource.value = 'products'
+    sessionStorage.setItem('productNavSource', 'products')
+    console.log('📍 Set navigation source from query: products')
+  } else if (storedSource) {
+    // Use stored value if no query param (e.g., coming back from shop)
+    navigationSource.value = storedSource
+    console.log('📍 Restored navigation source from storage:', storedSource)
+  } else {
+    navigationSource.value = null
+    console.log('📍 No navigation source found')
+  }
+  
+  console.log('📍 Final navigation source:', navigationSource.value)
+  console.log('📍 Route query:', route.query)
   
   // ✅ Add this: Load user favorites
   onAuthStateChanged(auth, async (firebaseUser) => {
@@ -166,6 +238,33 @@ onMounted(async () => {
     }
   }
 })
+
+// ✅ Clean up sessionStorage when component is destroyed (user navigates away from product page)
+onBeforeUnmount(() => {
+  // Only clear if we're not going to another product page
+  const nextRoute = router.currentRoute.value
+  if (!nextRoute.path.includes('/product/')) {
+    sessionStorage.removeItem('productNavSource')
+  }
+})
+
+// ✅ Watch for route changes to update navigation source
+watch(() => route.query, (newQuery) => {
+  console.log('🔄 Route query changed:', newQuery)
+  
+  // Update navigation source if query params change
+  if (newQuery.fromFavourites === 'true') {
+    navigationSource.value = 'favourites'
+    sessionStorage.setItem('productNavSource', 'favourites')
+  } else if (newQuery.fromShop === 'true') {
+    navigationSource.value = 'shop'
+    sessionStorage.setItem('productNavSource', 'shop')
+  } else if (newQuery.fromProductsPage === 'true') {
+    navigationSource.value = 'products'
+    sessionStorage.setItem('productNavSource', 'products')
+  }
+  // Don't clear navigationSource if no query params - it might be stored
+}, { deep: true })
 
 const {
     showImageModal,
@@ -526,6 +625,14 @@ async function handleAddToCart() {
 function closeSuccessModal() {
     showSuccessModal.value = false
 }
+
+console.log('🔍 ProductDetails Route Info:', {
+  fullQuery: route.query,
+  shop: route.query.shop,
+  fromFavourites: route.query.fromFavourites,
+  shopUsername: shopUsername.value,
+  showGoToShop: showGoToShop.value
+})
 </script>
 
 <style scoped>

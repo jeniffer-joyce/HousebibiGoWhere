@@ -813,17 +813,13 @@ function viewAllProducts() {
 }
 
 function goBackToProduct() {
-  if (!route.query.fromProduct) {
-    console.error('No fromProduct in query params')
-    return
-  }
-  
   router.push({
-    name: 'ProductDetails',
-    params: { id: route.query.fromProduct },
+    path: `/product-details/${route.query.fromProduct}`,
     query: {
-      fromProductsPage: true,
-      shop: uid,
+      // ✅ Preserve the ORIGINAL source, not hardcode it
+      ...(route.query.fromFavourites && { fromFavourites: 'true' }),
+      ...(route.query.fromProductsPage && { fromProductsPage: 'true' }),
+      shop: route.params.id,
       productsPage: route.query.productsPage
     }
   })
