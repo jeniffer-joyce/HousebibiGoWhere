@@ -158,12 +158,29 @@
                       : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-md shadow-sm'
                   ]">
                     <p class="text-sm whitespace-pre-wrap break-words">{{ message.text }}</p>
+
+                    <!-- File links (NEW) -->
+                    <div v-if="message.files && message.files.length > 0" class="mt-2 pt-2 border-t border-current border-opacity-20">
+                      <div v-for="file in message.files" :key="file.url" class="flex items-center gap-2 mb-1">
+                        <a 
+                          :href="file.url" 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="flex items-center gap-1 text-xs underline hover:opacity-75">
+                          <span>{{ getFileIcon(file) }}</span>
+                          <span class="truncate">{{ file.name }}</span>
+                        </a>
+                      </div>
+                    </div>
+
+                    <!-- Timestamp -->
                     <p :class="[
                       'text-xs mt-1',
-                      message.senderId === currentBusinessId ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'
+                      message.senderId === currentUserIdRef ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'
                     ]">
                       {{ formatMessageTimeDetailed(message.timestamp || message.createdAt) }}
                     </p>
+
                   </div>
                 </div>
               </div>
@@ -706,35 +723,33 @@ function formatFileSize(bytes) {
 
 // Send message with files
 async function sendMessageWithFiles() {
-  if (!newMessage.value.trim() && selectedFiles.value.length === 0) return;
-  
-  try {
-    sending.value = true;
-    uploadingFiles.value = true;
+    if (!newMessage.value.trim() && selectedFiles.value.length === 0) return
     
-    // For now, just send the text message
-    // TODO: Implement actual file upload to Firebase Storage
-    if (newMessage.value.trim()) {
-      await sendNewMessage(newMessage.value);
+    try {
+        sending.value = true
+        uploadingFiles.value = true
+        
+        await messaging.sendMessageWithFiles(
+            newMessage.value,
+            selectedFiles.value,
+            activeConversationId.value
+        )
+        
+        newMessage.value = ''
+        selectedFiles.value = []
+        showToastNotification('success', 'Files Sent', 'Files uploaded and message sent successfully!')
+        
+        await nextTick()
+        scrollToBottom()
+    } catch (err) {
+        console.error('Error sending message with files:', err)
+        showToastNotification('error', 'Failed to Send', err.message || 'Failed to upload files. Please try again.')
+    } finally {
+        sending.value = false
+        uploadingFiles.value = false
     }
-    
-    // Show success for files (placeholder until actual upload is implemented)
-    if (selectedFiles.value.length > 0) {
-      showToastNotification('info', 'Files Selected', `${selectedFiles.value.length} file(s) selected. File upload will be implemented with Firebase Storage.`);
-    }
-    
-    newMessage.value = '';
-    selectedFiles.value = [];
-    await nextTick();
-    scrollToBottom();
-  } catch (err) {
-    console.error('Error sending message:', err);
-    showToastNotification('error', 'Failed to Send', 'Failed to send message. Please try again.');
-  } finally {
-    sending.value = false;
-    uploadingFiles.value = false;
-  }
 }
+
 
 // Scroll to bottom
 const scrollToBottom = () => {
