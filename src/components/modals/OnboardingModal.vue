@@ -19,10 +19,43 @@
             </div>
           </div>
 
-          <!-- Form -->
-          <form @submit.prevent="handleSubmit" class="flex-1 overflow-y-auto px-8 py-6">
-            <div class="space-y-6">
-              
+          <!-- Form - Now includes footer -->
+          <form @submit.prevent="handleSubmit" class="flex-1 overflow-y-auto flex flex-col">
+            
+            <!-- Form Content -->
+            <div class="px-8 py-6 space-y-6 flex-1">
+              <!-- Business Name (Pre-filled from SingPass) -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Business Name <span class="text-red-500">*</span>
+                </label>
+                <input
+                  v-model="form.businessName"
+                  type="text"
+                  disabled
+                  class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
+                />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  ✓ Verified from your SingPass registration
+                </p>
+              </div>
+
+              <!-- Business Address (Pre-filled from SingPass) -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Business Address <span class="text-red-500">*</span>
+                </label>
+                <input
+                  v-model="form.address"
+                  type="text"
+                  disabled
+                  class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
+                />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  ✓ Verified from your SingPass registration
+                </p>
+              </div>
+
               <!-- Business Category -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -145,18 +178,19 @@
               </div>
 
             </div>
-          </form>
 
-          <!-- Footer -->
-          <div class="flex items-center justify-between gap-3 px-8 py-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-            <button
-              @click="handleSubmit"
-              :disabled="saving || !isFormValid"
-              class="flex items-center gap-2 px-8 py-3 rounded-lg font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              <span v-if="saving" class="material-symbols-outlined animate-spin text-base">progress_activity</span>
-              <span>{{ saving ? 'Saving...' : 'Complete Setup' }}</span>
-            </button>
-          </div>
+            <!-- Footer Button - Now INSIDE the form -->
+            <div class="flex items-center justify-between gap-3 px-8 py-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+              <button
+                type="submit"
+                :disabled="saving || !isFormValid"
+                class="flex items-center gap-2 px-8 py-3 rounded-lg font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                <span v-if="saving" class="material-symbols-outlined animate-spin text-base">progress_activity</span>
+                <span>{{ saving ? 'Saving...' : 'Complete Setup' }}</span>
+              </button>
+            </div>
+
+          </form>
 
         </div>
       </div>
@@ -164,10 +198,11 @@
   </Teleport>
 </template>
 
+
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { db, auth, storage } from '@/firebase/firebase_config.js'
-import { doc, updateDoc, getDoc } from 'firebase/firestore'
+import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore'
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { user } from '@/store/user.js'
 import { markBusinessAsRegistered } from '@/firebase/services/singpassVerification.js'
@@ -175,17 +210,52 @@ import { useToast } from '@/composables/useToast'
 const { success, error:toastError } = useToast()
 
 const props = defineProps({
-  show: Boolean
+  show: Boolean,
+  verifiedData: Object // Keep existing prop
 })
+
+const prefilledData = computed(() => {
+  if (props.verifiedData) {
+    return props.verifiedData
+  }
+  // ✅ Fallback to store onboarding data from signup
+  return user.onboardingData || {}
+})
+
 
 const emit = defineEmits(['close', 'complete'])
 
 const form = reactive({
+  businessName: '', // ✅ ADD THIS
   category: '',
   bio: '',
   description: '',
+  address: '', // ✅ ADD THIS
   profilePic: null
 })
+
+// ✅ ADD THIS - Initialize form with prefilled data
+// ✅ BETTER INITIALIZATION in onMounted
+onMounted(() => {
+  console.log('🔍 PrefilledData:', prefilledData.value)
+  
+  if (prefilledData.value) {
+    // Try multiple possible keys for business name
+    form.businessName = 
+      prefilledData.value.businessName || 
+      prefilledData.value.name || 
+      prefilledData.value.companyName || 
+      ''
+    
+    // For address, use the pre-built full address if available
+    form.address = prefilledData.value.address || ''
+    
+    console.log('✅ Form initialized - businessName:', form.businessName)
+    console.log('✅ Form initialized - address:', form.address)
+  }
+})
+
+
 
 const logoPreview = ref(null)
 const logoFileName = ref('')
@@ -195,8 +265,14 @@ const uploadProgress = ref(0)
 const saving = ref(false)
 
 const isFormValid = computed(() => {
-  return form.category && form.bio.trim().length > 0
+  return (
+    form.businessName && 
+    form.businessName.trim().length > 0 && 
+    form.category && 
+    form.bio.trim().length > 0
+  )
 })
+
 
 async function handleLogoUpload(event) {
   const file = event.target.files?.[0]
@@ -268,82 +344,139 @@ function clearLogo() {
 }
 
 async function handleSubmit() {
+  console.log('🔍 === HANDLESUBMIT CALLED ===')
+  console.log('📋 isFormValid.value:', isFormValid.value)
+  
   if (!isFormValid.value) {
+    console.log('❌ VALIDATION FAILED - form is not valid')
     toastError('Please fill in all required fields')
     return
   }
 
+  console.log('✅ Validation passed, proceeding with submission...')
   saving.value = true
 
   try {
-    const uid = auth.currentUser.uid
+    console.log('🔍 Checking authentication...')
+    if (!auth.currentUser) {
+      console.log('❌ NO AUTHENTICATED USER - STOPPING')
+      toastError('You must be logged in')
+      saving.value = false
+      return
+    }
 
+    const uid = auth.currentUser.uid
+    console.log('✅ User authenticated, UID:', uid)
+
+    // ✅ FETCH USER DATA FIRST (before using it)
+    const userDoc = await getDoc(doc(db, 'users', uid))
+    if (!userDoc.exists()) {
+      throw new Error('User document not found')
+    }
+    const userData = userDoc.data()
+    console.log('👤 User document found:', userData)
+
+    // ✅ NOW build updates object with all data
     const updates = {
+      uid: uid,
+      account_type: 'seller',
+      name: form.businessName || userData.username || '',
       category: form.category.trim(),
       bio: form.bio.trim(),
       description: form.description.trim(),
-      featured: false
+      address: form.address || '',
+      featured: false,
+      verified: false,
+      followers: 0,
+      following: 0,
+      rating: 0,
+      uen: userData.uen || prefilledData.value?.uen || '',
+      createdAt: new Date(),
+      updatedAt: new Date()
     }
 
     if (form.profilePic) {
       updates.profilePic = form.profilePic
+      console.log('📸 Profile picture included')
     }
 
-    console.log('💾 Updating business profile:', updates)
-    await updateDoc(doc(db, 'businesses', uid), updates)
-    console.log('✅ Business profile updated successfully')
-
-    // Get user data
-    console.log('📥 Fetching user document for UID:', uid)
-    const userDoc = await getDoc(doc(db, 'users', uid))
+    console.log('💾 ABOUT TO CALL SETDOC')
+    console.log('📍 Document path: businesses/' + uid)
+    console.log('📊 Data to write:', JSON.stringify(updates, null, 2))
     
-    if (userDoc.exists()) {
-      const userData = userDoc.data()
-      
-      // ✅ DEBUG: Log the entire user document
-      console.log('👤 Full user document:', userData)
-      console.log('🆔 NRIC value:', userData.nric)
-      console.log('🆔 NRIC type:', typeof userData.nric)
-      
-      if (userData.nric) {
-        try {
-          const normalizedNric = userData.nric.trim().toUpperCase()
-          console.log('🔗 Calling markBusinessAsRegistered with NRIC:', normalizedNric)
-          console.log('📤 User data being sent:', {
-            uid: uid,
-            email: userData.email || auth.currentUser.email,
-            username: userData.username
-          })
-          
-          const result = await markBusinessAsRegistered(normalizedNric, {
-            uid: uid,
-            email: userData.email || auth.currentUser.email,
-            username: userData.username
-          })
-          
-          console.log('✅ markBusinessAsRegistered result:', result)
-        } catch (verificationError) {
-          console.error('❌ Error updating SingPass verification:', verificationError)
-          console.error('❌ Error stack:', verificationError.stack)
-        }
-      } else {
-        console.error('❌ NO NRIC FOUND IN USER DOCUMENT!')
-        console.error('Available fields:', Object.keys(userData))
+    // Call setDoc
+    await setDoc(doc(db, 'businesses', uid), updates, { merge: true })
+    
+    console.log('✅ SETDOC COMPLETED')
+
+    // ✅ VERIFY THE DOCUMENT ACTUALLY EXISTS
+    console.log('🔍 VERIFYING document exists in Firestore...')
+    const verifyDoc = await getDoc(doc(db, 'businesses', uid))
+    
+    if (verifyDoc.exists()) {
+      console.log('✅✅✅ VERIFIED: Document exists! Data:', verifyDoc.data())
+    } else {
+      console.log('❌❌❌ VERIFICATION FAILED: Document does NOT exist in Firestore!')
+      throw new Error('Document creation failed - document not found after setDoc')
+    }
+
+    // Try to mark SingPass as registered if NRIC exists
+    if (userData.nric) {
+      try {
+        const normalizedNric = userData.nric.trim().toUpperCase()
+        console.log('🔗 Calling markBusinessAsRegistered with NRIC:', normalizedNric)
+        
+        const result = await markBusinessAsRegistered(normalizedNric, {
+          uid: uid,
+          email: userData.email || auth.currentUser.email,
+          username: userData.username
+        })
+        
+        console.log('✅ markBusinessAsRegistered succeeded:', result)
+      } catch (verificationError) {
+        console.error('⚠️ Error updating SingPass verification:', verificationError.message)
+        // Don't throw - continue even if SingPass marking fails
       }
     } else {
-      console.error('❌ User document does not exist!')
+      console.warn('⚠️ NO NRIC FOUND IN USER DOCUMENT')
     }
 
-    console.log('✅ All updates complete, reloading page...')
+    console.log('✅✅✅ ALL UPDATES COMPLETE ✅✅✅')
+    
+    // ✅ CLEAR ONBOARDING FLAG
+    user.needsOnboarding = false
+    user.onboardingData = null
+    
+    success('✅ Business profile created successfully!')
+    
+    console.log('⏰ WAITING 2 SECONDS BEFORE RELOAD...')
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    console.log('⏰ NOW RELOADING PAGE...')
     window.location.reload()
 
   } catch (error) {
-    console.error('❌ Error updating business profile:', error)
-    console.error('❌ Error stack:', error.stack)
-    toastError('Failed to update profile. Please try again.')
+    console.error('❌❌❌ ERROR IN HANDLESUBMIT ❌❌❌')
+    console.error('Error message:', error.message)
+    console.error('Error:', error)
+    
+    let userMessage = 'Failed to create business profile. '
+    if (error.code === 'permission-denied') {
+      userMessage += 'Permission denied - check Firestore rules.'
+    } else if (error.message) {
+      userMessage += error.message
+    } else {
+      userMessage += 'Please try again.'
+    }
+    
+    toastError(userMessage)
     saving.value = false
   }
 }
+
+
+
+
 
 function skipForNow() {
   const confirmed = confirm('Are you sure you want to skip? You can complete your profile later in settings.')

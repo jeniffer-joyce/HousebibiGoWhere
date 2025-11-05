@@ -1,21 +1,21 @@
 <template>
-    <section class="space-y-4">
+    <section class="space-y-4 px-2 sm:px-0">
       <!-- Header -->
-      <header class="flex items-center justify-between">
+      <header class="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
         <div>
-          <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Return / Refund Requests</h2>
-          <p class="text-sm text-slate-500 dark:text-slate-400">
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Return / Refund Requests</h2>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             Review and respond to buyers' refund or return requests.
           </p>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <!-- Search -->
           <div class="relative">
             <input
               v-model.trim="queryStr"
               type="text"
-              class="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm
+              class="w-full sm:w-72 rounded-md border border-slate-300 px-3 py-2 text-sm
                      bg-white text-slate-800 placeholder:text-slate-400
                      dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
               placeholder="Search by product name or order #"
@@ -41,8 +41,8 @@
         </div>
       </header>
 
-      <!-- Table -->
-     <div class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <!-- Desktop Table (hidden on mobile) -->
+     <div class="hidden lg:block rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
         <!-- Header row -->
         <div
         class="grid grid-cols-12 gap-3 border-b px-4 py-3 text-sm font-semibold
@@ -221,12 +221,149 @@
         </div>
       </div>
 
+      <!-- Mobile Card Layout (visible on mobile only) -->
+      <div class="lg:hidden space-y-3">
+        <!-- Empty / Loading -->
+        <div v-if="loading" class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+          Loading requests…
+        </div>
+        <div v-else-if="paged.length === 0" class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+          No requests found
+        </div>
+
+        <!-- Card per request -->
+        <div
+          v-else
+          v-for="r in paged"
+          :key="r.id"
+          class="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 space-y-3"
+        >
+          <!-- Product Info -->
+          <div class="flex gap-3">
+            <img 
+              :src="findProductImg(r)"
+              alt=""
+              class="h-16 w-16 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700 flex-shrink-0" 
+            />
+            <div class="min-w-0 flex-1">
+              <div class="font-medium text-sm leading-tight text-slate-900 dark:text-white break-words">
+                {{ findProductName(r) }}
+              </div>
+              <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Order #{{ r.orderId }}
+              </div>
+              <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                Products: {{ (r.products || []).length }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span class="text-slate-500 dark:text-slate-400">Amount:</span>
+              <span class="ml-1 font-semibold text-slate-900 dark:text-white">
+                S${{ Number(r.returnRequestSummary?.amount ?? 0).toFixed(2) }}
+              </span>
+            </div>
+            <div>
+              <span class="text-slate-500 dark:text-slate-400">Solution:</span>
+              <span class="ml-1 font-medium text-slate-900 dark:text-white">
+                {{ solutionLabel(r.returnRequestSummary?.solution) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Status Badge -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span 
+              class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
+              :class="statusClass(r.returnRequestSummary?.state)"
+            >
+              {{ capitalizeStatus(r.returnRequestSummary?.state || 'pending') }}
+            </span>
+            
+            <span class="inline-block rounded-full px-2 py-1 text-xs font-semibold
+                         bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              {{ formatDate(r.returnRequestSummary?.requestedAt) }}
+            </span>
+          </div>
+
+          <!-- View Items Toggle -->
+          <button 
+            class="text-xs text-blue-700 dark:text-blue-300 hover:underline font-medium"
+            @click="toggleExpand(r.id)"
+          >
+            {{ expanded[r.id] ? 'Hide items' : `View items (${(r.products||[]).length})` }}
+          </button>
+
+          <!-- Expanded items -->
+          <div
+            v-if="expanded[r.id]"
+            class="rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/40 p-3 space-y-2"
+          >
+            <div
+              v-for="(p, i) in (r.products||[])"
+              :key="i"
+              class="text-xs space-y-1 pb-2 border-b border-slate-200 dark:border-slate-700 last:border-0 last:pb-0"
+            >
+              <div class="font-medium text-slate-800 dark:text-slate-200">{{ p.item_name || p.name }}</div>
+              <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                <span>Variant: {{ p.size || p.variant || '-' }}</span>
+                <span>Qty: {{ p.quantity ?? p.qty ?? 1 }}</span>
+              </div>
+              <div class="text-right font-semibold text-slate-900 dark:text-white">
+                S${{ Number(p.price || 0).toFixed(2) }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex flex-col gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <!-- Pending -->
+            <template v-if="r.returnRequestSummary?.state === 'pending'">
+              <button 
+                @click="openConfirm(r,'approved')"
+                class="w-full rounded-md bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700"
+              >
+                Approve
+              </button>
+              <button 
+                @click="openConfirm(r,'declined')"
+                class="w-full rounded-md bg-red-600 px-3 py-2 text-sm text-white hover:bg-red-700"
+              >
+                Decline
+              </button>
+            </template>
+
+            <!-- Approved / Declined -->
+            <template v-else>
+              <button 
+                @click="openDecisionDetails(r)"
+                class="w-full rounded-md bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+              >
+                View Details
+              </button>
+
+              <button 
+                @click="openBuyerDetails(r)"
+                class="w-full rounded-md border px-3 py-2 text-sm
+                       border-slate-300 text-slate-700 hover:bg-slate-50
+                       dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
+              >
+                View Buyer Info
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+
       <!-- Pagination -->
       <div
         v-if="!loading && filtered.length > 0"
-        class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+        class="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-500 dark:text-slate-400"
       >
-        <p>
+        <p class="text-center sm:text-left">
           Showing {{ page }} of {{ totalPages || 1 }} – 
           <span class="font-medium">{{ pageEnd }}</span> of
           <span class="font-medium">{{ filtered.length }}</span> results
@@ -252,17 +389,17 @@
       </div>
     </section>
 
-    <!-- Decision Details Modal (post-approve/decline) -->
+    <!-- Decision Details Modal -->
     <div
       v-if="showDecisionDetails"
-      class="fixed inset-0 z-[70] flex items-center justify-center"
+      class="fixed inset-0 z-[70] flex items-center justify-center p-4"
     >
-      <!-- Dim overlay (no blur) -->
+      <!-- Dim overlay -->
       <div class="absolute inset-0 bg-slate-900/50" @click="showDecisionDetails = false"></div>
 
       <!-- Sheet card -->
       <div
-        class="relative z-[71] w-full max-w-4xl rounded-2xl bg-white p-6 shadow-2xl sm:p-8 dark:bg-slate-800"
+        class="relative z-[71] w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-800"
         @click.stop
       >
         <!-- Header -->
@@ -270,77 +407,73 @@
           <div class="flex items-center gap-3">
             <div
               class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-700
-                      ring-1 ring-blue-100 dark:bg-blue-900/30 dark:text-blue-200 dark:ring-blue-900/40"
+                      ring-1 ring-blue-100 dark:bg-blue-900/30 dark:text-blue-200 dark:ring-blue-900/40 flex-shrink-0"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 3a9 9 0 1 0 9 9A9.01 9.01 0 0 0 12 3Zm1 13h-2v-2h2Zm0-4h-2V7h2Z"/>
               </svg>
             </div>
 
-            <div>
-              <h3 class="text-xl font-semibold text-slate-900 dark:text-white">
+            <div class="min-w-0">
+              <h3 class="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">
                 {{ decisionTitle(selectedDecision) }}
               </h3>
 
               <!-- Subheader pills -->
-              <div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
+              <div class="mt-1 flex flex-wrap items-center gap-2 text-xs sm:text-sm">
                 <span class="rounded-full bg-slate-100 px-2.5 py-0.5 font-medium text-slate-700
-                              dark:bg-slate-700/60 dark:text-slate-200">
+                              dark:bg-slate-700/60 dark:text-slate-200 truncate">
                   Order: {{ selectedDecision?.orderId }}
                 </span>
-                <!-- ❌ removed the duplicate status pill that used to be here -->
               </div>
             </div>
           </div>
 
-          <!-- Right side: status pill + timestamp + Close -->
-          <!-- Right side: Close only (remove status pill here) -->
-          <div class="flex items-center gap-3">
-            <button
-              @click="showDecisionDetails = false"
-              class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50
-                    dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
-            >
-              Close
-            </button>
-          </div>
+          <!-- Close button -->
+          <button
+            @click="showDecisionDetails = false"
+            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50
+                  dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700 flex-shrink-0"
+          >
+            Close
+          </button>
         </div>
 
         <!-- Summary grid -->
-        <div class="mt-6 grid gap-4 md:grid-cols-3">
+        <div class="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
           <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Requested On</p>
-            <p class="mt-1 font-medium text-slate-900 dark:text-white">
+            <p class="mt-1 text-sm font-medium text-slate-900 dark:text-white break-words">
               {{ formatDate(selectedDecision?.returnRequestSummary?.requestedAt) }}
             </p>
           </div>
 
           <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Solution</p>
-            <p class="mt-1 font-medium text-slate-900 dark:text-white">
+            <p class="mt-1 text-sm font-medium text-slate-900 dark:text-white">
               {{ solutionLabel(selectedDecision?.returnRequestSummary?.solution) }}
             </p>
           </div>
 
-          <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+          <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:col-span-2 md:col-span-1">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Status</p>
 
-            <!-- Single pill: “Accepted at …” or “Declined at …” -->
+            <!-- Single pill -->
             <div
               class="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold"
               :class="decisionPillClass"
             >
-              <span class="h-2 w-2 rounded-full" :class="decisionDotClass"></span>
-              <span>
+              <span class="h-2 w-2 rounded-full flex-shrink-0" :class="decisionDotClass"></span>
+              <span class="truncate">
                 {{ decisionVerb }}: {{ reviewedAtStr || '—' }}
               </span>
             </div>
           </div>
         </div>
 
-        <!-- Products (first product shown for context) -->
+        <!-- Products -->
         <div class="mt-6 rounded-xl border border-slate-200 dark:border-slate-700">
-          <div class="flex items-center justify-between border-b border-slate-200 px-4 py-2.5 text-sm font-semibold
+          <div class="flex items-center justify-between border-b border-slate-200 px-4 py-2.5 text-xs sm:text-sm font-semibold
                       text-slate-900 dark:border-slate-700 dark:text-white">
             <span>Product</span>
             <span class="text-slate-500 dark:text-slate-400">Amount</span>
@@ -349,16 +482,16 @@
             <div class="flex min-w-0 items-center gap-3">
               <img
                 :src="findProductImg(selectedDecision)"
-                class="h-14 w-14 flex-none rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                class="h-12 w-12 sm:h-14 sm:w-14 flex-none rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700"
               />
               <div class="min-w-0">
-                <p class="truncate font-medium text-slate-900 dark:text-white">
+                <p class="truncate text-sm font-medium text-slate-900 dark:text-white">
                   {{ findProductName(selectedDecision) }}
                 </p>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Order: {{ selectedDecision?.orderId }}</p>
               </div>
             </div>
-            <div class="font-semibold text-slate-900 dark:text-white">
+            <div class="text-sm font-semibold text-slate-900 dark:text-white flex-shrink-0">
               S${{ Number(selectedDecision?.returnRequestSummary?.amount ?? 0).toFixed(2) }}
             </div>
           </div>
@@ -374,18 +507,18 @@
         <div v-else-if="selectedDecision?.returnRequestSummary?.state === 'declined'" class="mt-6">
           <div class="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/40 dark:bg-rose-900/20">
             <p class="text-sm font-semibold text-rose-700 dark:text-rose-200">Decline Reason (Seller)</p>
-            <p class="mt-1 text-sm text-rose-800 dark:text-rose-100">
+            <p class="mt-1 text-sm text-rose-800 dark:text-rose-100 break-words">
               {{ selectedDecision?.returnRequestSummary?.declineReason }}
             </p>
-            <div class="mt-3 flex flex-wrap gap-2">
-            <img
-              v-for="(img, idx) in selectedDecision?.returnRequestSummary?.declineEvidenceUrls || []"
-              :key="idx"
-              :src="img"
-              @click="openImageModal(img)"
-              class="h-20 w-20 cursor-pointer rounded-md object-cover ring-1 ring-rose-200 transition hover:scale-[1.05] hover:ring-rose-400 dark:ring-rose-900/40"
-            />
-          </div>
+            <div class="mt-3 grid grid-cols-3 sm:grid-cols-4 gap-2">
+              <img
+                v-for="(img, idx) in selectedDecision?.returnRequestSummary?.declineEvidenceUrls || []"
+                :key="idx"
+                :src="img"
+                @click="openImageModal(img)"
+                class="aspect-square cursor-pointer rounded-md object-cover ring-1 ring-rose-200 transition hover:scale-[1.05] hover:ring-rose-400 dark:ring-rose-900/40"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -394,20 +527,20 @@
     <!-- Buyer Details Modal -->
     <div
       v-if="showBuyerDetails"
-      class="fixed inset-0 z-[80]"
+      class="fixed inset-0 z-[80] p-4"
       @keydown.esc="showBuyerDetails = false"
     >
       <!-- Modal -->
       <div
-        class="details-zoom mx-auto mt-16 w-[min(980px,93vw)] rounded-2xl bg-white p-0 shadow-2xl ring-1 ring-black/5 dark:bg-slate-900"
+        class="details-zoom mx-auto mt-8 sm:mt-16 w-full max-w-[980px] max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-0 shadow-2xl ring-1 ring-black/5 dark:bg-slate-900"
         role="dialog"
         aria-modal="true"
       >
         <!-- Header -->
-        <div class="flex items-center justify-between gap-4 border-b border-slate-200/80 px-6 py-4 dark:border-slate-700/60">
+        <div class="flex items-center justify-between gap-4 border-b border-slate-200/80 px-4 sm:px-6 py-4 dark:border-slate-700/60">
           <div class="flex min-w-0 items-center gap-4">
             <div class="min-w-0">
-              <h3 class="truncate text-lg font-semibold text-slate-900 dark:text-white">
+              <h3 class="truncate text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
                 Buyer Details
               </h3>
               <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
@@ -431,16 +564,16 @@
           <button
             @click="showBuyerDetails = false"
             class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50
-                   dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                   dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800 flex-shrink-0"
           >
             Close
           </button>
         </div>
 
         <!-- Body -->
-        <div class="px-6 pb-6 pt-5">
+        <div class="px-4 sm:px-6 pb-6 pt-5">
           <!-- Info cards -->
-          <div class="grid gap-4 sm:grid-cols-3">
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
               <p class="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Requested On</p>
               <p class="mt-1 font-semibold text-slate-900 dark:text-white">
@@ -703,10 +836,9 @@
 </template>
 
 <script setup>
-import { getAuth } from 'firebase/auth'
 import { ref, computed, onMounted, onBeforeUnmount, reactive, watch } from 'vue'
 import { auth, db, storage } from '@/firebase/firebase_config'
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import {
   collection, query as fsQuery, where, orderBy, onSnapshot,
   doc, updateDoc, Timestamp, getDoc

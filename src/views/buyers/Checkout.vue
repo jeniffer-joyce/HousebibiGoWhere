@@ -2,13 +2,12 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { db, auth } from "@/firebase/firebase_config"
-import { doc, getDoc, setDoc, onSnapshot, updateDoc, arrayRemove, collection, getDocs } from "firebase/firestore"
+import { doc, getDoc, setDoc, onSnapshot, updateDoc, arrayRemove, collection, getDocs, addDoc } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 import { getFunctions, httpsCallable } from "firebase/functions"
 import { stripePromise } from '@/firebase/services/stripe'
-import Loading from '@/components/status/Loading.vue';
-import { useToast } from '@/composables/useToast.js';
-
+import Loading from '@/components/status/Loading.vue'
+import { useToast } from '@/composables/useToast.js'
 
 const router = useRouter()
 const currentUser = ref(null)
@@ -17,7 +16,7 @@ const cartItems = ref([])
 const selectedItems = ref(new Set())
 const loading = ref(true)
 const shopProfilePics = ref({})
-const stockWarnings = ref(new Map()) // Map of cartItemId to actual available stock
+const stockWarnings = ref(new Map())
 
 // Shipping fee constant
 const SHIPPING_FEE = 1.99
@@ -25,13 +24,13 @@ const SHIPPING_FEE = 1.99
 // Payment processing state
 const processingPayment = ref(false)
 const savedCards = ref([])
-const selectedCardIndex = ref(null) // null means "enter new card at Stripe"
+const selectedCardIndex = ref(null)
 const useNewCard = ref(true)
 
 // Address modal state
 const showAddressModal = ref(false)
 const editAddressIndex = ref(-1)
-const selectedAddressIndex = ref(0) // Default to first address
+const selectedAddressIndex = ref(0)
 const savingAddress = ref(false)
 const addressError = ref('')
 
@@ -45,6 +44,7 @@ const addressForm = ref({
     type: '',
     makeDefault: false,
 })
+
 const touched = ref({
     fullName: false,
     phone: false,
@@ -52,6 +52,23 @@ const touched = ref({
     street: false,
     type: false
 })
+
+// ✅ CARD MODAL STATE
+const showCardModal = ref(false)
+const cardForm = ref({
+  cardholderName: '',
+  cardNumber: '',
+  expiryDate: '',
+  brand: 'Card',
+  last4: '',
+})
+const cardTouched = ref({
+  cardholderName: false,
+  cardNumber: false,
+  expiryDate: false,
+})
+const savingCard = ref(false)
+const cardFormError = ref('')
 
 // Auth state
 onAuthStateChanged(auth, (user) => {
@@ -67,35 +84,34 @@ onAuthStateChanged(auth, (user) => {
 
 // Load user data including addresses and payment methods
 async function loadUserData() {
-  if (!currentUser.value) return;
+  if (!currentUser.value) return
 
   try {
-    const userDoc = await getDoc(doc(db, 'users', currentUser.value.uid));
+    const userDoc = await getDoc(doc(db, 'users', currentUser.value.uid))
     if (userDoc.exists()) {
-      userDetails.value = userDoc.data();
+      userDetails.value = userDoc.data()
 
       // Fetch saved cards from subcollection 'payment_methods'
-      const paymentMethodsCol = collection(db, 'users', currentUser.value.uid, 'payment_methods');
-      const paymentSnap = await getDocs(paymentMethodsCol);
-      savedCards.value = paymentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log('Fetched saved cards:', savedCards.value);
-
+      const paymentMethodsCol = collection(db, 'users', currentUser.value.uid, 'payment_methods')
+      const paymentSnap = await getDocs(paymentMethodsCol)
+      savedCards.value = paymentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      console.log('Fetched saved cards:', savedCards.value)
 
       // Set default card if available
-      const defaultCardIndex = savedCards.value.findIndex(c => c.isDefault);
+      const defaultCardIndex = savedCards.value.findIndex(c => c.isDefault)
       if (defaultCardIndex !== -1) {
-        selectedCardIndex.value = defaultCardIndex;
-        useNewCard.value = false;
+        selectedCardIndex.value = defaultCardIndex
+        useNewCard.value = false
       }
 
       // Find default address or use first one
       if (userDetails.value.addresses && userDetails.value.addresses.length > 0) {
-        const defaultIdx = userDetails.value.addresses.findIndex(a => a.default === 1);
-        selectedAddressIndex.value = defaultIdx !== -1 ? defaultIdx : 0;
+        const defaultIdx = userDetails.value.addresses.findIndex(a => a.default === 1)
+        selectedAddressIndex.value = defaultIdx !== -1 ? defaultIdx : 0
       }
     }
   } catch (error) {
-    console.error('Error loading user data:', error);
+    console.error('Error loading user data:', error)
   }
 }
 
@@ -113,7 +129,6 @@ async function loadCart() {
                 const items = docSnap.data().items || []
                 cartItems.value = items
 
-                // Only select items that were selected in cart
                 // Get selected items from route state or session storage
                 const selectedFromCart = history.state?.selectedItems ||
                     JSON.parse(sessionStorage.getItem('checkoutItems') || '[]')
@@ -121,7 +136,6 @@ async function loadCart() {
                 if (selectedFromCart.length > 0) {
                     selectedFromCart.forEach(itemId => selectedItems.value.add(itemId))
                 } else {
-                    // If no items passed, redirect back to cart
                     router.push('/cart')
                     return
                 }
@@ -164,11 +178,9 @@ async function validateCartStock() {
 
     for (const item of selectedCartItems.value) {
         try {
-            // Fetch the current product document
             const productDoc = await getDoc(doc(db, 'products', item.productId))
 
             if (!productDoc.exists()) {
-                // Product no longer exists
                 stockWarnings.value.set(item.cartItemId, { available: 0, requested: item.quantity })
                 continue
             }
@@ -176,16 +188,12 @@ async function validateCartStock() {
             const productData = productDoc.data()
             let actualStock = 0
 
-            // Check if product has variations (sizes)
             if (item.availableSizes && item.availableSizes.length > 0 && item.sizeIndex !== undefined) {
-                // Product with variations - check specific size stock from 'quantity' field
                 actualStock = productData.quantity?.[item.sizeIndex] || 0
             } else {
-                // Simple product - check main stock from 'quantity' field
                 actualStock = productData.quantity || 0
             }
 
-            // If requested quantity exceeds available stock, add warning
             if (item.quantity > actualStock) {
                 stockWarnings.value.set(item.cartItemId, {
                     available: actualStock,
@@ -254,17 +262,75 @@ const hasStockWarnings = computed(() => {
     return stockWarnings.value.size > 0
 })
 
-// Get card brand
-function getCardBrand(number) {
-  if (!number || typeof number !== 'string') {
-    return 'generic';
+// ✅ CARD UTILITIES
+function luhnOk(num) {
+  const s = (num || '').replace(/\D/g, '')
+  if (s.length !== 16) return false
+  let sum = 0, alt = false
+  for (let i = s.length - 1; i >= 0; i--) {
+    let n = parseInt(s[i], 10)
+    if (alt) { n *= 2; if (n > 9) n -= 9 }
+    sum += n; alt = !alt
   }
-  const cleanNumber = number.replace(/\s/g, '');
-  if (cleanNumber.startsWith('4')) return 'visa';
-  if (/^5[1-5]/.test(cleanNumber)) return 'mastercard';
-  return 'generic';
+  return sum % 10 === 0
 }
 
+function detectBrand(num) {
+  const s = (num || '').replace(/\D/g, '')
+  if (/^4/.test(s)) return 'Visa'
+  if (/^5[1-5]/.test(s) || /^2(2[2-9]|[3-6]|7[01]|720)/.test(s)) return 'Mastercard'
+  if (/^3[47]/.test(s)) return 'American Express'
+  if (/^6(?:011|5)/.test(s)) return 'Discover'
+  return 'Card'
+}
+
+function formatCardNumber() {
+  let digits = (cardForm.value.cardNumber || '').replace(/\D/g, '')
+  digits = digits.substring(0, 16)
+  cardForm.value.cardNumber = digits.replace(/(.{4})/g, '$1 ').trim()
+  cardForm.value.brand = detectBrand(digits)
+}
+
+function formatExpiryDate() {
+  let value = cardForm.value.expiryDate.replace(/\D/g, '')
+  if (value.length >= 2) {
+    value = value.substring(0, 2) + '/' + value.substring(2, 4)
+  }
+  cardForm.value.expiryDate = value
+}
+
+// ✅ CARD VALIDATION
+const cardValid = {
+  get cardholderName() {
+    return (cardForm.value.cardholderName || '').trim().length > 0
+  },
+  get cardNumber() {
+    return luhnOk(cardForm.value.cardNumber)
+  },
+  get expiry() {
+    const exp = cardForm.value.expiryDate
+    if (!exp || !exp.includes('/')) return false
+    
+    const [month, year] = exp.split('/')
+    const m = parseInt(month, 10)
+    const y = parseInt('20' + year, 10)
+    
+    if (!m || !y || m < 1 || m > 12) return false
+    
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() + 1
+    
+    if (y < currentYear) return false
+    if (y === currentYear && m < currentMonth) return false
+    
+    return true
+  },
+}
+
+const cardFormValid = computed(() => {
+  return cardValid.cardholderName && cardValid.cardNumber && cardValid.expiry
+})
 
 // Address form validation
 const fullNameValid = computed(() => addressForm.value.fullName.trim().length > 0)
@@ -391,39 +457,114 @@ async function deleteAddress(index) {
     }
 }
 
+// ✅ CARD MODAL FUNCTIONS
+function openCardModal() {
+  showCardModal.value = true
+  cardForm.value = {
+    cardholderName: '',
+    cardNumber: '',
+    expiryDate: '',
+    brand: 'Card',
+    last4: '',
+  }
+  cardTouched.value = {
+    cardholderName: false,
+    cardNumber: false,
+    expiryDate: false,
+  }
+  cardFormError.value = ''
+}
+
+function closeCardModal() {
+  showCardModal.value = false
+}
+
+async function saveCard() {
+  cardTouched.value.cardholderName = true
+  cardTouched.value.cardNumber = true
+  cardTouched.value.expiryDate = true
+  cardFormError.value = ''
+
+  if (!cardFormValid.value) {
+    cardFormError.value = 'Please fill in all fields correctly'
+    return
+  }
+
+  if (!auth.currentUser) {
+    useToast().error('Please log in to save payment methods')
+    return
+  }
+
+  savingCard.value = true
+  try {
+    const digits = (cardForm.value.cardNumber || '').replace(/\D/g, '')
+    const [month, year] = cardForm.value.expiryDate.split('/')
+    const expMonth = parseInt(month, 10)
+    const expYear = parseInt('20' + year, 10)
+
+    // ✅ CHECK IF THERE'S AN EXISTING DEFAULT CARD
+    let hasExistingDefault = false
+    if (savedCards.value && savedCards.value.length > 0) {
+      hasExistingDefault = savedCards.value.some(card => card.isDefault === true)
+    }
+
+    // ✅ IF NO EXISTING DEFAULT, MAKE THIS CARD DEFAULT
+    const isDefault = !hasExistingDefault
+
+    const paymentMethodRef = collection(db, 'users', auth.currentUser.uid, 'payment_methods')
+    
+    await addDoc(paymentMethodRef, {
+      cardholderName: cardForm.value.cardholderName.trim(),
+      brand: detectBrand(digits),
+      last4: digits.slice(-4),
+      expMonth: expMonth,
+      expYear: expYear,
+      isDefault: isDefault, // ✅ USE COMPUTED VALUE
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    useToast().success('Card added successfully!')
+    
+    // Reload saved cards
+    await loadUserData()
+    
+    closeCardModal()
+  } catch (error) {
+    console.error('Error saving card:', error)
+    cardFormError.value = 'Failed to save card. Please try again.'
+  } finally {
+    savingCard.value = false
+  }
+}
+
+
 function formatPrice(price) {
     return `$${price.toFixed(2)}`
 }
 
 // STRIPE PAYMENT INTEGRATION
 async function proceedToPayment() {
-  // Validation checks
   if (!selectedAddress.value) {
-    useToast().error('Please select a delivery address');
-    return;
+    useToast().error('Please select a delivery address')
+    return
   }
 
   if (selectedCartItems.value.length === 0) {
-    useToast().error('No items selected for checkout');
-    return;
+    useToast().error('No items selected for checkout')
+    return
   }
 
   if (hasStockWarnings.value) {
-    useToast().error('Please resolve stock availability issues before proceeding');
-    return;
+    useToast().error('Please resolve stock availability issues before proceeding')
+    return
   }
 
-  processingPayment.value = true;
-
-  // Use safe string slicing with fallback
-  const last4 = selectedCard.value && selectedCard.value.last4
-    ? selectedCard.value.last4.slice(-4)
-    : '';
+  processingPayment.value = true
 
   try {
-    // Prepare items for Stripe with proper size extraction
     const items = selectedCartItems.value.map(item => {
-      let sizeName = item.size || null;
+      let sizeName = item.size || null
       if (
         !sizeName &&
         item.sizeIndex !== null &&
@@ -431,7 +572,7 @@ async function proceedToPayment() {
         item.availableSizes &&
         item.availableSizes.length > 0
       ) {
-        sizeName = item.availableSizes[item.sizeIndex] || null;
+        sizeName = item.availableSizes[item.sizeIndex] || null
       }
 
       return {
@@ -444,62 +585,55 @@ async function proceedToPayment() {
         productId: item.productId,
         sellerId: item.sellerId,
         shopName: item.shopName || item.sellerName || item.businessName || null
-      };
-    });
+      }
+    })
 
-    // Calculate total including shipping
     const itemsTotal = selectedCartItems.value.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
-    );
-    const grandTotal = itemsTotal + SHIPPING_FEE;
+    )
+    const grandTotal = itemsTotal + SHIPPING_FEE
 
     console.log('🛒 Checkout Data:', {
       items,
       itemsTotal,
       shippingFee: SHIPPING_FEE,
       grandTotal,
-      itemsWithSize: items.filter(i => i.size).length,
       deliveryAddress: selectedAddress.value,
-      savedCard: selectedCard.value
-        ? {
-            last4: selectedCard.value.number
-              ? selectedCard.value.number.slice(-4)
-              : '',
-            holderName: selectedCard.value.holderName || ''
-          }
-        : null
-    });
+      savedCard: selectedCard.value ? {
+            last4: selectedCard.value.last4 || '',
+            cardholderName: selectedCard.value.cardholderName || ''
+          } : null
+    })
 
-    // Get current URL for success/cancel redirects
-    const baseUrl = window.location.origin;
+    const baseUrl = window.location.origin
+    const token = await auth.currentUser.getIdToken()
 
-    // Get user auth token
-    const token = await auth.currentUser.getIdToken();
-
-    // Prepare payment data
+    // ✅ FIX: Don't include full items array in metadata
     const paymentData = {
-      items,
+      items, // Pass items separately (not in metadata)
       shippingFee: SHIPPING_FEE,
       totalAmount: grandTotal,
       deliveryAddress: selectedAddress.value,
       successUrl: `${baseUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${baseUrl}/checkout`
-    };
-
-    // Add saved card data if selected
-    if (selectedCard.value) {
-      paymentData.savedCard = {
-        number: selectedCard.value.number || '',
-        expiryDate: selectedCard.value.expiryDate || '',
-        holderName: selectedCard.value.holderName || '',
-        cvv: selectedCard.value.cvv || ''
-      };
+      cancelUrl: `${baseUrl}/checkout`,
+      // ✅ METADATA: Only essential info that won't exceed 500 chars
+      metadata: {
+        itemCount: selectedCartItems.value.length,
+        subtotal: itemsTotal.toFixed(2),
+        total: grandTotal.toFixed(2),
+        userId: auth.currentUser.uid
+      }
     }
 
-    // Call Firebase Function via HTTP request
-    const functionUrl =
-      'https://us-central1-craftconnect-3b52c.cloudfunctions.net/createCheckoutSession';
+    if (selectedCard.value) {
+      paymentData.savedCard = {
+        last4: selectedCard.value.last4 || '',
+        cardholderName: selectedCard.value.cardholderName || ''
+      }
+    }
+
+    const functionUrl = 'https://us-central1-craftconnect-3b52c.cloudfunctions.net/createCheckoutSession'
 
     const response = await fetch(functionUrl, {
       method: 'POST',
@@ -508,30 +642,28 @@ async function proceedToPayment() {
         Authorization: `Bearer ${token}`
       },
       body: JSON.stringify(paymentData)
-    });
+    })
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Payment failed');
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Payment failed')
     }
 
-    const data = await response.json();
-
-    // Redirect to Stripe Checkout
-    window.location.href = data.url;
+    const data = await response.json()
+    window.location.href = data.url
   } catch (error) {
-    console.error('Payment error:', error);
-    useToast().error(error.message || 'Payment failed. Please try again.');
-    processingPayment.value = false;
+    console.error('Payment error:', error)
+    useToast().error(error.message || 'Payment failed. Please try again.')
+    processingPayment.value = false
   }
 }
-
 
 // Cleanup
 onBeforeUnmount(() => {
     if (unsubscribe) unsubscribe()
 })
 </script>
+
 
 <template>
     <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
@@ -574,13 +706,11 @@ onBeforeUnmount(() => {
                             <div class="flex items-start justify-between">
                                 <div class="flex-1">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="font-semibold text-slate-900 dark:text-white">{{ address.fullName
-                                            }}</span>
+                                        <span class="font-semibold text-slate-900 dark:text-white">{{ address.fullName }}</span>
                                         <span v-if="address.default === 1"
                                             class="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">Default</span>
                                         <span
-                                            class="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 capitalize">{{
-                                                address.type }}</span>
+                                            class="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 capitalize">{{ address.type }}</span>
                                     </div>
                                     <p class="text-sm text-slate-600 dark:text-slate-400">{{ address.phone }}</p>
                                     <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">
@@ -620,15 +750,67 @@ onBeforeUnmount(() => {
                         </router-link>
                     </div>
 
-                    <!-- Use New Card Option -->
-                    <div
-                        @click="useNewCard = true"
-                        :class="[
-                            'rounded-lg border-2 p-4 cursor-pointer transition-all mb-3',
-                            useNewCard
-                                ? 'border-primary bg-primary/5 dark:bg-primary/10'
-                                : 'border-slate-200 dark:border-slate-700 hover:border-primary/50'
-                        ]">
+                    <!-- Saved Cards List - SHOWN FIRST -->
+                    <div v-if="savedCards.length > 0" class="space-y-3 mb-4">
+                        <p class="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Your Saved Cards:</p>
+                        <div
+                            v-for="(card, index) in savedCards"
+                            :key="index"
+                            @click="selectedCardIndex = index; useNewCard = false"
+                            class="rounded-lg border-2 p-4 cursor-pointer transition-all"
+                            :class="
+                                !useNewCard && selectedCardIndex === index
+                                    ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                                    : 'border-slate-200 dark:border-slate-700 hover:border-primary/50'
+                            ">
+                            <div class="flex items-center gap-3">
+                                <!-- Card Brand Icon -->
+                                <div class="flex h-10 w-14 items-center justify-center rounded bg-slate-100 dark:bg-slate-700">
+                                    <svg v-if="card.brand === 'Visa'" class="h-6 w-auto" viewBox="0 0 48 32" fill="none">
+                                        <rect width="48" height="32" rx="4" fill="#1434CB" />
+                                        <text x="24" y="20" text-anchor="middle" fill="white" font-family="sans-serif" font-size="12" font-weight="bold">VISA</text>
+                                    </svg>
+                                    <svg v-else-if="card.brand === 'Mastercard'" class="h-6 w-auto" viewBox="0 0 48 32">
+                                        <rect width="48" height="32" rx="4" fill="#EB001B" />
+                                        <circle cx="20" cy="16" r="8" fill="#FF5F00" />
+                                        <circle cx="28" cy="16" r="8" fill="#F79E1B" />
+                                    </svg>
+                                    <svg v-else class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                                    </svg>
+                                </div>
+
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <p class="font-semibold text-slate-900 dark:text-white">
+                                            •••• •••• •••• {{ card.last4 }}
+                                        </p>
+                                        <span v-if="card.isDefault"
+                                            class="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                                            Default
+                                        </span>
+                                    </div>
+                                    <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                        {{ card.cardholderName }}
+                                    </p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                                        Expires {{ String(card.expMonth).padStart(2, '0') }}/{{ String(card.expYear).slice(-2) }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Divider - ONLY SHOWN IF THERE ARE SAVED CARDS -->
+                    <div v-if="savedCards.length > 0" class="my-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+                        <p class="text-xs text-slate-500 dark:text-slate-400 text-center mb-4">OR</p>
+                    </div>
+
+                    <!-- Enter New Card Option -->
+                    <button
+                        @click="openCardModal"
+                        class="w-full rounded-lg border-2 p-4 cursor-pointer transition-all text-left hover:border-primary/50"
+                        :class="useNewCard ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-slate-200 dark:border-slate-700'">
                         <div class="flex items-center gap-3">
                             <div class="flex h-10 w-14 items-center justify-center rounded bg-slate-100 dark:bg-slate-700">
                                 <svg class="h-6 w-6 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -637,52 +819,10 @@ onBeforeUnmount(() => {
                             </div>
                             <div>
                                 <p class="font-semibold text-slate-900 dark:text-white">Enter card at checkout</p>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">Pay with a new or different card</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Add and pay with a new card</p>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Saved Cards -->
-                    <div v-if="savedCards.length > 0" class="space-y-3">
-                        <p class="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Or use a saved card:</p>
-                        <div
-                            v-for="(card, index) in savedCards"
-                            :key="index"
-                            @click="selectedCardIndex = index; useNewCard = false"
-                            :class="[
-                                'rounded-lg border-2 p-4 cursor-pointer transition-all',
-                                !useNewCard && selectedCardIndex === index
-                                    ? 'border-primary bg-primary/5 dark:bg-primary/10'
-                                    : 'border-slate-200 dark:border-slate-700 hover:border-primary/50'
-                            ]">
-                            <div class="flex items-center gap-3">
-                                <div class="flex h-10 w-14 items-center justify-center rounded bg-slate-100 dark:bg-slate-700">
-                                    <svg v-if="getCardBrand(card.last4) === 'visa'" class="h-6 w-auto" viewBox="0 0 48 32" fill="none">
-                                        <rect width="48" height="32" rx="4" fill="#1434CB"/>
-                                        <text x="24" y="20" text-anchor="middle" fill="white" font-family="sans-serif" font-size="12" font-weight="bold">VISA</text>
-                                    </svg>
-                                    <svg v-else-if="getCardBrand(card.last) === 'mastercard'" class="h-6 w-auto" viewBox="0 0 48 32">
-                                        <rect width="48" height="32" rx="4" fill="#EB001B"/>
-                                        <circle cx="20" cy="16" r="8" fill="#FF5F00"/>
-                                        <circle cx="28" cy="16" r="8" fill="#F79E1B"/>
-                                    </svg>
-                                    <svg v-else class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                                    </svg>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-semibold text-slate-900 dark:text-white">
-                                        •••• •••• •••• {{ (card.last4 || '').slice(-4) }}
-                                    </p>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ card.holderName }}</p>
-                                </div>
-                                <span v-if="card.isDefault"
-                                    class="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                                    Default
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                    </button>
                 </div>
 
                 <!-- Stock Warnings -->
@@ -698,7 +838,7 @@ onBeforeUnmount(() => {
                             <h3 class="font-semibold text-red-900 dark:text-red-200 mb-2">Stock Availability Issues</h3>
                             <ul class="space-y-1 text-sm text-red-800 dark:text-red-300">
                                 <li v-for="[itemId, warning] in stockWarnings" :key="itemId">
-                                    {{ cartItems.find(i => i.cartItemId === itemId)?.name }}:
+                                    {{ cartItems.find(i => i.cartItemId === itemId)?.item_name }}:
                                     Only {{ warning.available }} available (you requested {{ warning.requested }})
                                 </li>
                             </ul>
@@ -724,7 +864,7 @@ onBeforeUnmount(() => {
 
                     <div class="space-y-4">
                         <div v-for="item in seller.items" :key="item.cartItemId" class="flex gap-4">
-                            <img :src="item.img_url" :alt="item.name"
+                            <img :src="item.img_url" :alt="item.item_name"
                                 class="h-20 w-20 rounded-lg object-cover shrink-0" />
                             <div class="flex-1 min-w-0">
                                 <p class="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
@@ -748,8 +888,7 @@ onBeforeUnmount(() => {
                                 </p>
                                 <p v-else-if="stockWarnings.has(item.cartItemId)"
                                     class="text-xs text-orange-600 dark:text-orange-400 font-medium mt-1">
-                                    ⚠️ Only {{ stockWarnings.get(item.cartItemId).available }} available (you
-                                    have {{ item.quantity }})
+                                    ⚠️ Only {{ stockWarnings.get(item.cartItemId).available }} available (you have {{ item.quantity }})
                                 </p>
 
                                 <div class="flex items-center justify-between mt-1">
@@ -831,20 +970,17 @@ onBeforeUnmount(() => {
                     <form @submit.prevent="saveAddress" class="grid grid-cols-1 gap-4">
                         <!-- Full Name -->
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Full
-                                Name</label>
+                            <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
                             <input v-model.trim="addressForm.fullName" :disabled="savingAddress"
                                 class="w-full rounded-lg border px-3 py-2 text-sm sm:text-base dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                                :class="touched.fullName && !fullNameValid ? 'border-red-500' : ''"
+                                :class="touched.fullName && !fullNameValid ? 'border-red-500' : 'border-slate-300'"
                                 @blur="touched.fullName = true" placeholder="e.g. Sarah Johnson" />
-                            <p v-if="touched.fullName && !fullNameValid" class="text-xs text-red-600 mt-1">Full name is
-                                required.</p>
+                            <p v-if="touched.fullName && !fullNameValid" class="text-xs text-red-600 mt-1">Full name is required.</p>
                         </div>
 
                         <!-- Phone -->
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Phone
-                                Number</label>
+                            <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Phone Number</label>
                             <div class="flex">
                                 <span
                                     class="inline-flex items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm sm:text-base text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -857,42 +993,36 @@ onBeforeUnmount(() => {
                                     :class="touched.phone && !phoneValid ? 'border-red-500' : ''"
                                     @blur="touched.phone = true" placeholder="9xxxxxxx" />
                             </div>
-                            <p v-if="touched.phone && !phoneValid" class="text-xs text-red-600 mt-1">Must start with 8
-                                or 9 and contain exactly 8 digits.</p>
+                            <p v-if="touched.phone && !phoneValid" class="text-xs text-red-600 mt-1">Must start with 8 or 9 and contain exactly 8 digits.</p>
                         </div>
 
                         <!-- Postal Code & Street -->
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Postal
-                                    Code</label>
+                                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Postal Code</label>
                                 <input v-model.trim="addressForm.postalCode" inputmode="numeric" maxlength="6"
                                     :disabled="savingAddress"
                                     class="w-full rounded-lg border px-3 py-2 text-sm sm:text-base dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                                     @input="addressForm.postalCode = (addressForm.postalCode || '').replace(/\D/g, '').slice(0, 6)"
                                     @blur="touched.postal = true"
-                                    :class="touched.postal && !postalValid ? 'border-red-500' : ''"
+                                    :class="touched.postal && !postalValid ? 'border-red-500' : 'border-slate-300'"
                                     placeholder="e.g. 238858" />
-                                <p v-if="touched.postal && !postalValid" class="text-xs text-red-600 mt-1">Enter a valid
-                                    6-digit postal code.</p>
+                                <p v-if="touched.postal && !postalValid" class="text-xs text-red-600 mt-1">Enter a valid 6-digit postal code.</p>
                             </div>
 
                             <div class="sm:col-span-2">
-                                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Street
-                                    / Block</label>
+                                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Street / Block</label>
                                 <input v-model.trim="addressForm.streetName" :disabled="savingAddress"
                                     class="w-full rounded-lg border px-3 py-2 text-sm sm:text-base dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                                     @blur="touched.street = true"
-                                    :class="touched.street && !streetValid ? 'border-red-500' : ''"
+                                    :class="touched.street && !streetValid ? 'border-red-500' : 'border-slate-300'"
                                     placeholder="e.g. 123 Orchard Road" />
-                                <p v-if="touched.street && !streetValid" class="text-xs text-red-600 mt-1">Street /
-                                    Block is required.</p>
+                                <p v-if="touched.street && !streetValid" class="text-xs text-red-600 mt-1">Street / Block is required.</p>
                             </div>
 
                             <!-- Unit Number -->
                             <div class="sm:col-span-3">
-                                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Unit
-                                    Number</label>
+                                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Unit Number</label>
                                 <div class="flex">
                                     <span
                                         class="inline-flex items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">#</span>
@@ -900,34 +1030,30 @@ onBeforeUnmount(() => {
                                         class="w-full rounded-r-lg border border-slate-300 px-3 py-2 text-sm sm:text-base dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                                         @input="sanitizeUnit" placeholder="10-234 (optional)" />
                                 </div>
-                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Digits and one dash only
-                                    (e.g. 10-234).</p>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Digits and one dash only (e.g. 10-234).</p>
                             </div>
                         </div>
 
                         <!-- Type + Default -->
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Address
-                                    Type</label>
+                                <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Address Type</label>
                                 <select v-model="addressForm.type" :disabled="savingAddress"
                                     class="w-full rounded-lg border px-3 py-2 text-sm sm:text-base dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                                    :class="touched.type && !typeValid ? 'border-red-500' : ''"
+                                    :class="touched.type && !typeValid ? 'border-red-500' : 'border-slate-300'"
                                     @blur="touched.type = true">
                                     <option value="" disabled>Select</option>
                                     <option value="home">Home</option>
                                     <option value="work">Work</option>
                                     <option value="others">Others</option>
                                 </select>
-                                <p v-if="touched.type && !typeValid" class="text-xs text-red-600 mt-1">Please choose a
-                                    type.</p>
+                                <p v-if="touched.type && !typeValid" class="text-xs text-red-600 mt-1">Please choose a type.</p>
                             </div>
 
                             <div class="flex items-center gap-2 pt-0 sm:pt-6">
                                 <input id="mkdef" type="checkbox" v-model="addressForm.makeDefault"
                                     class="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" />
-                                <label for="mkdef" class="text-sm text-slate-700 dark:text-slate-300">Set as default
-                                    address</label>
+                                <label for="mkdef" class="text-sm text-slate-700 dark:text-slate-300">Set as default address</label>
                             </div>
                         </div>
 
@@ -935,8 +1061,7 @@ onBeforeUnmount(() => {
                         <div class="mt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                             <button type="submit" :disabled="savingAddress || !addressFormValid"
                                 class="rounded-lg bg-primary px-5 py-2 font-semibold text-white hover:bg-primary/90 disabled:opacity-60 text-sm sm:text-base">
-                                {{ savingAddress ? 'Saving…' : editAddressIndex === -1 ? 'Add Address' : 'Save Changes'
-                                }}
+                                {{ savingAddress ? 'Saving…' : editAddressIndex === -1 ? 'Add Address' : 'Save Changes' }}
                             </button>
                             <button type="button" @click="closeAddressModal"
                                 class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 text-sm sm:text-base">
@@ -948,8 +1073,118 @@ onBeforeUnmount(() => {
                 </div>
             </div>
         </transition>
+
+        <!-- Card Modal -->
+        <transition name="fade">
+            <div
+                v-if="showCardModal"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                @click.self="closeCardModal">
+                <div class="absolute inset-0 bg-black/50"></div>
+                
+                <div class="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900">
+                    <div class="mb-6 flex items-center justify-between">
+                        <h3 class="text-xl font-bold text-slate-900 dark:text-white">
+                            Add Payment Card
+                        </h3>
+                        <button
+                            @click="closeCardModal"
+                            class="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="saveCard" class="space-y-4">
+                        <!-- Cardholder Name -->
+                        <div>
+                            <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                Cardholder Name
+                            </label>
+                            <input
+                                v-model.trim="cardForm.cardholderName"
+                                type="text"
+                                placeholder="John Doe"
+                                @blur="cardTouched.cardholderName = true"
+                                class="w-full rounded-lg border px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                                :class="cardTouched.cardholderName && !cardValid.cardholderName ? 'border-red-500' : 'border-slate-300'"
+                                required
+                            />
+                            <p v-if="cardTouched.cardholderName && !cardValid.cardholderName" class="mt-1 text-xs text-red-600">
+                                Cardholder name is required
+                            </p>
+                        </div>
+
+                        <!-- Card Number -->
+                        <div>
+                            <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                Card Number
+                            </label>
+                            <input
+                                v-model="cardForm.cardNumber"
+                                type="text"
+                                inputmode="numeric"
+                                placeholder="1234 5678 9012 3456"
+                                maxlength="19"
+                                @input="formatCardNumber"
+                                @blur="cardTouched.cardNumber = true"
+                                class="w-full rounded-lg border px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                                :class="cardTouched.cardNumber && !cardValid.cardNumber ? 'border-red-500' : 'border-slate-300'"
+                                required
+                            />
+                            <p v-if="cardTouched.cardNumber && !cardValid.cardNumber" class="mt-1 text-xs text-red-600">
+                                Please enter a valid card number (16 digits)
+                            </p>
+                        </div>
+
+                        <!-- Expiry Date -->
+                        <div>
+                            <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                Expiry Date
+                            </label>
+                            <input
+                                v-model="cardForm.expiryDate"
+                                type="text"
+                                inputmode="numeric"
+                                placeholder="MM/YY"
+                                maxlength="5"
+                                @input="formatExpiryDate"
+                                @blur="cardTouched.expiryDate = true"
+                                class="w-full rounded-lg border px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                                :class="cardTouched.expiryDate && !cardValid.expiry ? 'border-red-500' : 'border-slate-300'"
+                                required
+                            />
+                            <p v-if="cardTouched.expiryDate && !cardValid.expiry" class="mt-1 text-xs text-red-600">
+                                Invalid expiry (MM/YY)
+                            </p>
+                        </div>
+
+                        <!-- Error Message -->
+                        <p v-if="cardFormError" class="text-sm text-red-600">{{ cardFormError }}</p>
+
+                        <!-- Action Buttons -->
+                        <div class="flex gap-3">
+                            <button
+                                type="submit"
+                                :disabled="savingCard"
+                                class="flex-1 rounded-lg bg-primary px-6 py-2.5 font-semibold text-white hover:bg-primary/90 disabled:opacity-50">
+                                {{ savingCard ? 'Saving...' : 'Add Card' }}
+                            </button>
+                            <button
+                                type="button"
+                                @click="closeCardModal"
+                                class="rounded-lg border border-slate-300 px-6 py-2.5 font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </transition>
     </main>
 </template>
+
 
 <style scoped>
 .fade-enter-active,
