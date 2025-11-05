@@ -197,3 +197,22 @@ export const getUserDetails = async (userId) => {
     };
   }
 };
+
+export async function sendMessageWithMetadata(conversationId, messageData) {
+  try {
+    const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+
+    const docData = {
+      text: messageData.text,
+      senderId: messageData.senderId,
+      createdAt: serverTimestamp(),
+      read: false,
+      files: messageData.files  // Store file metadata
+    };
+
+    await addDoc(messagesRef, docData);
+  } catch (error) {
+    console.error('Error sending message with metadata:', error);
+    throw error;
+  }
+}

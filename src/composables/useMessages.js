@@ -1,4 +1,6 @@
 import { ref, computed, onUnmounted } from 'vue';
+import { storage } from '../firebase/firebase_config';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   getUserConversations,
   getConversationMessages,
@@ -7,6 +9,9 @@ import {
   getUserDetails,
   getOrCreateConversation
 } from '../firebase/messageService';
+import { sendMessageWithMetadata } from '../firebase/messageService';
+
+
 
 export function useMessages(currentUserId) {
   const conversations = ref([]);
@@ -91,39 +96,108 @@ export function useMessages(currentUserId) {
     }
   };
 
-  // Create or open conversation with a user
-  const openConversation = async (otherUserId) => {
-    try {
-      loading.value = true;
-      const conversation = await getOrCreateConversation(currentUserId.value, otherUserId);
-      
-      // Check if conversation already exists in list
-      const existingConv = conversations.value.find(c => c.id === conversation.id);
-      
-      if (!existingConv) {
-        // Add user details
-        if (!conversationDetails.value[otherUserId]) {
-          conversationDetails.value[otherUserId] = await getUserDetails(otherUserId);
+    // ✅ Upload files to Firebase Storage
+  const uploadFilesToStorage = async (files, conversationId) => {
+    if (!files || files.length === 0) return [];
+    const uploadedFiles = [];
+    for (const file of files) {
+      try {
+        const timestamp = Date.now();
+        const fileName = `${timestamp}_${file.name}`;
+        const fileRef = storageRef(storage, `chat_files/${conversationId}/${fileName}`);
+        const snapshot = await uploadBytes(fileRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        uploadedFiles.push({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          url: downloadURL,
+          uploadedAt: new Date()
+        });
+        console.log(`✅ File uploaded: ${file.name}`);
+      } catch (err) {
+        console.error(`❌ Error uploading ${file.name}:`, err);
+        throw new Error(`Failed to upload ${file.name}: ${err.message}`);
+      }
+    }
+    return uploadedFiles;
+  };
+
+  // ✅ Send message with files
+  const sendMessageWithFiles = async (messageText, files, conversationId) => {
+  if (!conversationId) {
+    conversationId = activeConversationId.value;
+  }
+  
+  if (!conversationId) {
+    throw new Error('No active conversation');
+  }
+  
+  try {
+    let uploadedFiles = [];
+    if (files && files.length > 0) {
+      uploadedFiles = await uploadFilesToStorage(files, conversationId);
+    }
+    
+    // Build message text
+    // Build message text (without file names since they show as links)
+    let finalMessageText = messageText.trim();
+    // Don't add file names to message text - they'll show as clickable links
+
+    
+    // Create message object with files
+    const messageData = {
+      text: finalMessageText,
+      senderId: currentUserId.value,
+      timestamp: new Date(),
+      files: uploadedFiles.length > 0 ? uploadedFiles : null
+    };
+    
+    // Send message with metadata
+    await sendMessageWithMetadata(conversationId, messageData);
+    
+    return messageData;
+  } catch (err) {
+    error.value = err.message;
+    console.error('Error sending message with files:', err);
+    throw err;
+  }
+  };
+
+
+    // Create or open conversation with a user
+    const openConversation = async (otherUserId) => {
+      try {
+        loading.value = true;
+        const conversation = await getOrCreateConversation(currentUserId.value, otherUserId);
+        
+        // Check if conversation already exists in list
+        const existingConv = conversations.value.find(c => c.id === conversation.id);
+        
+        if (!existingConv) {
+          // Add user details
+          if (!conversationDetails.value[otherUserId]) {
+            conversationDetails.value[otherUserId] = await getUserDetails(otherUserId);
+          }
+          
+          conversations.value.unshift({
+            ...conversation,
+            otherUserId,
+            otherUser: conversationDetails.value[otherUserId],
+            unreadCount: 0
+          });
         }
         
-        conversations.value.unshift({
-          ...conversation,
-          otherUserId,
-          otherUser: conversationDetails.value[otherUserId],
-          unreadCount: 0
-        });
+        loadMessages(conversation.id);
+        loading.value = false;
+        
+        return conversation;
+      } catch (err) {
+        error.value = err.message;
+        loading.value = false;
+        throw err;
       }
-      
-      loadMessages(conversation.id);
-      loading.value = false;
-      
-      return conversation;
-    } catch (err) {
-      error.value = err.message;
-      loading.value = false;
-      throw err;
-    }
-  };
+    };
 
   // Get active conversation
   const activeConversation = computed(() => {
@@ -186,6 +260,8 @@ export function useMessages(currentUserId) {
     loadConversations,
     loadMessages,
     sendNewMessage,
+    sendMessageWithFiles,      // ✅ ADD
+    uploadFilesToStorage,       // ✅ ADD
     openConversation,
     formatMessageTime,
     formatMessageTimeDetailed
