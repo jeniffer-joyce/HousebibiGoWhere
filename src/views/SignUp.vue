@@ -739,17 +739,28 @@ async function onSubmit(){
 
     // ✅ HANDLE BUYER VS SELLER DIFFERENTLY
     if (role.value === 'seller') {
-      console.log('🎯 Triggering onboarding modal...')
+      console.log('🎯 Preparing onboarding data for seller...')
       
-      // Small delay to ensure auth state is fully settled
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // ✅ STORE VERIFIED DATA FOR ONBOARDING MODAL
+      user.onboardingData = {
+        nric: nric.value.trim().toUpperCase(),
+        name: companyName.value.trim(),
+        uen: uen.value.trim(),
+        address: `${unitNo.value.trim() ? unitNo.value.trim() + ', ' : ''}${addressLine.value.trim()}, ${postalCode.value.trim()}`,
+        phone: phone.value.trim(),
+        email: email.value.trim(),
+        username: username.value.trim(),
+        uid: newUser.uid
+      }
+      
+      console.log('📦 Onboarding data stored:', user.onboardingData)
       
       // Set the flag that App.vue watches
       user.needsOnboarding = true
       console.log('✅ needsOnboarding set to:', user.needsOnboarding)
       
-      // Give the watcher time to react
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Small delay to ensure auth state is fully settled
+      await new Promise(resolve => setTimeout(resolve, 500))
       
       // Navigate home where modal will show
       router.push('/')
@@ -777,6 +788,7 @@ async function onSubmit(){
     resetRecaptcha()
   }
 }
+
 
 
 function mapError(err){
