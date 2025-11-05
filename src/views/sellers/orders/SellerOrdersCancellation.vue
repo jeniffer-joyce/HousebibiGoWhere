@@ -303,7 +303,7 @@
     >
       <p class="text-center sm:text-left">
         Showing {{ page }} of {{ totalPages || 1 }} –
-        <span class="font-medium">{{ pageStart }}</span>–<span class="font-medium">{{ pageEnd }}</span> of
+        <span class="font-medium">{{ pageEnd }}</span> of
         <span class="font-medium">{{ sortedRows.length }}</span> results
       </p>
       <div class="flex gap-2">

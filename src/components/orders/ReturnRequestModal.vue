@@ -109,13 +109,21 @@
             <select
               v-model="solution"
               class="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800
-                     px-3 py-2 text-slate-700 dark:text-slate-200"
+                    px-3 py-2 text-slate-700 dark:text-slate-200"
             >
               <option disabled value="">— Select —</option>
-              <option value="refund">Refund</option>
+              <option value="refund">Refund Only</option>
               <option value="return_and_refund">Return & Refund</option>
-              <option value="replacement">Replacement</option>
             </select>
+            
+            <!-- Helper text based on selection -->
+            <div v-if="solution === 'refund'" class="mt-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 p-3 text-xs text-blue-800 dark:text-blue-200">
+              💡 <b>Refund Only:</b> You keep the item and receive a refund. The seller will review your request.
+            </div>
+            <div v-else-if="solution === 'return_and_refund'" class="mt-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-800 dark:text-amber-200">
+              📦 <b>Return & Refund:</b> You must return the item to receive a refund. After approval, you'll have 3 days to drop off at a HouseBiBi Hub.
+            </div>
+            
             <p v-if="showErrors && !solution" class="mt-1 text-xs text-red-600">
               Please choose a solution.
             </p>
@@ -538,9 +546,10 @@ async function submit() {
     // 4) UPDATE parent /orders doc summary + status
     try {
       await updateDoc(doc(db, 'orders', props.order.id), {
-      sellerId: props.order?.sellerId || props.order?.products?.[0]?.sellerId || null,
-      status: 'return_refund',
-      statusLog: arrayUnion({ status:'return_refund', by:'buyer', time: Timestamp.now() }),
+        
+        // ✅ Keep only these fields:
+        status: 'return_refund',
+        statusLog: arrayUnion({ status:'return_refund', by:'buyer', time: Timestamp.now() }),
         returnRequestSummary: {
           id: requestDoc.id,
           reasonKey: reasonKey.value,
