@@ -18,7 +18,7 @@
       :duration="toastState.duration"
       @close="close"
     />
-        <!-- Hide footer on messages page -->
+        <!-- Hide footer on messages pages -->
         <Footer v-if="!isMessagesPage" />
       </template>
     </div>
@@ -53,9 +53,12 @@ const { toastState, close } = useToast()
 
 const showOnboarding = ref(false)
 
-// Check if current page is messages page
+// Check if current page is messages page (buyer or seller)
 const isMessagesPage = computed(() => {
-  return route.path === '/buyer-messages/' || route.path.startsWith('/buyer-messages')
+  return route.path === '/buyer-messages/' || 
+         route.path.startsWith('/buyer-messages') ||
+         route.path === '/seller-messages/' ||
+         route.path.startsWith('/seller-messages')
 })
 
 // Watch for new seller signups that need onboarding
