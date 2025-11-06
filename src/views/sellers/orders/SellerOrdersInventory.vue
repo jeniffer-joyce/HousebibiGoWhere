@@ -800,7 +800,7 @@ async function loadProducts() {
 
 /* ---------------- Display Helpers ---------------- */
 const formatPrice = (p) => {
-  if (!p) return 'S$0.00'
+  if (!p) return '$0.00'
   
   if (Array.isArray(p.price) && p.price.length > 0) {
     const prices = p.price.filter(pr => pr != null).map(pr => Number(pr) || 0)
@@ -808,14 +808,15 @@ const formatPrice = (p) => {
     const max = Math.max(...prices)
     
     if (min === max) {
-      return `S${min.toFixed(2)}`
+      return `$${min.toFixed(2)}`
     }
-    return `S${min.toFixed(2)} - S${max.toFixed(2)}`
+    return `$${min.toFixed(2)} - $${max.toFixed(2)}`
   }
   
   const price = Number(p.price) || 0
-  return `S${price.toFixed(2)}`
+  return `$${price.toFixed(2)}`
 }
+
 
 const stockStatusText = (p) => {
   const stock = p.totalStock || 0
