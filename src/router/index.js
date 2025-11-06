@@ -101,6 +101,7 @@ const routes = [
       { path: 'cancellation',   name: 'SellerOrdersCancellation',  component: () => import('@/views/sellers/orders/SellerOrdersCancellation.vue') },
       { path: 'return-refund',  name: 'SellerOrdersReturnRefund',  component: () => import('@/views/sellers/orders/SellerOrdersReturnRefund.vue') },
       { path: 'inventory',      name: 'SellerOrdersInventory',     component: () => import('@/views/sellers/orders/SellerOrdersInventory.vue') },
+      { path: 'reviews',       name: 'SellerOrdersReviews',      component: () => import('@/views/sellers/orders/SellerOrdersReviews.vue') },
     ]
   },
   {

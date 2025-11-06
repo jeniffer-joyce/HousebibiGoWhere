@@ -95,7 +95,7 @@
               <p class="text-4xl font-bold text-amber-600 dark:text-amber-400">{{ averageRating }}</p>
               <p class="text-xl text-gray-400 dark:text-gray-500 mb-1">/ 5.0</p>
             </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400">From {{ totalReviews }} reviews</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">From {{ totalRatings }} ratings</p>
           </div>
         </div>
       </div>
@@ -330,50 +330,23 @@ const totalReviews = computed(() => {
   return count
 })
 
+const totalRatings = computed(() => {
+  return filteredReviews.value.reduce((acc, r) => {
+    const items = Array.isArray(r.items) ? r.items : []
+    return acc + items.filter(it => Number(it?.rating) > 0).length
+  }, 0)
+})
+
+// average of item-level ratings
 const averageRating = computed(() => {
-  if (totalReviews.value === 0) return '0.0'
-  
-  // Collect all valid ratings from reviews
-  const allRatings = []
-  
-  reviews.value.forEach(review => {
-    // Check if review has items array with ratings
-    if (review.items && Array.isArray(review.items)) {
-      review.items.forEach(item => {
-        if (item.rating && typeof item.rating === 'number' && item.rating >= 1 && item.rating <= 5) {
-          allRatings.push(item.rating)
-        }
-      })
-    }
-    
-    // Also check for top-level rating
-    if (review.rating && typeof review.rating === 'number' && review.rating >= 1 && review.rating <= 5) {
-      allRatings.push(review.rating)
-    }
-    
-    // Check for sellerService rating
-    if (review.sellerService && typeof review.sellerService === 'number' && review.sellerService >= 1 && review.sellerService <= 5) {
-      allRatings.push(review.sellerService)
-    }
-    
-    // Check for delivery rating
-    if (review.delivery && typeof review.delivery === 'number' && review.delivery >= 1 && review.delivery <= 5) {
-      allRatings.push(review.delivery)
-    }
-  })
-  
-  if (allRatings.length === 0) return '0.0'
-  
-  const sum = allRatings.reduce((acc, rating) => acc + rating, 0)
-  const average = sum / allRatings.length
-  
-  console.log('📊 Rating calculation:', {
-    totalReviews: reviews.value.length,
-    allRatings: allRatings,
-    average: average.toFixed(1)
-  })
-  
-  return average.toFixed(1)
+  const all = filteredReviews.value.flatMap(r =>
+    (Array.isArray(r.items) ? r.items : [])
+      .map(it => Number(it?.rating) || 0)
+      .filter(n => n > 0)
+  )
+  if (!all.length) return '0.0'
+  const sum = all.reduce((a, b) => a + b, 0)
+  return (sum / all.length).toFixed(1)
 })
 
 const totalRevenue = computed(() => {
@@ -559,44 +532,22 @@ function prepareCancelledOrdersData() {
   return { labels, data }
 }
 
-function prepareRatingsDistributionData() {
-  const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-  
-  reviews.value.forEach(review => {
-    // Check items array for ratings
-    if (review.items && Array.isArray(review.items)) {
-      review.items.forEach(item => {
-        const rating = Math.round(Number(item.rating) || 0)
-        if (rating >= 1 && rating <= 5) {
-          distribution[rating]++
-        }
-      })
-    }
-    
-    // Also check top-level rating
-    const topRating = Math.round(Number(review.rating) || 0)
-    if (topRating >= 1 && topRating <= 5) {
-      distribution[topRating]++
-    }
-    
-    // Check sellerService rating
-    const serviceRating = Math.round(Number(review.sellerService) || 0)
-    if (serviceRating >= 1 && serviceRating <= 5) {
-      distribution[serviceRating]++
-    }
-    
-    // Check delivery rating
-    const deliveryRating = Math.round(Number(review.delivery) || 0)
-    if (deliveryRating >= 1 && deliveryRating <= 5) {
-      distribution[deliveryRating]++
-    }
-  })
+watch([reviews, selectedTimeRange], () => { createCharts() })
 
-  console.log('📊 Rating distribution:', distribution)
+function prepareRatingsDistributionData() {
+  const dist = { 1:0, 2:0, 3:0, 4:0, 5:0 }
+
+  filteredReviews.value.forEach(r => {
+    const items = Array.isArray(r.items) ? r.items : []
+    items.forEach(it => {
+      const n = Math.round(Number(it?.rating) || 0)
+      if (n >= 1 && n <= 5) dist[n]++
+    })
+  })
 
   return {
     labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
-    data: [distribution[1], distribution[2], distribution[3], distribution[4], distribution[5]]
+    data: [dist[1], dist[2], dist[3], dist[4], dist[5]]
   }
 }
 
@@ -881,6 +832,16 @@ onMounted(async () => {
   themeObserver.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ['class']
+  })
+})
+
+const filteredReviews = computed(() => {
+  if (selectedTimeRange.value === 'all') return reviews.value
+  const days = parseInt(selectedTimeRange.value) // '7d' -> 7, '30d' -> 30
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+  return reviews.value.filter(r => {
+    const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt)
+    return d >= cutoff
   })
 })
 </script>

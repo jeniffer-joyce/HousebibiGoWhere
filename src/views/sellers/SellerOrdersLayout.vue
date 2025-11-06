@@ -23,12 +23,14 @@ const counts = ref({
   completed: 0, 
   cancelled: 0, 
   rr: 0,
-  inventory: 0
+  inventory: 0,
+  reviews: 0,   // 👈 added here so the sidebar can show a badge for Reviews
 })
 
 let stopAuth = null
 let stopOrders = null
 let stopProducts = null
+let stopReviews = null
 
 function recalcOrders(docs, uid) {
   const c = { toShip: 0, shipping: 0, completed: 0, cancelled: 0, rr: 0 }
@@ -51,28 +53,50 @@ function recalcOrders(docs, uid) {
     }
   }
   
-  // Keep existing inventory count
-  counts.value = { ...c, inventory: counts.value.inventory }
+  // ✅ Preserve other counters (inventory, reviews) when orders update
+  counts.value = { ...counts.value, ...c }
 }
 
 // ⭐ Count products for inventory (READ-ONLY, no watcher initialization)
 function recalcProducts(docs) {
-  counts.value.inventory = docs.length
+  counts.value = { ...counts.value, inventory: docs.length }
 }
+
+// ⭐ NEW: Reviews counter (choose one of the two strategies below)
+// Strategy A: count review documents (1 review doc == 1)
+function recalcReviews(docs /*, uid */) {
+  const reviewDocs = docs.length
+  counts.value = { ...counts.value, reviews: reviewDocs }
+}
+
+/* 
+// Strategy B (optional): count total item-level ratings across all reviews instead
+function recalcReviews(docs) {
+  const totalItemRatings = docs.reduce((acc, d) => {
+    const r = d.data() || {}
+    const items = Array.isArray(r.items) ? r.items : []
+    return acc + items.filter(x => Number(x?.rating) > 0).length
+  }, 0)
+  counts.value = { ...counts.value, reviews: totalItemRatings }
+}
+*/
 
 onMounted(() => {
   stopAuth = auth.onAuthStateChanged(user => {
     // clean previous listeners
-    stopOrders?.(); stopOrders = null
+    stopOrders?.();   stopOrders = null
     stopProducts?.(); stopProducts = null
+    stopReviews?.();  stopReviews = null
     
+    // ✅ include reviews in the reset object
     counts.value = { 
       toShip: 0, 
       shipping: 0, 
       completed: 0, 
       cancelled: 0, 
       rr: 0,
-      inventory: 0
+      inventory: 0,
+      reviews: 0
     }
     
     if (!user) return
@@ -96,12 +120,22 @@ onMounted(() => {
     stopProducts = onSnapshot(productsQuery, snap => {
       recalcProducts(snap.docs)
     })
+
+    // ⭐ Stream reviews so the sidebar badge updates live
+    const reviewsQuery = fsQuery(
+      collection(db, 'reviews'),
+      where('sellerId', '==', user.uid)
+    )
+    stopReviews = onSnapshot(reviewsQuery, snap => {
+      recalcReviews(snap.docs, user.uid)
+    })
   })
 })
 
 onBeforeUnmount(() => { 
   stopOrders?.()
   stopProducts?.()
+  stopReviews?.()   // ✅ cleanup reviews listener
   stopAuth?.() 
 })
 </script>
