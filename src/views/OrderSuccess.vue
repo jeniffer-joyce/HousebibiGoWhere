@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { db, auth } from '@/firebase/firebase_config'
-import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, where, getDocs } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore'
 import { useToast } from '@/composables/useToast.js'
 
 const router = useRouter()
@@ -11,15 +11,14 @@ const sessionId = ref('')
 const loading = ref(true)
 const orderCreated = ref(false)
 const error = ref(false)
-const orderProcessingStarted = ref(false)
+let orderProcessingStarted = false
 
 onMounted(async () => {
-  // ✅ CHECK 1: Already processing
-  if (orderProcessingStarted.value) {
-    console.log('⏭️ Already processing, skipping...')
+  if (orderProcessingStarted) {
+    console.log('⏭️ Order already being processed, skipping...')
     return
   }
-  orderProcessingStarted.value = true
+  orderProcessingStarted = true
 
   sessionId.value = route.query.session_id || ''
   
@@ -36,41 +35,15 @@ onMounted(async () => {
       throw new Error('User not authenticated')
     }
 
-    // ✅ CHECK 2: SessionStorage empty = already created
-    const checkoutItemsStr = sessionStorage.getItem('checkoutItems')
-    if (!checkoutItemsStr) {
-      console.log('⏭️ SessionStorage empty (orders already created), showing success...')
-      orderCreated.value = true
-      loading.value = false
-      return
-    }
-
-    const checkoutItems = JSON.parse(checkoutItemsStr || '[]')
+    // ✅ STEP 1: Get full items from sessionStorage
+    const checkoutItems = JSON.parse(sessionStorage.getItem('checkoutItems') || '[]')
     if (checkoutItems.length === 0) {
       throw new Error('No items found in checkout')
     }
 
     console.log('✅ checkoutItems from sessionStorage:', checkoutItems)
 
-    // ✅ CHECK 3: Orders already exist for this transaction
-    console.log('🔍 Checking for existing orders...')
-    const ordersSnapshot = await getDocs(
-      query(
-        collection(db, 'orders'),
-        where('uid', '==', currentUser.uid),
-        where('payment.transactionId', '==', sessionId.value)
-      )
-    )
-
-    if (ordersSnapshot.size > 0) {
-      console.log(`⏭️ ${ordersSnapshot.size} order(s) already exist for this transaction, skipping creation...`)
-      sessionStorage.removeItem('checkoutItems')
-      orderCreated.value = true
-      loading.value = false
-      return
-    }
-
-    // ✅ STEP 1: Get user data
+    // ✅ STEP 2: Get user data (address, etc.)
     const userDocRef = doc(db, 'users', currentUser.uid)
     const userDocSnap = await getDoc(userDocRef)
     
@@ -81,7 +54,7 @@ onMounted(async () => {
     const userData = userDocSnap.data()
     const SHIPPING_FEE = 1.99
 
-    // ✅ STEP 2: Group items by seller
+    // ✅ STEP 3: Group items by seller and create orders
     const itemsBySeller = {}
     checkoutItems.forEach(item => {
       if (!itemsBySeller[item.sellerId]) {
@@ -92,16 +65,15 @@ onMounted(async () => {
 
     console.log('✅ Items grouped by seller:', Object.keys(itemsBySeller))
 
-    // ✅ STEP 3: Create orders (sequential to avoid race conditions)
-    const orderIds = []
-    for (const [sellerId, sellerItems] of Object.entries(itemsBySeller)) {
+    // ✅ STEP 4: Create orders
+    const orderPromises = Object.entries(itemsBySeller).map(async ([sellerId, sellerItems]) => {
       try {
         const productsTotalPrice = sellerItems.reduce((sum, item) => 
           sum + ((item.price || 0) * (item.quantity || 1)), 0
         )
 
         const orderData = {
-          orderId: '', // Will be updated after creation
+          orderId: '', // Will be set after creation
           uid: currentUser.uid,
           sellerId: sellerId,
           sellerUsername: sellerItems[0].sellerUsername || '',
@@ -156,36 +128,40 @@ onMounted(async () => {
         
         console.log(`✅ Order created for seller ${sellerId}:`, orderDocRef.id)
 
-        // Try to update orderId (non-critical)
+        // ✅ TRY to update orderId (non-critical if fails)
         try {
           await updateDoc(orderDocRef, { orderId: orderDocRef.id })
+          console.log(`✅ OrderId updated: ${orderDocRef.id}`)
         } catch (updateErr) {
           console.warn(`⚠️ OrderId update failed (non-critical):`, updateErr.message)
+          // Continue anyway - order is already created with the document ID as reference
         }
         
-        orderIds.push(orderDocRef.id)
-      } catch (sellerErr) {
-        console.error(`❌ Failed to create order for seller ${sellerId}:`, sellerErr)
-        throw sellerErr
+        return orderDocRef.id
+      } catch (err) {
+        console.error(`❌ Failed to create order for seller ${sellerId}:`, err)
+        throw err
       }
-    }
+    })
 
+    const orderIds = await Promise.all(orderPromises)
     console.log('✅ All orders created successfully:', orderIds)
 
-    // ✅ STEP 4: Clean up sessionStorage
+    // ✅ STEP 5: Clean up sessionStorage
     sessionStorage.removeItem('checkoutItems')
     console.log('✅ SessionStorage cleaned')
 
-    // ✅ STEP 5: Show success
+    // ✅ STEP 6: Show success
     orderCreated.value = true
     loading.value = false
 
     useToast().success('Order confirmed! Check your email for details.')
 
   } catch (err) {
-    console.error('=== ERROR ===')
-    console.error('Message:', err.message)
-    console.error('Code:', err.code)
+    console.error('=== FULL ERROR ===')
+    console.error('Error:', err)
+    console.error('Error code:', err.code)
+    console.error('Error message:', err.message)
     
     error.value = true
     loading.value = false
