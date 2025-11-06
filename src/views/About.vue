@@ -8,10 +8,10 @@
       
       <!-- Content -->
       <div class="relative z-10 flex flex-col items-center px-4 sm:px-6 md:px-8 text-center w-full pt-20 sm:pt-32 md:pt-40">
-        <h1 class="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-6 drop-shadow-lg">
+        <h1 class="text-2xl sm:text-4xl md:text-6xl font-bold text-white mb-4 sm:mb-6 drop-shadow-lg">
           Empowering Home-Based Businesses
         </h1>
-        <p class="max-w-xl sm:max-w-3xl text-base sm:text-lg md:text-xl text-white/95 mb-8 drop-shadow-md">
+        <p class="max-w-xl sm:max-w-3xl text-sm sm:text-lg md:text-xl text-white/95 mb-6 sm:mb-8 drop-shadow-md">
           Connect with a community of passionate creators and discover unique, handcrafted goods.
           Whether you're a seller looking to expand your reach or a buyer seeking one-of-a-kind
           items, HousebibiGoWhere is your destination.
@@ -33,10 +33,10 @@
 
     <!-- Why Choose Section -->
     <section class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-      <h3 class="text-center text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-4">
+      <h3 class="text-center text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl md:text-4xl mb-4">
         Why Choose HousebibiGoWhere?
       </h3>
-      <p class="text-center text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
+      <p class="text-center text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white mb-8 sm:mb-4">
         We provide the tools and support for home-based businesses to thrive and for buyers to
         find exceptional products.
       </p>
@@ -59,7 +59,7 @@
         </div>
 
         <!-- Community Support -->
-        <div class="flex flex-col items-center text-center p-6">
+        <div class="flex flex-col items-center text-center p-4 sm:p-6">
           <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#10A9C7]/10">
             <svg class="h-8 w-8 text-[#10A9C7]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -68,7 +68,7 @@
           <h3 class="mb-3 text-xl font-semibold text-slate-900 dark:text-white">
             Community Support
           </h3>
-          <p class="text-slate-600 dark:text-slate-400">
+          <p class="text-sm sm:text-base text-slate-600 dark:text-slate-400">
             Join a vibrant community of sellers and buyers, sharing tips and inspiration.
           </p>
         </div>

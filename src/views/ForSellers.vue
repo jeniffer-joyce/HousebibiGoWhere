@@ -3,15 +3,15 @@
     <div class="flex flex-col gap-12">
       <!-- Hero Section -->
       <section class="text-center">
-        <h2 class="text-4xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl">
+        <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl md:text-5xl">
           Turn Your Passion into a Business
         </h2>
-        <p class="mt-4 max-w-2xl mx-auto text-lg text-slate-600 dark:text-slate-400">
+        <p class="mt-4 max-w-2xl mx-auto text-sm sm:text-base md:text-lg text-slate-600 dark:text-slate-400">
           Join our community of home-based entrepreneurs and start selling your products and services on HousebibiGoWhere.
         </p>
         <RouterLink :to="{ path: '/signup', query: { role: 'seller' } }">
             <button
-                class="mt-8 rounded-lg bg-vibrant-coral dark:bg-primary/10 px-8 py-3 text-lg font-bold dark:text-dark shadow-lg hover:bg-vibrant-coral/90 focus:outline-none focus:ring-2 focus:ring-vibrant-coral focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+                class="mt-8 rounded-lg bg-vibrant-coral dark:bg-primary/10 px-6 py-2.5 text-base font-bold dark:text-dark shadow-lg hover:bg-vibrant-coral/90 focus:outline-none focus:ring-2 focus:ring-vibrant-coral focus:ring-offset-2 dark:focus:ring-offset-slate-900 sm:px-8 sm:py-3 sm:text-lg"
             >
                 Get Started Today
             </button>
@@ -20,7 +20,7 @@
 
       <!-- Why Sell with Us Section -->
       <section>
-        <h3 class="mb-6 text-3xl font-bold text-slate-900 dark:text-white text-center">
+        <h3 class="mb-6 text-2xl font-bold text-slate-900 dark:text-white text-center sm:text-3xl">
           Why Sell with Us?
         </h3>
         <div class="grid grid-cols-1 gap-8 md:grid-cols-3">
@@ -35,8 +35,8 @@
                 ></path>
               </svg>
             </div>
-            <h4 class="mt-4 text-xl font-bold">Increased Visibility</h4>
-            <p class="mt-2 text-slate-600 dark:text-slate-400">
+            <h4 class="mt-4 text-lg font-bold sm:text-xl">Increased Visibility</h4>
+            <p class="mt-2 text-sm sm:text-base text-slate-600 dark:text-slate-400">
               Reach a wider audience of buyers actively looking for unique home-based products and services.
             </p>
           </div>
@@ -52,8 +52,8 @@
                 ></path>
               </svg>
             </div>
-            <h4 class="mt-4 text-xl font-bold">Community Support</h4>
-            <p class="mt-2 text-slate-600 dark:text-slate-400">
+            <h4 class="mt-4 text-lg font-bold sm:text-xl">Community Support</h4>
+            <p class="mt-2 text-sm sm:text-base text-slate-600 dark:text-slate-400">
               Connect with fellow sellers, share experiences, and grow together in a supportive environment.
             </p>
           </div>
@@ -69,8 +69,8 @@
                 ></path>
               </svg>
             </div>
-            <h4 class="mt-4 text-xl font-bold">Business Tools</h4>
-            <p class="mt-2 text-slate-600 dark:text-slate-400">
+            <h4 class="mt-4 text-lg font-bold sm:text-xl">Business Tools</h4>
+            <p class="mt-2 text-sm sm:text-base text-slate-600 dark:text-slate-400">
               Utilize our platform's tools to manage your listings, orders, and customer communication seamlessly.
             </p>
           </div>
@@ -78,44 +78,48 @@
       </section>
 
       <!-- How to Get Started (Auto-Scrolling Carousel) -->
-      <section class="bg-soft-warm-gray dark:bg-slate-800/50 rounded-xl p-8 md:p-12">
-    <h3 class="mb-6 text-3xl font-bold text-slate-900 dark:text-white text-center">
+      <section class="bg-soft-warm-gray dark:bg-slate-800/50 rounded-xl p-6 sm:p-8 md:p-12">
+    <h3 class="mb-6 text-2xl font-bold text-slate-900 dark:text-white text-center sm:text-3xl">
       How to Get Started
     </h3>
 
-    <div class="relative overflow-hidden">
+    <div class="relative overflow-hidden touch-pan-y">
       <!-- Slides -->
       <div
+        ref="carouselContainer"
         class="flex transition-transform duration-700 ease-in-out"
         :style="{ transform: `translateX(-${activeIndex * 100}%)` }"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @touchend="handleTouchEnd"
       >
         <div
           v-for="(step, index) in steps"
           :key="index"
-          class="w-full flex-shrink-0 text-center"
+          class="w-full flex-shrink-0 text-center px-4"
         >
           <div
-            class="flex justify-center items-center h-20 w-20 mx-auto rounded-full bg-primary text-white text-2xl font-bold"
+            class="flex justify-center items-center h-16 w-16 sm:h-20 sm:w-20 mx-auto rounded-full bg-primary text-white text-xl sm:text-2xl font-bold"
           >
             {{ index + 1 }}
           </div>
-          <h4 class="mt-4 text-xl font-semibold">{{ step.title }}</h4>
-          <p class="mt-2 text-slate-600 dark:text-slate-400">
+          <h4 class="mt-4 text-lg font-semibold sm:text-xl">{{ step.title }}</h4>
+          <p class="mt-2 text-sm sm:text-base text-slate-600 dark:text-slate-400">
             {{ step.text }}
           </p>
         </div>
       </div>
 
-      <!-- Navigation buttons -->
+      <!-- Navigation buttons (hidden on mobile) -->
       <button
         @click="prevSlide"
-        class="absolute left-2 top-1/2 -translate-y-1/2 bg-primary text-white rounded-full p-2 hover:bg-primary/80"
+        class="hidden sm:block absolute left-2 top-1/2 -translate-y-1/2 bg-primary text-white rounded-full p-2 hover:bg-primary/80"
       >
         ‹
       </button>
       <button
         @click="nextSlide"
-        class="absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-white rounded-full p-2 hover:bg-primary/80"
+        class="hidden sm:block absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-white rounded-full p-2 hover:bg-primary/80"
       >
         ›
       </button>
@@ -134,8 +138,8 @@
   </section>
 
       <!-- FAQ Section -->
-        <section class="bg-white dark:bg-slate-900 rounded-xl p-8 md:p-12 shadow-lg">
-            <h3 class="mb-6 text-3xl font-bold text-slate-900 dark:text-white text-center">
+        <section class="bg-white dark:bg-slate-900 rounded-xl p-6 sm:p-8 md:p-12 shadow-lg">
+            <h3 class="mb-6 text-2xl font-bold text-slate-900 dark:text-white text-center sm:text-3xl">
             Frequently Asked Questions
             </h3>
 
@@ -148,12 +152,12 @@
                 <!-- Question Header -->
                 <button
                 @click="toggleFAQ(index)"
-                class="w-full flex justify-between items-center px-6 py-4 text-left text-lg font-medium text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                class="w-full flex justify-between items-center px-4 py-3 sm:px-6 sm:py-4 text-left text-base sm:text-lg font-medium text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                 <span>{{ faq.question }}</span>
                 <svg
                     :class="[
-                    'w-5 h-5 transform transition-transform duration-300',
+                    'w-5 h-5 transform transition-transform duration-300 flex-shrink-0 ml-2',
                     openIndexes.includes(index) ? 'rotate-180' : ''
                     ]"
                     fill="none"
@@ -176,7 +180,7 @@
                 >
                 <div
                     v-if="openIndexes.includes(index)"
-                    class="px-6 pb-4 text-slate-600 dark:text-slate-400"
+                    class="px-4 pb-3 sm:px-6 sm:pb-4 text-sm sm:text-base text-slate-600 dark:text-slate-400"
                 >
                     {{ faq.answer }}
                 </div>
@@ -207,7 +211,35 @@ const steps = ref([
 ])
 
 const activeIndex = ref(0)
+const carouselContainer = ref(null)
 let intervalId = null
+
+// Touch gesture handling
+let touchStartX = 0
+let touchEndX = 0
+
+function handleTouchStart(e) {
+  touchStartX = e.changedTouches[0].screenX
+}
+
+function handleTouchMove(e) {
+  touchEndX = e.changedTouches[0].screenX
+}
+
+function handleTouchEnd() {
+  const swipeThreshold = 50 // minimum distance for a swipe
+  const diff = touchStartX - touchEndX
+  
+  if (Math.abs(diff) > swipeThreshold) {
+    if (diff > 0) {
+      // Swiped left - go to next
+      nextSlide()
+    } else {
+      // Swiped right - go to previous
+      prevSlide()
+    }
+  }
+}
 
 function nextSlide() {
   activeIndex.value = (activeIndex.value + 1) % steps.value.length
@@ -228,7 +260,7 @@ const faqs = ref([
   {
     question: 'How do I sign up as a seller?',
     answer:
-      'Click on the “Get Started” button on the homepage and fill out the short registration form with your business details.',
+      'Click on the "Get Started" button on the homepage and fill out the short registration form with your business details.',
   },
   {
     question: 'Is there a fee to join?',
@@ -253,7 +285,7 @@ function toggleFAQ(index) {
 onMounted(() => {
   // Prevent multiple intervals if component re-renders
   if (intervalId) clearInterval(intervalId)
-  // Auto-scroll every 5 seconds (slower speed)
+  // Auto-scroll every 3 seconds
   intervalId = setInterval(() => {
     nextSlide()
   }, 3000)
