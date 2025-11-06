@@ -14,10 +14,11 @@ const props = defineProps({
     type: String,
     default: 'Seller'
   },
+  // New compact icon-only variant for mobile
   variant: {
     type: String,
-    default: 'primary', // 'primary', 'secondary', 'icon'
-    validator: (value) => ['primary', 'secondary', 'icon'].includes(value)
+    default: 'primary', // 'primary', 'secondary', 'icon', 'mobile-icon'
+    validator: (value) => ['primary', 'secondary', 'icon', 'mobile-icon'].includes(value)
   },
   size: {
     type: String,
@@ -38,32 +39,39 @@ const toastMessage = ref('');
 const currentUserId = computed(() => auth.currentUser?.uid);
 
 const buttonClasses = computed(() => {
-  const base = 'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2';
-  
+  // Ensure no text cutoff on desktop: whitespace-nowrap and proper padding/gap
+  const base = [
+    'inline-flex items-center justify-center gap-2 rounded-lg font-medium',
+    'transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
+    'whitespace-nowrap', // prevent "Message" from breaking/cutting off
+  ].join(' ');
+
+  // Padding and font size scales; external fixed heights (e.g. h-10) can be applied by parent
   const sizes = {
     sm: 'px-3 py-1.5 text-sm',
     md: 'px-4 py-2 text-base',
     lg: 'px-6 py-3 text-lg'
   };
-  
+
   const variants = {
     primary: 'bg-primary text-white hover:bg-primary/90 disabled:bg-primary/50',
     secondary: 'bg-white text-primary border-2 border-primary hover:bg-primary/5 disabled:opacity-50 dark:bg-slate-800 dark:hover:bg-slate-700',
-    icon: 'p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-full'
+    icon: 'p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-full',
+    // Compact icon-only for mobile cards
+    'mobile-icon': 'p-2 text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg dark:text-blue-300 dark:bg-slate-800 dark:border-blue-800 dark:hover:bg-slate-700'
   };
-  
+
+  // Note: when using 'mobile-icon', padding comes from variant (p-2); parent can still add h-9/h-10 to align heights
   return `${base} ${sizes[props.size]} ${variants[props.variant]}`;
 });
 
-// Show toast notification
+// Toast helpers
 function showToastNotification(type, title, message) {
   toastType.value = type;
   toastTitle.value = title;
   toastMessage.value = message;
   showToast.value = true;
 }
-
-// Close toast
 function closeToast() {
   showToast.value = false;
 }
@@ -71,59 +79,25 @@ function closeToast() {
 async function handleMessageClick() {
   if (!currentUserId.value) {
     showToastNotification('warning', 'Authentication Required', 'Please login to send messages');
-    setTimeout(() => {
-      router.push('/login');
-    }, 1500);
+    setTimeout(() => router.push('/login'), 1500);
     return;
   }
-  
   if (!props.sellerId) {
     showToastNotification('error', 'Invalid Seller', 'Seller ID is missing or invalid');
-    console.error('Seller ID is missing:', props.sellerId);
     return;
   }
-  
-  // Prevent messaging yourself
   if (currentUserId.value === props.sellerId) {
     showToastNotification('warning', 'Action Not Allowed', 'You cannot message yourself');
     return;
   }
-  
+
   try {
     loading.value = true;
-    
-    console.log('Creating conversation between:', {
-      buyer: currentUserId.value,
-      seller: props.sellerId
-    });
-    
-    // Create or get conversation
-    const conversation = await getOrCreateConversation(
-      currentUserId.value,
-      props.sellerId
-    );
-    
-    console.log('Conversation created/retrieved:', conversation);
-    
-    if (!conversation || !conversation.id) {
-      throw new Error('Invalid conversation object received');
-    }
-    
-    // Navigate to messages page with conversation ID
-    console.log('Navigating to messages with conversation ID:', conversation.id);
-    
-    await router.push({
-      path: '/buyer-messages',
-      query: { conversation: conversation.id }
-    });
-    
+    const conversation = await getOrCreateConversation(currentUserId.value, props.sellerId);
+    if (!conversation?.id) throw new Error('Invalid conversation object received');
+    await router.push({ path: '/buyer-messages', query: { conversation: conversation.id } });
   } catch (error) {
-    console.error('Error details:', {
-      message: error.message,
-      error: error,
-      sellerId: props.sellerId,
-      currentUserId: currentUserId.value
-    });
+    console.error('Message button error:', error);
     showToastNotification('error', 'Failed to Open Conversation', error.message || 'An unexpected error occurred');
   } finally {
     loading.value = false;
@@ -137,45 +111,48 @@ async function handleMessageClick() {
       :class="buttonClasses"
       :disabled="loading || !sellerId"
       @click="handleMessageClick"
-      type="button">
+      type="button"
+    >
       <!-- Loading Spinner -->
-      <svg 
-        v-if="loading" 
-        class="animate-spin h-5 w-5" 
-        xmlns="http://www.w3.org/2000/svg" 
-        fill="none" 
-        viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      <svg
+        v-if="loading"
+        class="animate-spin h-5 w-5 shrink-0"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
       </svg>
-      
-      <!-- Message Icon -->
-      <svg 
+
+      <!-- Icon -->
+      <svg
         v-else
-        class="h-5 w-5" 
-        fill="none" 
-        stroke="currentColor" 
-        viewBox="0 0 24 24">
-        <path 
-          stroke-linecap="round" 
-          stroke-linejoin="round" 
-          stroke-width="2" 
-          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
-        </path>
+        class="h-5 w-5 shrink-0"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+        />
       </svg>
-      
-      <!-- Button Text (only for non-icon variants) -->
-      <span v-if="variant !== 'icon'">
+
+      <!-- Text (hidden for icon-only mobile variant) -->
+      <span v-if="variant !== 'icon' && variant !== 'mobile-icon'">
         {{ loading ? 'Loading...' : 'Message' }}
       </span>
     </button>
 
-    <!-- Toast Notification -->
     <ToastNotification
       :show="showToast"
       :type="toastType"
       :title="toastTitle"
       :message="toastMessage"
-      @close="closeToast" />
+      @close="closeToast"
+    />
   </div>
 </template>
