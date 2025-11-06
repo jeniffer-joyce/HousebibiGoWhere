@@ -68,7 +68,7 @@
       <!-- Rows -->
       <div v-else class="divide-y divide-slate-100 dark:divide-slate-800">
         <div
-          v-for="p in sortedRows" :key="p.id"
+          v-for="p in paginatedRows" :key="p.id"
           class="px-4 py-4"
         >
           <!-- Mobile Layout -->
@@ -189,6 +189,46 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div v-if="!loading && sortedRows.length > 0" 
+           class="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-b-2xl">
+        <div class="text-sm text-slate-600 dark:text-slate-400">
+          {{ paginationText }}
+        </div>
+        
+        <div class="flex items-center gap-2">
+          <button
+            @click="goToPreviousPage"
+            :disabled="!canGoPrevious"
+            class="px-3 py-1.5 text-sm rounded-md border transition
+                   disabled:opacity-40 disabled:cursor-not-allowed
+                   border-slate-300 dark:border-slate-600
+                   text-slate-700 dark:text-slate-300
+                   hover:bg-slate-50 dark:hover:bg-slate-800
+                   disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
+          >
+            Previous
+          </button>
+          
+          <span class="text-sm text-slate-600 dark:text-slate-400">
+            Page {{ currentPage }} of {{ totalPages }}
+          </span>
+          
+          <button
+            @click="goToNextPage"
+            :disabled="!canGoNext"
+            class="px-3 py-1.5 text-sm rounded-md border transition
+                   disabled:opacity-40 disabled:cursor-not-allowed
+                   border-slate-300 dark:border-slate-600
+                   text-slate-700 dark:text-slate-300
+                   hover:bg-slate-50 dark:hover:bg-slate-800
+                   disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
@@ -601,7 +641,7 @@
                   alt="" 
                   class="h-12 w-12 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" 
                 />
-                <div class="min-w-0 flex-1 overflow-hidden">
+                <div class="min-w-0 flex-1">
                   <div class="text-sm font-medium text-slate-900 dark:text-white">
                     {{ productToDelete.item_name }}
                   </div>
@@ -631,7 +671,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { 
   getSellerProducts, 
@@ -647,6 +687,10 @@ const loading = ref(true)
 const allProducts = ref([])
 const searchStr = ref('')
 const sortMode = ref('name_asc')
+
+// Pagination State
+const itemsPerPage = ref(10)
+const currentPage = ref(1)
 
 // More Menu State
 const showMoreMenu = ref(false)
@@ -837,6 +881,46 @@ const sortedRows = computed(() => {
   }
   
   return rows
+})
+
+/* ---------------- Pagination ---------------- */
+const totalResults = computed(() => sortedRows.value.length)
+
+const paginatedRows = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return sortedRows.value.slice(start, end)
+})
+
+const totalPages = computed(() => Math.ceil(totalResults.value / itemsPerPage.value))
+
+const paginationText = computed(() => {
+  if (totalResults.value === 0) return 'No results'
+  
+  const start = (currentPage.value - 1) * itemsPerPage.value + 1
+  const end = Math.min(currentPage.value * itemsPerPage.value, totalResults.value)
+  
+  return `Showing ${start} — ${end} of ${totalResults.value} results`
+})
+
+const canGoPrevious = computed(() => currentPage.value > 1)
+const canGoNext = computed(() => currentPage.value < totalPages.value)
+
+function goToPreviousPage() {
+  if (canGoPrevious.value) {
+    currentPage.value--
+  }
+}
+
+function goToNextPage() {
+  if (canGoNext.value) {
+    currentPage.value++
+  }
+}
+
+// Reset to page 1 when search or sort changes
+watch([searchStr, sortMode], () => {
+  currentPage.value = 1
 })
 
 /* ---------------- More Menu ---------------- */
