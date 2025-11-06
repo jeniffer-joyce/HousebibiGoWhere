@@ -18,7 +18,8 @@
       :duration="toastState.duration"
       @close="close"
     />
-        <Footer />
+        <!-- Hide footer on messages page -->
+        <Footer v-if="!isMessagesPage" />
       </template>
     </div>
 
@@ -30,7 +31,8 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted  } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { user } from "@/store/user.js"
 import Navbar from '@/components/layout/Navbar.vue'
 import SellersNavbar from '@/components/layout/SellerNavBar.vue'
@@ -41,6 +43,8 @@ import ToastNotification from '@/components/ToastNotification.vue'
 import ChatIcon from '@/components/layout/ChatIcon.vue'
 import { initInventoryAuthBridge } from '@/firebase/services/sellers/seller_product'
 
+const route = useRoute()
+
 onMounted(() => {
   initInventoryAuthBridge()
 })
@@ -48,6 +52,11 @@ onMounted(() => {
 const { toastState, close } = useToast()
 
 const showOnboarding = ref(false)
+
+// Check if current page is messages page
+const isMessagesPage = computed(() => {
+  return route.path === '/buyer-messages/' || route.path.startsWith('/buyer-messages')
+})
 
 // Watch for new seller signups that need onboarding
 watch(() => user.needsOnboarding, (needs) => {

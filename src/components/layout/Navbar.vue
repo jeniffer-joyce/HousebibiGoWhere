@@ -167,10 +167,14 @@ const props = defineProps({
 const isSidebarCollapsed = computed(() => uiState.isSidebarCollapsed.value)
 
 const dropdownStyle = computed(() => {
+  const isMobile = window.innerWidth < 880
+  
+  // If not on buyer sidebar pages, always full width
   if (!props.isBuyerSideBar) {
     return { left: '0', width: '100%' }
   }
 
+  // On buyer pages (with sidebar), adjust for sidebar on both mobile and desktop
   const collapsed = uiState.isSidebarCollapsed.value
   const leftOffset = collapsed ? '5rem' : '16rem'
   const widthCalc = collapsed ? 'calc(100% - 5rem)' : 'calc(100% - 16rem)'
@@ -180,14 +184,6 @@ const dropdownStyle = computed(() => {
   const __ = showMobileNav.value
 
   return { left: leftOffset, width: widthCalc }
-})
-
-watch(showMobileNav, (isOpen) => {
-  const isMobile = window.innerWidth < 880
-  if (isOpen && isMobile) {
-    // Optional: force collapsed state to false for consistent width
-    uiState.isSidebarCollapsed.value = false
-  }
 })
 
 onMounted(() => {
