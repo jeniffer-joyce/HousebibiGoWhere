@@ -364,10 +364,10 @@
                 <div v-if="selBuyer.phone" class="text-slate-500 dark:text-slate-400">{{ selBuyer.phone }}</div>
               </div>
               <div class="text-sm space-y-1">
-                <div><span class="font-medium">Cancelled:</span> {{ selCancelled }}</div>
-                <div><span class="font-medium">By:</span> {{ cancelBy(selected) }}</div>
-                <div><span class="font-medium">Reason:</span> {{ cancelReason(selected) }}</div>
-                <div v-if="refundState(selected)"><span class="font-medium">Refund:</span> {{ refundState(selected).label }}</div>
+                <div class="text-slate-700 dark:text-slate-200"><span class="font-medium text-slate-900 dark:text-white">Cancelled:</span> {{ selCancelled }}</div>
+                <div class="text-slate-700 dark:text-slate-200"><span class="font-medium text-slate-900 dark:text-white">By:</span> {{ cancelBy(selected) }}</div>
+                <div class="text-slate-700 dark:text-slate-200"><span class="font-medium text-slate-900 dark:text-white">Reason:</span> {{ cancelReason(selected) }}</div>
+                <div v-if="refundState(selected)" class="text-slate-700 dark:text-slate-200"><span class="font-medium text-slate-900 dark:text-white">Refund:</span> {{ refundState(selected).label }}</div>
 
                 <!-- Logistics (optional) -->
                 <div v-if="hasLogistics(selected)" class="pt-2 border-t border-slate-200 dark:border-slate-700">
@@ -417,15 +417,15 @@
               <div></div>
               <div class="space-y-1 text-sm">
                 <div class="flex items-center justify-between">
-                  <div class="text-slate-600 dark:text-slate-300">Products Subtotal:</div>
+                  <div class="text-slate-600 dark:text-slate-400">Products Subtotal:</div>
                   <div class="text-slate-900 dark:text-white">{{ money(selSubtotal) }}</div>
                 </div>
                 <div class="flex items-center justify-between">
-                  <div class="text-slate-600 dark:text-slate-300">Shipping (if charged):</div>
+                  <div class="text-slate-600 dark:text-slate-400">Shipping (if charged):</div>
                   <div class="text-slate-900 dark:text-white">{{ money(selShipping) }}</div>
                 </div>
                 <div class="flex items-center justify-between">
-                  <div class="text-slate-600 dark:text-slate-300">Discount:</div>
+                  <div class="text-slate-600 dark:text-slate-400">Discount:</div>
                   <div class="text-slate-900 dark:text-white">- {{ money(selDiscount) }}</div>
                 </div>
                 <div class="mt-1 flex items-center justify-between border-t border-slate-200 pt-2 dark:border-slate-700">

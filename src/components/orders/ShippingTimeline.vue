@@ -1,16 +1,16 @@
 <template>
-  <div class="border-l-2 border-slate-200 pl-7 space-y-4">
+  <div class="border-l-2 border-slate-200 dark:border-slate-700 pl-7 space-y-4">
     <div v-for="(ev, i) in orderedEvents" :key="i" class="relative">
       <!-- node: latest = green, others grey -->
       <div
-        class="absolute -left-3 top-1.5 h-2.5 w-2.5 rounded-full ring-2 ring-white"
-        :class="i === 0 ? 'bg-green-600' : 'bg-slate-400'"
+        class="absolute -left-[1.125rem] top-1.5 h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-slate-900"
+        :class="i === 0 ? 'bg-green-600' : 'bg-slate-400 dark:bg-slate-600'"
       />
-      <div class="text-xs text-slate-500">{{ fmt(ev.time) }}</div>
-      <div class="font-semibold text-sm leading-tight">
+      <div class="text-xs text-slate-500 dark:text-slate-400">{{ fmt(ev.time) }}</div>
+      <div class="font-semibold text-sm leading-tight text-slate-900 dark:text-white">
         {{ ev.label || ev.text || '—' }}
       </div>
-      <div v-if="ev.text && ev.text !== ev.label" class="text-sm text-slate-600">
+      <div v-if="ev.text && ev.text !== ev.label" class="text-sm text-slate-600 dark:text-slate-300">
         {{ ev.text }}
       </div>
 
@@ -23,21 +23,21 @@
           :href="delivery.proofUrl"
           target="_blank"
           rel="noopener"
-          class="inline-flex items-center rounded-lg bg-emerald-50 px-3 py-1.5 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100"
+          class="inline-flex items-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
         >
           View proof photo
         </a>
         <img
           :src="delivery.proofUrl"
           alt="Proof thumbnail"
-          class="h-10 w-10 rounded-md object-cover ring-1 ring-slate-200"
+          class="h-10 w-10 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700"
         />
       </div>
 
-      <div v-if="ev.note" class="text-xs text-slate-500">{{ ev.note }}</div>
+      <div v-if="ev.note" class="text-xs text-slate-500 dark:text-slate-400">{{ ev.note }}</div>
     </div>
 
-    <div v-if="orderedEvents.length === 0" class="text-sm text-slate-500">
+    <div v-if="orderedEvents.length === 0" class="text-sm text-slate-500 dark:text-slate-400">
       No shipping events yet.
     </div>
   </div>
@@ -50,7 +50,7 @@ const props = defineProps({
   shipping:  { type: Object, default: () => ({}) },
   logistics: { type: Object, default: () => ({}) },
   meta:      { type: Object, default: () => ({ createdAt: null, statusLog: [] }) },
-  delivery:  { type: Object, default: null } // ✅ added
+  delivery:  { type: Object, default: null }
 })
 
 /* ---------- utils ---------- */
