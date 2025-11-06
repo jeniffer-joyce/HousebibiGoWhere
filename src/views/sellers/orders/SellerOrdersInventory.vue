@@ -741,6 +741,11 @@ async function loadProducts() {
         totalSales: Number(p.totalSales) || 0
       }
     })
+    
+    // Only log during initial load to avoid spam
+    if (loading.value) {
+      console.log(`[Inventory UI] Loaded ${products.length} products`)
+    }
   } catch (err) {
     console.error('Failed to load products:', err)
     if (loading.value) {
