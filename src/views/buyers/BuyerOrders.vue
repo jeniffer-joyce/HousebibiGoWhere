@@ -242,7 +242,7 @@
             >
               <div class="flex flex-wrap items-center gap-3 text-sm">
                 <span class="text-slate-700 dark:text-slate-200">
-                  <span class="font-medium">Order #:</span> {{ o.orderId }}
+                  <span class="font-medium">Order #:</span> {{ o.id }}
                 </span>
                 <span class="hidden md:inline text-slate-300">•</span>
                 <span class="text-slate-700 dark:text-slate-200">
@@ -900,7 +900,7 @@ const visibleOrders = computed(() => {
   // Apply search filter
   if (q) {
     base = base.filter(o => {
-      const hay = [o.orderId, o.products?.[0]?.shopName, ...(o.products || []).map(p => p.item_name)].join(' ').toLowerCase()
+      const hay = [o.id, o.products?.[0]?.shopName, ...(o.products || []).map(p => p.item_name)].join(' ').toLowerCase()
       return hay.includes(q)
     })
   }
@@ -1048,7 +1048,7 @@ onMounted(() => {
   onBeforeUnmount(() => { stop(); unsub?.() })
 })
 
-const hasReview = (o) => reviewedOrders.value.has(o.orderId)
+const hasReview = (o) => reviewedOrders.value.has(o.id)
 function viewRatings(o) {
   orderForReviewDetails.value = o
   showReviewDetails.value = true
@@ -1160,7 +1160,7 @@ function handleReturnSubmitted(evt) {
   showReturnModal.value = false
   orderForReturn.value = null
   if (evt?.orderId) {
-    const idx = orders.value.findIndex(o => o.orderId === evt.orderId)
+    const idx = orders.value.findIndex(o => o.id === evt.orderId)
     if (idx !== -1) orders.value[idx].status = 'return_refund'
   }
   showToast({
