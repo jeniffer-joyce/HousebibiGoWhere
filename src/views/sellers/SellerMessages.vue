@@ -9,12 +9,15 @@ import { useMessages } from '@/composables/useMessages'
 import { doc, getDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/firebase/firebase_config'
 
+
 // Sidebar state
 const isSidebarCollapsed = ref(false)
+
 
 function handleSidebarToggle(collapsed) {
     isSidebarCollapsed.value = collapsed
 }
+
 
 // Toast state
 const showToast = ref(false)
@@ -22,12 +25,14 @@ const toastType = ref('success')
 const toastTitle = ref('')
 const toastMessage = ref('')
 
+
 // Confirmation modal state
 const showConfirmModal = ref(false)
 const confirmModalTitle = ref('')
 const confirmModalMessage = ref('')
 const confirmModalType = ref('warning')
 const pendingAction = ref(null)
+
 
 // Show toast notification
 function showToastNotification(type, title, message) {
@@ -37,10 +42,12 @@ function showToastNotification(type, title, message) {
     showToast.value = true
 }
 
+
 // Close toast
 function closeToast() {
     showToast.value = false
 }
+
 
 // Show confirmation modal
 function showConfirmation(title, message, type, action) {
@@ -51,6 +58,7 @@ function showConfirmation(title, message, type, action) {
     showConfirmModal.value = true
 }
 
+
 // Handle confirmation
 function handleConfirm() {
     showConfirmModal.value = false
@@ -60,17 +68,21 @@ function handleConfirm() {
     }
 }
 
+
 // Handle cancel
 function handleCancel() {
     showConfirmModal.value = false
     pendingAction.value = null
 }
 
+
 // Get current user ID
 const currentUserIdRef = computed(() => auth.currentUser?.uid)
 
+
 // Initialize messaging composable
 const messaging = useMessages(currentUserIdRef)
+
 
 // Destructure for easier access
 const conversations = messaging.conversations
@@ -86,11 +98,14 @@ const sendNewMessage = messaging.sendNewMessage
 const formatMessageTime = messaging.formatMessageTime
 const formatMessageTimeDetailed = messaging.formatMessageTimeDetailed
 
+
 // Search query
 const searchQuery = ref('')
 
+
 // Store business details
 const businessDetails = ref({})
+
 
 // Filtered conversations
 const filteredConversations = computed(() => {
@@ -106,6 +121,7 @@ const filteredConversations = computed(() => {
     })
 })
 
+
 // New message input
 const newMessage = ref('')
 const messagesContainer = ref(null)
@@ -113,10 +129,12 @@ const route = useRoute()
 const router = useRouter()
 const showOptionsMenu = ref(false)
 
+
 // File upload state
 const fileInput = ref(null)
 const selectedFiles = ref([])
 const uploadingFiles = ref(false)
+
 
 // Delete conversation
 async function deleteConversation(conversationId) {
@@ -144,12 +162,14 @@ async function deleteConversation(conversationId) {
     )
 }
 
+
 // Navigate to shop details
 function goToShopDetails() {
     if (activeConversation.value) {
         router.push(`/shop-details/${activeConversation.value.otherUserId}`)
     }
 }
+
 
 // Select conversation
 function selectConversation(conversationId) {
@@ -158,6 +178,7 @@ function selectConversation(conversationId) {
         scrollToBottom()
     })
 }
+
 
 // Load business details for all conversations
 watch(conversations, async (newConversations) => {
@@ -170,6 +191,7 @@ watch(conversations, async (newConversations) => {
         }
     }
 }, { deep: true, immediate: true })
+
 
 // Get business details including name and profile pic
 async function getBusinessDetails(userId) {
@@ -191,6 +213,7 @@ async function getBusinessDetails(userId) {
 }
 
 
+
 // Send message
 async function sendMessage() {
     if (!newMessage.value.trim() && selectedFiles.value.length === 0) return
@@ -205,6 +228,7 @@ async function sendMessage() {
         showToastNotification('error', 'Failed to Send', 'Failed to send message. Please try again.')
     }
 }
+
 
 // Handle file selection
 function handleFileSelect(event) {
@@ -238,15 +262,18 @@ function handleFileSelect(event) {
     }
 }
 
+
 // Remove selected file
 function removeFile(index) {
     selectedFiles.value.splice(index, 1)
 }
 
+
 // Open file picker
 function openFilePicker() {
     fileInput.value?.click()
 }
+
 
 // Get file icon based on type
 function getFileIcon(file) {
@@ -256,6 +283,7 @@ function getFileIcon(file) {
     return '📎'
 }
 
+
 // Format file size
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes'
@@ -264,6 +292,7 @@ function formatFileSize(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
 }
+
 
 // Send message with files
 async function sendMessageWithFiles() {
@@ -293,6 +322,7 @@ async function sendMessageWithFiles() {
 }
 
 
+
 // Scroll to bottom of messages
 function scrollToBottom() {
     nextTick(() => {
@@ -301,6 +331,7 @@ function scrollToBottom() {
         }
     })
 }
+
 
 // Get avatar URL - prioritize business profile pic
 const getAvatarUrl = (userId) => {
@@ -313,11 +344,13 @@ const getAvatarUrl = (userId) => {
 };
 
 
+
 // Get display name - show business name
 const getDisplayName = (userId) => {
   const customer = businessDetails.value[userId];
   return customer?.name || 'Customer';
 };
+
 
 
 // Format date separator (e.g., "Today", "Yesterday", "October 24, 2025")
@@ -347,6 +380,7 @@ function formatDateSeparator(timestamp) {
     }
 }
 
+
 // Group messages by date
 const groupedMessages = computed(() => {
     if (!messages.value || messages.value.length === 0) return []
@@ -373,6 +407,7 @@ const groupedMessages = computed(() => {
     return groups
 })
 
+
 // Load conversations and handle query parameter
 onMounted(() => {
     loadConversations()
@@ -398,10 +433,12 @@ onMounted(() => {
     document.addEventListener('click', handleClickOutside)
 })
 
+
 // Cleanup on unmount
 onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside)
 })
+
 
 // Handle click outside to close dropdown
 function handleClickOutside(event) {
@@ -412,109 +449,90 @@ function handleClickOutside(event) {
 }
 </script>
 
+
 <template>
     <div class="flex h-screen bg-slate-50 dark:bg-slate-900">
-        <!-- Main Content (No Sidebar for Seller) -->
-        <main class="flex-1 flex">
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col">
 
-                <!-- Conversations List - Minimal width below 768px for full chat visibility even with expanded sidebar -->
-                <div class="w-[15vw] md:w-80 border-r border-slate-200 dark:border-slate-700 flex flex-col bg-white dark:bg-slate-800 flex-shrink-0">
-                    <!-- Header -->
-                    <div class="p-2 md:p-4 border-b border-slate-200 dark:border-slate-700">
-                        <div class="flex items-center justify-between mb-2 md:mb-4">
-                            <h1 class="text-base md:text-2xl font-bold text-slate-900 dark:text-white">Customer Messages</h1>
-                        </div>
-                        
-                        <!-- Search -->
-                        <div class="relative">
-                            <input 
-                                v-model="searchQuery"
-                                type="text" 
-                                placeholder="Search"
-                                class="w-full pl-8 md:pl-10 pr-2 md:pr-4 py-1.5 md:py-2 text-xs md:text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
-                            <svg class="absolute left-2 md:left-3 top-1.5 md:top-2.5 h-4 w-4 md:h-5 md:w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            <!-- Conversations List -->
+            <div class="w-full h-full flex flex-col bg-white dark:bg-slate-800">
+                
+                <!-- Header -->
+                <div v-if="!activeConversationId" class="p-2 md:p-4 border-b border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between mb-2 md:mb-4">
+                        <h1 class="text-lg md:text-2xl font-bold text-slate-900 dark:text-white">Customer Messages</h1>
+                    </div>
+                    
+                    <!-- Search -->
+                    <div class="relative">
+                        <input 
+                            v-model="searchQuery"
+                            type="text" 
+                            placeholder="Search"
+                            class="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-2.5 text-xs md:text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+                        <svg class="absolute left-2.5 md:left-3 top-2.5 md:top-3 h-4 w-4 md:h-5 md:w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Conversations List (Hidden when chat is active) -->
+                <div v-if="!activeConversationId" class="flex-1 overflow-y-auto">
+                    <div v-if="loading && conversations.length === 0" class="flex items-center justify-center h-full">
+                        <div class="text-center p-3 md:p-4">
+                            <svg class="animate-spin h-8 md:h-10 w-8 md:w-10 mx-auto text-primary mb-2 md:mb-3" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                             </svg>
+                            <p class="text-xs md:text-sm text-slate-600 dark:text-slate-400">Loading...</p>
                         </div>
                     </div>
 
-                    <!-- Conversations List -->
-                    <div class="flex-1 overflow-y-auto">
-                        <div v-if="loading && conversations.length === 0" class="flex items-center justify-center h-full">
-                            <div class="text-center p-2">
-                                <svg class="animate-spin h-6 md:h-10 w-6 md:w-10 mx-auto text-primary mb-2 md:mb-3" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                </svg>
-                                <p class="text-xs md:text-sm text-slate-600 dark:text-slate-400">Loading...</p>
-                            </div>
+                    <div v-else-if="filteredConversations.length === 0" class="flex items-center justify-center h-full">
+                        <div class="text-center px-3 md:px-4">
+                            <svg class="h-12 md:h-16 w-12 md:w-16 mx-auto text-slate-300 dark:text-slate-600 mb-2 md:mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                            </svg>
+                            <p class="text-xs md:text-sm text-slate-600 dark:text-slate-400">
+                                {{ searchQuery ? 'No conversations found' : 'No messages yet' }}
+                            </p>
                         </div>
+                    </div>
 
-                        <div v-else-if="filteredConversations.length === 0" class="flex items-center justify-center h-full">
-                            <div class="text-center px-2 md:px-4">
-                                <svg class="h-10 md:h-16 w-10 md:w-16 mx-auto text-slate-300 dark:text-slate-600 mb-2 md:mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                                </svg>
-                                <p class="text-xs md:text-sm text-slate-600 dark:text-slate-400">
-                                    {{ searchQuery ? 'No conversations found' : 'No messages yet' }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div v-else>
-                            <div 
-                                v-for="conversation in filteredConversations" 
-                                :key="conversation.id"
-                                @click="selectConversation(conversation.id)"
-                                :class="[
-                                    'p-2 md:p-4 border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors',
-                                    activeConversationId === conversation.id ? 'bg-slate-100 dark:bg-slate-700 border-l-2 md:border-l-4 border-l-primary' : ''
-                                ]">
-                                <!-- Mobile: Ultra Compact Layout for 15vw width -->
-                                <div class="flex md:hidden flex-col items-center text-center gap-1">
-                                    <img 
-                                        :src="getAvatarUrl(conversation.otherUserId)" 
-                                        :alt="getDisplayName(conversation.otherUserId)" 
-                                        class="w-8 h-8 rounded-full object-cover" />
-                                    <div class="w-full">
-                                        <h3 class="text-[10px] font-semibold text-slate-900 dark:text-white truncate">
-                                            {{ getDisplayName(conversation.otherUserId).length > 8 ? getDisplayName(conversation.otherUserId).substring(0, 8) + '...' : getDisplayName(conversation.otherUserId) }}
+                    <div v-else>
+                        <div 
+                            v-for="conversation in filteredConversations" 
+                            :key="conversation.id"
+                            @click="selectConversation(conversation.id)"
+                            :class="[
+                                'p-2 md:p-4 border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors',
+                                activeConversationId === conversation.id ? 'bg-slate-100 dark:bg-slate-700 border-l-4 border-l-primary' : ''
+                            ]">
+                            
+                            <!-- Conversation Item -->
+                            <div class="flex items-start gap-3">
+                                <img 
+                                    :src="getAvatarUrl(conversation.otherUserId)" 
+                                    :alt="getDisplayName(conversation.otherUserId)" 
+                                    class="w-10 md:w-12 h-10 md:h-12 rounded-full object-cover flex-shrink-0" />
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-start justify-between gap-2 mb-1">
+                                        <h3 class="text-xs md:text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                            {{ getDisplayName(conversation.otherUserId) }}
                                         </h3>
-                                        <p class="text-[8px] text-slate-600 dark:text-slate-400 truncate mt-0.5">
-                                            {{ conversation.lastMessage ? (conversation.lastMessage.length > 8 ? conversation.lastMessage.substring(0, 8) + '...' : conversation.lastMessage) : 'New' }}
-                                        </p>
-                                        <div class="flex items-center justify-center gap-0.5 mt-0.5">
-                                            <span v-if="conversation.unreadCount > 0" 
-                                                class="w-2 h-2 bg-primary rounded-full">
-                                            </span>
-                                        </div>
+                                        <span class="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0">
+                                            {{ formatMessageTime(conversation.lastMessageTime) }}
+                                        </span>
                                     </div>
-                                </div>
-                                
-                                <!-- Desktop: Horizontal Layout -->
-                                <div class="hidden md:flex items-start gap-3">
-                                    <img 
-                                        :src="getAvatarUrl(conversation.otherUserId)" 
-                                        :alt="getDisplayName(conversation.otherUserId)" 
-                                        class="w-12 h-12 rounded-full object-cover" />
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-start justify-between mb-1">
-                                            <h3 class="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                                                {{ getDisplayName(conversation.otherUserId) }}
-                                            </h3>
-                                            <span class="text-xs text-slate-500 dark:text-slate-400 ml-2 flex-shrink-0">
-                                                {{ formatMessageTime(conversation.lastMessageTime) }}
-                                            </span>
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <p class="text-sm text-slate-600 dark:text-slate-400 truncate flex-1">
-                                                {{ conversation.lastMessage || 'No messages yet' }}
-                                            </p>
-                                            <span v-if="conversation.unreadCount > 0" 
-                                                class="ml-2 px-2 py-0.5 bg-primary text-white text-xs font-bold rounded-full flex-shrink-0">
-                                                {{ conversation.unreadCount }}
-                                            </span>
-                                        </div>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <p class="text-xs md:text-sm text-slate-600 dark:text-slate-400 truncate flex-1">
+                                            {{ conversation.lastMessage || 'No messages yet' }}
+                                        </p>
+                                        <span v-if="conversation.unreadCount > 0" 
+                                            class="px-2 py-0.5 bg-primary text-white text-xs font-bold rounded-full flex-shrink-0">
+                                            {{ conversation.unreadCount }}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -522,52 +540,55 @@ function handleClickOutside(event) {
                     </div>
                 </div>
 
-                <!-- Chat Area -->
-                <div v-if="activeConversationId" class="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900">
+                <!-- Chat View (Shows when conversation is active) -->
+                <div v-if="activeConversationId" class="flex-1 flex flex-col">
+                    
                     <!-- Chat Header -->
-                    <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4">
+                    <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-3 md:p-4">
                         <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-2 md:gap-3 min-w-0">
+                                <button 
+                                    @click="activeConversationId = null"
+                                    class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg transition-colors -ml-2">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                                    </svg>
+                                </button>
                                 <img 
                                     :src="getAvatarUrl(activeConversation.otherUserId)" 
                                     :alt="getDisplayName(activeConversation.otherUserId)" 
-                                    class="w-10 h-10 rounded-full object-cover" />
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900 dark:text-white">
+                                    class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                                <div class="min-w-0">
+                                    <h2 class="text-xs md:text-base font-semibold text-slate-900 dark:text-white truncate">
                                         {{ getDisplayName(activeConversation.otherUserId) }}
                                     </h2>
                                     <p class="text-xs text-slate-500 dark:text-slate-400">Customer</p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <!-- Info button - Navigate to shop -->
+                            <div class="flex items-center gap-1 flex-shrink-0">
                                 <button 
                                     @click="goToShopDetails"
-                                    class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg"
+                                    class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
                                     title="View Shop Details">
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                 </button>
-                                
-                                <!-- Options menu button -->
                                 <div class="relative">
                                     <button 
                                         @click="showOptionsMenu = !showOptionsMenu"
-                                        class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg"
+                                        class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
                                         title="Options">
                                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
                                         </svg>
                                     </button>
-                                    
-                                    <!-- Dropdown menu -->
                                     <div 
                                         v-if="showOptionsMenu"
                                         class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-50">
                                         <button
                                             @click="deleteConversation(activeConversationId)"
-                                            class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                                            class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors">
                                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                             </svg>
@@ -584,11 +605,11 @@ function handleClickOutside(event) {
                         ref="messagesContainer"
                         class="flex-1 overflow-y-auto p-2 md:p-4 bg-slate-50 dark:bg-slate-900">
                         <div v-if="!messages || messages.length === 0" class="flex items-center justify-center h-full">
-                            <div class="text-center">
-                                <svg class="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="text-center px-3 md:px-4">
+                                <svg class="h-12 md:h-16 w-12 md:w-16 mx-auto text-slate-300 dark:text-slate-600 mb-2 md:mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                 </svg>
-                                <p class="text-slate-600 dark:text-slate-400">No messages yet. Start the conversation!</p>
+                                <p class="text-xs md:text-sm text-slate-600 dark:text-slate-400">No messages yet. Start the conversation!</p>
                             </div>
                         </div>
 
@@ -617,36 +638,34 @@ function handleClickOutside(event) {
                                             message.senderId === currentUserIdRef ? 'justify-end' : 'justify-start'
                                         ]">
                                         <div :class="[
-                                            'max-w-[70%] md:max-w-xs px-3 py-2 rounded-2xl',
+                                            'max-w-xs px-3 py-2 rounded-2xl',
                                             message.senderId === currentUserIdRef
                                                 ? 'bg-blue-500 text-white rounded-br-md'
                                                 : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-md shadow-sm'
                                         ]">
-                                            <p v-if="message.text" class="text-sm whitespace-pre-wrap break-words">{{ message.text }}</p>
+                                            <p v-if="message.text" class="text-xs md:text-sm whitespace-pre-wrap break-words">{{ message.text }}</p>
 
-                                            <!-- File links (NEW) -->
-                                            <div v-if="message.attachments && message.attachments.length > 0" class="...">
-                                            <div v-for="file in message.attachments" :key="file.url" class="...">
-
-                                                <a 
-                                                :href="file.url" 
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                class="flex items-center gap-1 text-xs underline hover:opacity-75">
-                                                <span>{{ getFileIcon(file) }}</span>
-                                                <span class="truncate">{{ file.name }}</span>
-                                                </a>
-                                            </div>
+                                            <!-- File links -->
+                                            <div v-if="message.attachments && message.attachments.length > 0" class="mt-2 space-y-1">
+                                                <div v-for="file in message.attachments" :key="file.url">
+                                                    <a 
+                                                        :href="file.url" 
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        class="flex items-center gap-1 text-xs underline hover:opacity-75 transition-opacity">
+                                                        <span>{{ getFileIcon(file) }}</span>
+                                                        <span class="truncate">{{ file.name }}</span>
+                                                    </a>
+                                                </div>
                                             </div>
 
                                             <!-- Timestamp -->
                                             <p :class="[
-                                            'text-xs mt-1',
-                                            message.senderId === currentUserIdRef ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'
+                                                'text-xs mt-1',
+                                                message.senderId === currentUserIdRef ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'
                                             ]">
-                                            {{ formatMessageTimeDetailed(message.timestamp || message.createdAt) }}
+                                                {{ formatMessageTimeDetailed(message.timestamp || message.createdAt) }}
                                             </p>
-
                                         </div>
                                     </div>
                                 </div>
@@ -655,16 +674,16 @@ function handleClickOutside(event) {
                     </div>
 
                     <!-- Message Input -->
-                    <div class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4">
+                    <div class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-2 md:p-4">
                         <!-- Selected Files Preview -->
                         <div v-if="selectedFiles.length > 0" class="mb-3 flex flex-wrap gap-2">
                             <div
                                 v-for="(file, index) in selectedFiles"
                                 :key="index"
-                                class="relative flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-lg px-3 py-2 pr-8">
-                                <span class="text-xl">{{ getFileIcon(file) }}</span>
+                                class="relative flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-lg px-2 md:px-3 py-1.5 md:py-2 pr-7 md:pr-8">
+                                <span class="text-base md:text-lg flex-shrink-0">{{ getFileIcon(file) }}</span>
                                 <div class="flex flex-col min-w-0">
-                                    <span class="text-xs font-medium text-slate-900 dark:text-white truncate max-w-[150px]">
+                                    <span class="text-xs font-medium text-slate-900 dark:text-white truncate max-w-[100px] md:max-w-[150px]">
                                         {{ file.name }}
                                     </span>
                                     <span class="text-xs text-slate-500 dark:text-slate-400">
@@ -674,15 +693,15 @@ function handleClickOutside(event) {
                                 <button
                                     @click="removeFile(index)"
                                     type="button"
-                                    class="absolute right-1 top-1 p-1 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 rounded">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    class="absolute right-1 top-1 p-0.5 md:p-1 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 rounded transition-colors">
+                                    <svg class="h-3 w-3 md:h-4 md:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                     </svg>
                                 </button>
                             </div>
                         </div>
 
-                        <form @submit.prevent="selectedFiles.length > 0 ? sendMessageWithFiles() : sendMessage()" class="flex items-end gap-3">
+                        <form @submit.prevent="selectedFiles.length > 0 ? sendMessageWithFiles() : sendMessage()" class="flex items-end gap-1.5 md:gap-3">
                             <!-- Hidden file input -->
                             <input
                                 ref="fileInput"
@@ -696,31 +715,33 @@ function handleClickOutside(event) {
                             <button 
                                 type="button"
                                 @click="openFilePicker"
-                                class="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                class="p-1.5 md:p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg transition-colors flex-shrink-0"
                                 title="Attach files or images">
-                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="h-5 w-5 md:h-6 md:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
                                 </svg>
                             </button>
+
                             <textarea
                                 v-model="newMessage"
                                 @keydown.enter.exact.prevent="selectedFiles.length > 0 ? sendMessageWithFiles() : sendMessage()"
-                                placeholder="Type your message..."
+                                placeholder="Type a message..."
                                 rows="1"
-                                class="flex-1 px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
+                                class="flex-1 px-2 md:px-4 py-1.5 md:py-3 text-xs md:text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
+
                             <button
                                 type="submit"
                                 :disabled="(!newMessage.trim() && selectedFiles.length === 0) || uploadingFiles"
                                 :class="[
-                                    'p-3 rounded-lg transition-colors',
+                                    'p-1.5 md:p-3 rounded-lg transition-colors flex-shrink-0',
                                     (newMessage.trim() || selectedFiles.length > 0) && !uploadingFiles
                                         ? 'bg-primary text-white hover:bg-primary/90' 
                                         : 'bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500'
                                 ]">
-                                <svg v-if="!uploadingFiles" class="h-6 w-6 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg v-if="!uploadingFiles" class="h-4 w-4 md:h-6 md:w-6 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                                 </svg>
-                                <svg v-else class="h-6 w-6 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <svg v-else class="h-4 w-4 md:h-6 md:w-6 animate-spin" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                 </svg>
@@ -728,17 +749,7 @@ function handleClickOutside(event) {
                         </form>
                     </div>
                 </div>
-
-                <!-- Empty State -->
-                <div v-else class="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-                    <div class="text-center">
-                        <svg class="h-24 w-24 mx-auto text-slate-300 dark:text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                        </svg>
-                        <h3 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">No conversation selected</h3>
-                        <p class="text-slate-600 dark:text-slate-400">Choose a conversation to start messaging</p>
-                    </div>
-                </div>
+            </div>
         </main>
 
         <!-- Toast Notification -->
@@ -761,6 +772,7 @@ function handleClickOutside(event) {
             @cancel="handleCancel" />
     </div>
 </template>
+
 
 <style scoped>
 button {
