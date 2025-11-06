@@ -14,7 +14,7 @@
       >
         <h2 class="mb-1 text-xl font-semibold text-slate-900 dark:text-white">Order Details</h2>
         <p class="mb-4 text-sm text-slate-600 dark:text-slate-300">
-          Order #{{ order?.orderId }} • Placed {{ fmt(order?.createdAt) }}
+          Order #{{ order?.id }} • Placed {{ fmt(order?.createdAt) }}
         </p>
 
 
@@ -141,7 +141,7 @@
           <div>
             <h3 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">Invoice</h3>
             <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-              Order <span class="font-medium">#{{ order?.orderId }}</span>
+              Order <span class="font-medium">#{{ order?.id }}</span>
             </p>
           </div>
           <div class="flex items-center gap-2">
@@ -167,7 +167,7 @@
             <div class="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 shadow-sm bg-white dark:bg-slate-900">
               <div class="mb-4">
                 <h1 class="m-0 text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white">Invoice</h1>
-                <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Order #{{ order?.orderId }}</div>
+                <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Order #{{ order?.id }}</div>
               </div>
 
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 text-xs sm:text-sm">
