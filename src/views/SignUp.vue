@@ -200,11 +200,191 @@
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">PDF, JPG, or PNG. Max 5MB.</p>
             </div>
 
-            <label class="mt-1 flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
-              <input type="checkbox" v-model="termsAccepted" class="mt-0.5">
-              <span>I agree to the <a class="text-[#10A9C7] hover:underline" href="#" target="_blank">Terms & Conditions</a>.</span>
-            </label>
-            <p v-if="invalid(termsValid)" class="text-xs text-red-500">You must agree to the Terms</p>
+            <!-- Terms and Conditions -->
+            <div class="mt-4">
+              <label class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+                <input type="checkbox" v-model="termsAccepted" class="mt-0.5 cursor-pointer">
+                <span>
+                  I have read and agree to the 
+                  <button 
+                    type="button"
+                    @click="showTermsModal = true" 
+                    class="text-[#10A9C7] hover:underline font-medium">
+                    Terms & Conditions
+                  </button>.
+                </span>
+              </label>
+              <p v-if="invalid(termsValid)" class="text-xs text-red-500 mt-1">You must agree to the Terms & Conditions</p>
+            </div>
+
+            <!-- Terms Modal -->
+            <Teleport to="body">
+              <div v-if="showTermsModal" 
+                  class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                  @click="showTermsModal = false">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col"
+                    @click.stop>
+                  <!-- Header -->
+                  <div class="sticky top-0 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-2xl">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Verified Seller Terms & Conditions</h3>
+                    <button @click="showTermsModal = false" 
+                            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl leading-none">
+                      ×
+                    </button>
+                  </div>
+                  
+                  <!-- Scrollable Content -->
+                  <div class="overflow-y-auto flex-1 px-6 py-6">
+                    <div class="prose dark:prose-invert max-w-none text-sm">
+                      <p class="text-gray-500 dark:text-gray-400 mb-6">
+                        <strong>Last Updated:</strong> November 2025
+                      </p>
+                      
+                      <p class="mb-6">
+                        By checking the box below and registering as a Verified Seller on HouseBiBi, you acknowledge that you have read, understood, and agree to comply with the following terms and conditions:
+                      </p>
+
+                      <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-3">1. Seller Account and Verification</h2>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li>You must provide accurate, current, and complete information during the registration process.</li>
+                        <li>You are responsible for maintaining the confidentiality of your account credentials.</li>
+                        <li>You must be at least 18 years old or the age of majority in your jurisdiction to become a Verified Seller.</li>
+                        <li>Your seller account may be subject to verification checks at any time to ensure compliance with these terms.</li>
+                      </ul>
+
+                      <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-3">2. Product Listings and Content</h2>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li><strong>Authenticity:</strong> All products listed must be genuine, authentic, and accurately described.</li>
+                        <li><strong>Ownership:</strong> You must have legal rights to sell all products listed on the platform.</li>
+                        <li><strong>Prohibited Items:</strong> You may not list counterfeit goods, illegal items, stolen property, or items that violate intellectual property rights.</li>
+                      </ul>
+
+                      <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-3">3. Photo and Image Upload Policy</h2>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li><strong>Original Content:</strong> All product photos and images must be your own original work or properly licensed content that you have permission to use.</li>
+                        <li><strong>Prohibited Content:</strong> You must NOT upload:
+                          <ul class="list-circle pl-5 mt-2 space-y-1">
+                            <li>Copyrighted images from other websites, brands, or sellers without permission</li>
+                            <li>Watermarked images belonging to others</li>
+                            <li>Stock photos misrepresenting the actual product</li>
+                            <li>Images containing inappropriate, offensive, or illegal content</li>
+                            <li>Photos of products you do not actually possess or have in stock</li>
+                            <li>Images depicting minors in inappropriate contexts</li>
+                            <li>Misleading or deceptive imagery</li>
+                          </ul>
+                        </li>
+                        <li><strong>Abuse Prevention:</strong> Any systematic or repeated uploading of unauthorized images, stolen content, or misrepresentative photos will result in immediate account suspension and potential legal action.</li>
+                        <li><strong>Image Verification:</strong> We reserve the right to request proof of ownership or licensing for any images uploaded to the platform.</li>
+                      </ul>
+
+                      <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-3">4. AI-Generated Content Policy</h2>
+                      
+                      <h3 class="text-base font-semibold text-gray-800 dark:text-gray-200 mt-4 mb-2">4.1 Disclosure Requirements:</h3>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li>AI-generated product images, descriptions, or content must be clearly disclosed</li>
+                        <li>You must explicitly label AI-generated images with tags like "[AI-Generated]" or similar indicators</li>
+                        <li>Misleading buyers about the authenticity of product representations is strictly prohibited</li>
+                      </ul>
+
+                      <h3 class="text-base font-semibold text-gray-800 dark:text-gray-200 mt-4 mb-2">4.2 AI Content Standards:</h3>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li>AI-generated images must accurately represent the actual product being sold</li>
+                        <li>You may not use AI to create fake reviews, testimonials, or social proof</li>
+                        <li>AI-generated product descriptions must be factually accurate and not misleading</li>
+                        <li>Deepfakes, manipulated images of real people, or AI content that violates privacy rights are strictly forbidden</li>
+                      </ul>
+
+                      <h3 class="text-base font-semibold text-gray-800 dark:text-gray-200 mt-4 mb-2">4.3 Prohibited AI Uses:</h3>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li>Creating fake product variations or options that don't exist</li>
+                        <li>Generating false certifications, badges, or quality marks</li>
+                        <li>Producing misleading comparison images with competitors</li>
+                        <li>Manufacturing fake customer photos or unboxing content</li>
+                        <li>Creating deceptive "before and after" imagery</li>
+                      </ul>
+
+                      <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-3">5. Intellectual Property Rights</h2>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li>You represent that all content you upload does not infringe upon any third party's intellectual property rights.</li>
+                        <li>You grant HouseBiBi a non-exclusive, worldwide license to display, reproduce, and distribute your content for platform operations.</li>
+                        <li>You agree to indemnify HouseBiBi against any claims arising from your violation of intellectual property rights.</li>
+                      </ul>
+
+                      <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-3">6. Prohibited Activities</h2>
+                      <p class="mb-2 text-gray-700 dark:text-gray-300">You must NOT:</p>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li>Manipulate reviews or ratings</li>
+                        <li>Engage in price fixing or anti-competitive practices</li>
+                        <li>Use bots, scripts, or automated tools to gain unfair advantages</li>
+                        <li>Create multiple accounts to circumvent restrictions</li>
+                        <li>Harass, threaten, or abuse buyers or other sellers</li>
+                        <li>Engage in fraudulent activities or scams</li>
+                      </ul>
+
+                      <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-3">7. Order Fulfillment and Customer Service</h2>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li>You must ship products within the timeframe specified in your listing.</li>
+                        <li>You are responsible for providing accurate tracking information.</li>
+                        <li>You must respond to customer inquiries within 24-48 hours.</li>
+                        <li>You must honor your return and refund policies as stated in your listings.</li>
+                      </ul>
+
+                      <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-3">8. Content Monitoring and Enforcement</h2>
+                      <p class="mb-2 text-gray-700 dark:text-gray-300">HouseBiBi reserves the right to:</p>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li>Monitor, review, and remove any content that violates these terms</li>
+                        <li>Use automated systems, AI, and manual review to detect policy violations</li>
+                        <li>Suspend or terminate accounts without prior notice for serious violations</li>
+                        <li>Report illegal activities to appropriate authorities</li>
+                      </ul>
+
+                      <p class="mt-4 mb-2 text-gray-700 dark:text-gray-300"><strong>Penalties for Violations:</strong></p>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li><strong>First offense:</strong> Warning and content removal</li>
+                        <li><strong>Second offense:</strong> Temporary account suspension (7-30 days)</li>
+                        <li><strong>Third offense or severe violations:</strong> Permanent account termination</li>
+                        <li><strong>Fraudulent activity:</strong> Immediate termination and potential legal action</li>
+                      </ul>
+
+                      <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-3">9. Liability and Indemnification</h2>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li>You are solely responsible for your products, listings, and transactions.</li>
+                        <li>You agree to indemnify and hold HouseBiBi harmless from any claims, damages, or expenses arising from your breach of these terms.</li>
+                        <li>HouseBiBi is not liable for disputes between you and buyers, though we may facilitate resolution.</li>
+                      </ul>
+
+                      <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-3">10. Termination</h2>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li>Either party may terminate this agreement with 30 days' written notice.</li>
+                        <li>HouseBiBi may immediately suspend or terminate your account for material breach, fraudulent activities, repeated violations, or failure to maintain acceptable performance metrics.</li>
+                        <li>Upon termination, you remain liable for all pending orders and obligations.</li>
+                      </ul>
+
+                      <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-3">11. Acknowledgment</h2>
+                      <p class="text-gray-700 dark:text-gray-300">By checking the agreement box, you acknowledge that:</p>
+                      <ul class="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300 mt-2">
+                        <li>You have read and understood these Terms and Conditions</li>
+                        <li>You agree to comply with all policies regarding photo uploads and AI-generated content</li>
+                        <li>You understand that violations may result in account suspension or termination</li>
+                        <li>You accept full responsibility for all content and activities on your seller account</li>
+                        <li>You will conduct business ethically and in compliance with all applicable laws</li>
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <!-- Footer -->
+                  <div class="sticky bottom-0 flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-b-2xl">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      Version 1.0 | <a href="mailto:seller-support@housebibi.com" class="text-[#10A9C7] hover:underline">Contact Support</a>
+                    </p>
+                    <button @click="handleAcceptTerms"
+                            class="px-6 py-2.5 bg-[#10A9C7] hover:bg-[#0E97B3] text-white font-semibold rounded-lg transition">
+                      I Agree
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Teleport>
           </div>
 
           <!-- Account Details Section Header -->
@@ -385,6 +565,13 @@ function handleSingPassVerified(data) {
   
   // Show success message
   success('✅ Your business details have been verified and pre-filled!')
+}
+
+const showTermsModal = ref(false)
+
+function handleAcceptTerms() {
+  termsAccepted.value = true
+  showTermsModal.value = false
 }
 /* Role */
 const role = ref('buyer')
