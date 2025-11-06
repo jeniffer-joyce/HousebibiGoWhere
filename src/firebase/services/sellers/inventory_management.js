@@ -4,7 +4,7 @@
 // - Applies idempotent adjustments based on the latest status in statusLog
 // - Handles single-variant and multi-variant products (size / sizeIndex)
 // - Uses Firestore transactions to update quantities and totalSales safely
-// - FIXED: Prevents duplicate processing with strict idempotency checks
+// - FIXED: Timestamp-based guard prevents reprocessing unchanged orders
 
 import {
   getFirestore,
@@ -16,6 +16,7 @@ import {
   runTransaction,
   doc,
   updateDoc,
+  Timestamp,
 } from 'firebase/firestore'
 
 let _unsub = null
@@ -50,7 +51,6 @@ export function attachInventoryWatcher({ db = getFirestore(), auth, sellerId }) 
   }
 
   // Heuristic: watch the most recently updated orders (keeps cost sane)
-  // Your orders have `updatedAt` (timestamp). We keep it lean with limit(200).
   const ordersRef = collection(db, 'orders')
   const q = query(ordersRef, orderBy('updatedAt', 'desc'), limit(200))
 
@@ -96,6 +96,7 @@ export function detachInventoryWatcher() {
     _unsub = null
   }
   _activeSellerId = null
+  console.log('[Inventory] Watcher detached')
 }
 
 /* ====================================================================== */
@@ -103,12 +104,39 @@ export function detachInventoryWatcher() {
 /* ====================================================================== */
 
 /**
- * ⭐ FIXED IDEMPOTENCY LOGIC with BACKWARD COMPATIBILITY
+ * Convert various timestamp formats to milliseconds since epoch
+ */
+function toMillis(val) {
+  if (!val) return 0
+  if (typeof val === 'number') return val
+  if (val instanceof Date) return val.getTime()
+  if (val instanceof Timestamp) return val.toMillis()
+  if (typeof val === 'string') {
+    const d = new Date(val)
+    return isNaN(d.getTime()) ? 0 : d.getTime()
+  }
+  return 0
+}
+
+/**
+ * Get the timestamp of the latest status change from statusLog
+ */
+function getLatestStatusTimestamp(order) {
+  const log = Array.isArray(order.statusLog) ? order.statusLog : []
+  if (!log.length) return toMillis(order.createdAt) || 0
+  
+  const last = log[log.length - 1]
+  return toMillis(last?.time) || toMillis(order.updatedAt) || 0
+}
+
+/**
+ * ⭐ FIXED IDEMPOTENCY LOGIC with TIMESTAMP GUARD
  * 
- * Cursor structure (NEW):
+ * Cursor structure:
  * inventoryCursor: {
  *   [sellerId]: {
  *     lastStatus: "to_ship",
+ *     lastProcessedTimestamp: 1699123456789,  // ⭐ NEW: milliseconds since epoch
  *     processedActions: {
  *       "to_ship_deduct": true,
  *       "completed_sales": true
@@ -120,14 +148,20 @@ async function handleOrderStatusChange(db, order, sellerId) {
   const latestStatus = getLatestStatus(order)
   if (!latestStatus) return
 
+  // Get the timestamp of the latest status change
+  const latestStatusTimestamp = getLatestStatusTimestamp(order)
+
   // ⭐ Parse cursor with backward compatibility
   const cursorRaw = order.inventoryCursor?.[sellerId]
   let processedActions = {}
   let lastProcessedStatus = null
+  let lastProcessedTimestamp = 0
 
   if (typeof cursorRaw === 'string') {
     // OLD FORMAT: just a status string - migrate
     lastProcessedStatus = cursorRaw
+    lastProcessedTimestamp = 0 // Unknown, will reprocess once
+    
     if (cursorRaw === 'to_ship' || cursorRaw === 'to_receive' || cursorRaw === 'completed') {
       processedActions['to_ship_deduct'] = true
     }
@@ -140,19 +174,28 @@ async function handleOrderStatusChange(db, order, sellerId) {
   } else if (typeof cursorRaw === 'object' && cursorRaw !== null) {
     // NEW FORMAT: object with detailed tracking
     lastProcessedStatus = cursorRaw.lastStatus
+    lastProcessedTimestamp = Number(cursorRaw.lastProcessedTimestamp) || 0
     processedActions = cursorRaw.processedActions || {}
   }
 
-  // ⭐ KEY FIX: Check if this EXACT action has been processed
-  const actionKey = getActionKey(latestStatus)
-  
-  if (actionKey && processedActions[actionKey]) {
-    // This specific action has already been processed - SKIP
+  // ⭐ TIMESTAMP GUARD: If we've already processed a more recent or equal timestamp, skip
+  if (lastProcessedTimestamp >= latestStatusTimestamp && lastProcessedTimestamp > 0) {
+    // We've already processed this status change or a more recent one
     return
   }
 
-  // If status hasn't changed at all, nothing to do
-  if (lastProcessedStatus === latestStatus && !actionKey) {
+  // ⭐ ACTION KEY CHECK: If this specific action was already processed, skip
+  const actionKey = getActionKey(latestStatus)
+  if (actionKey && processedActions[actionKey]) {
+    // Action already completed, but update timestamp if needed
+    if (lastProcessedTimestamp < latestStatusTimestamp) {
+      await updateCursor(db, order.id, sellerId, latestStatus, processedActions, latestStatusTimestamp)
+    }
+    return
+  }
+
+  // If status hasn't changed and no new timestamp, nothing to do
+  if (lastProcessedStatus === latestStatus && lastProcessedTimestamp >= latestStatusTimestamp) {
     return
   }
 
@@ -164,10 +207,11 @@ async function handleOrderStatusChange(db, order, sellerId) {
   const actionsToMark = {}
   let actionPerformed = false
 
+  console.log(`[Inventory] Processing order ${order.id}: ${latestStatus}`)
+
   // ⭐ Apply adjustments based on status - ONLY if not already processed
   
   if (latestStatus === 'to_ship' && !processedActions['to_ship_deduct']) {
-    console.log(`[Inventory] Deducting stock for order ${order.id}`)
     await adjustAllItems(db, sellerItems, 'DEDUCT')
     actionsToMark['to_ship_deduct'] = true
     actionPerformed = true
@@ -176,7 +220,6 @@ async function handleOrderStatusChange(db, order, sellerId) {
   if (latestStatus === 'cancelled' && !processedActions['cancelled_reimburse']) {
     // REIMBURSE only if we previously deducted
     if (processedActions['to_ship_deduct']) {
-      console.log(`[Inventory] Reimbursing stock for order ${order.id}`)
       await adjustAllItems(db, sellerItems, 'REIMBURSE')
       actionsToMark['cancelled_reimburse'] = true
       actionPerformed = true
@@ -188,28 +231,34 @@ async function handleOrderStatusChange(db, order, sellerId) {
   }
   
   if (latestStatus === 'completed' && !processedActions['completed_sales']) {
-    console.log(`[Inventory] Incrementing sales for order ${order.id}`)
     await addSalesAllItems(db, sellerItems)
     actionsToMark['completed_sales'] = true
     actionPerformed = true
   }
 
-  // Only update cursor if we performed an action
+  // Update cursor with new status, timestamp, and actions
   if (actionPerformed) {
-    try {
-      const orderRef = doc(db, 'orders', order.id)
-      const newProcessedActions = { ...processedActions, ...actionsToMark }
-      
-      await updateDoc(orderRef, {
-        [`inventoryCursor.${sellerId}`]: {
-          lastStatus: latestStatus,
-          processedActions: newProcessedActions,
-          lastUpdated: new Date().toISOString()
-        }
-      })
-    } catch (e) {
-      console.warn(`[Inventory] Could not write cursor for ${order.id}:`, e)
-    }
+    const newProcessedActions = { ...processedActions, ...actionsToMark }
+    await updateCursor(db, order.id, sellerId, latestStatus, newProcessedActions, latestStatusTimestamp)
+  }
+}
+
+/**
+ * Update the inventory cursor for an order
+ */
+async function updateCursor(db, orderId, sellerId, status, processedActions, timestamp) {
+  try {
+    const orderRef = doc(db, 'orders', orderId)
+    await updateDoc(orderRef, {
+      [`inventoryCursor.${sellerId}`]: {
+        lastStatus: status,
+        lastProcessedTimestamp: timestamp,
+        processedActions: processedActions,
+        lastUpdated: new Date().toISOString()
+      }
+    })
+  } catch (e) {
+    console.warn(`[Inventory] Could not write cursor for ${orderId}:`, e)
   }
 }
 
@@ -256,10 +305,7 @@ async function adjustAllItems(db, items, mode /* 'DEDUCT' | 'REIMBURSE' */) {
           idx = (data.size || []).findIndex(s => String(s) === String(it.size))
         }
         
-        if (idx < 0 || idx >= data.quantity.length) {
-          console.warn(`[Inventory] Variant not found for ${it.productId}`)
-          return
-        }
+        if (idx < 0 || idx >= data.quantity.length) return
 
         const qtyArr = [...data.quantity]
         const current = Number(qtyArr[idx] ?? 0) || 0
