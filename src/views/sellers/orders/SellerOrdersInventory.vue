@@ -601,7 +601,7 @@
                   alt="" 
                   class="h-12 w-12 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" 
                 />
-                <div class="min-w-0 flex-1">
+                <div class="min-w-0 flex-1 overflow-hidden">
                   <div class="text-sm font-medium text-slate-900 dark:text-white">
                     {{ productToDelete.item_name }}
                   </div>

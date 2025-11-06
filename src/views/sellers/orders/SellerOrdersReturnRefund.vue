@@ -265,7 +265,7 @@
               alt=""
               class="h-16 w-16 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700 flex-shrink-0" 
             />
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 flex-1 overflow-hidden">
               <div class="font-medium text-sm leading-tight text-slate-900 dark:text-white break-words">
                 {{ findProductName(r) }}
               </div>

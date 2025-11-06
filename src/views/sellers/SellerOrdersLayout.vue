@@ -1,10 +1,12 @@
 <!-- src/views/sellers/orders/SellerOrdersLayout.vue -->
 <template>
-  <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+  <div class="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900">
     <SellerOrdersSidebar :counts="counts" />
-    <main class="flex-1 p-6 sm:p-8">
-      <!-- Your child pages render here -->
-      <RouterView />
+    <main class="flex-1 overflow-auto">
+      <div class="p-4 sm:p-6 lg:p-8">
+        <!-- Your child pages render here -->
+        <RouterView />
+      </div>
     </main>
   </div>
 </template>
