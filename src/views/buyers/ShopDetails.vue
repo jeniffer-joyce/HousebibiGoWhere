@@ -212,7 +212,7 @@
             <!-- Products Grid -->
             <TransitionGroup tag="div" name="fade"
               v-if="(showAll ? filteredSortedProducts.length : topProducts.length) > 0"
-              class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
               <RouterLink   :to="{
                   name: 'ProductDetails',
                   params: { id: product.productId },
@@ -357,39 +357,38 @@
             </div>
 
             <!-- Review Cards -->
-            <div v-else class="space-y-4 sm:space-y-6">
-              <div v-for="r in rv.listSorted" :key="r.key"
-                class="rounded-xl sm:rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 lg:gap-6">
+              <div v-for="r in rv.displayedReviews" :key="r.key"
+                class="rounded-xl border border-slate-200 bg-white p-3 md:p-4 lg:p-6 shadow-sm hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
 
                 <!-- Header -->
-                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div class="flex items-start gap-3">
+                <div class="flex flex-col gap-2 md:gap-3">
+                  <div class="flex items-start gap-2">
                     <img :src="rv.avatarUrl(r)"
-                      class="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover flex-shrink-0"
+                      class="h-8 w-8 md:h-10 md:w-10 rounded-full object-cover flex-shrink-0"
                       :alt="rv.displayName(r)" />
-                    <div>
-                      <p class="font-semibold text-sm sm:text-base text-slate-900 dark:text-white">{{ rv.displayName(r)
-                      }}</p>
-                      <p class="text-xs text-slate-500 dark:text-slate-400">{{ rv.formatTime(r.createdAt) }}</p>
+                    <div class="flex-1 min-w-0">
+                      <p class="font-semibold text-xs md:text-sm text-slate-900 dark:text-white">{{ rv.displayName(r) }}</p>
+                      <p class="text-[10px] md:text-xs text-slate-500 dark:text-slate-400">{{ rv.formatTime(r.createdAt) }}</p>
                     </div>
                   </div>
 
-                  <!-- Ratings -->
-                  <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 text-xs sm:text-sm">
-                    <div class="flex items-center gap-2">
-                      <span class="text-slate-600 dark:text-slate-300">Seller</span>
+                  <!-- Ratings - Stack on mobile, inline on desktop -->
+                  <div class="flex flex-col gap-1.5 text-[10px] md:text-xs">
+                    <div class="flex items-center gap-1">
+                      <span class="text-slate-600 dark:text-slate-300 whitespace-nowrap">Seller</span>
                       <div class="flex items-center">
                         <template v-for="n in 5" :key="'ss-'+r.key+n">
-                          <span class="material-symbols-outlined text-base sm:text-[20px]"
+                          <span class="material-symbols-outlined text-sm md:text-base"
                             :class="n <= (r.sellerService || 0) ? 'text-sky-500' : 'text-slate-300'">star</span>
                         </template>
                       </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-slate-600 dark:text-slate-300">Delivery</span>
+                    <div class="flex items-center gap-1">
+                      <span class="text-slate-600 dark:text-slate-300 whitespace-nowrap">Delivery</span>
                       <div class="flex items-center">
                         <template v-for="n in 5" :key="'dv-'+r.key+n">
-                          <span class="material-symbols-outlined text-base sm:text-[20px]"
+                          <span class="material-symbols-outlined text-sm md:text-base"
                             :class="n <= (r.delivery || 0) ? 'text-sky-500' : 'text-slate-300'">star</span>
                         </template>
                       </div>
@@ -398,61 +397,69 @@
                 </div>
 
                 <!-- Product Info -->
-                <div class="mt-4 flex items-start gap-3">
+                <div class="mt-2 md:mt-3 flex items-start gap-2">
                   <img :src="r.productImage || defaultProductThumb"
-                    class="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0"
+                    class="h-8 w-8 md:h-10 md:w-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0"
                     alt="product" />
 
                   <div class="flex-1 min-w-0">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <p class="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate">
+                    <div class="flex flex-wrap items-center gap-1 md:gap-2">
+                      <p class="font-semibold text-xs md:text-sm text-slate-900 dark:text-white truncate">
                         {{ r.productName || 'Product' }}
                       </p>
                       <span v-if="r.size"
-                        class="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 flex-shrink-0">
+                        class="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] md:text-xs font-semibold text-blue-700 flex-shrink-0">
                         Size: {{ r.size }}
                       </span>
                     </div>
 
-                    <div class="mt-1 flex items-center gap-1">
+                    <div class="mt-1 flex items-center gap-0.5">
                       <template v-for="n in 5" :key="'it-'+r.key+n">
-                        <span class="material-symbols-outlined text-base sm:text-[20px]"
+                        <span class="material-symbols-outlined text-sm md:text-base"
                           :class="n <= r.rating ? 'text-sky-500' : 'text-slate-300'">star</span>
                       </template>
-                      <span class="ml-1 text-xs text-slate-500">{{ r.rating }}/5</span>
+                      <span class="ml-1 text-[10px] md:text-xs text-slate-500">{{ r.rating }}/5</span>
                     </div>
                   </div>
                 </div>
 
                 <!-- Review Text -->
-                <p class="mt-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                <p class="mt-2 md:mt-3 text-xs md:text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap line-clamp-3">
                   {{ r.text }}
                 </p>
                 <!-- Updated comment (only when present) -->
                 <div v-if="r.updatedText"
-                      class="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2
-                            text-sm text-blue-800 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
+                      class="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 md:px-3 md:py-2
+                            text-xs md:text-sm text-blue-800 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
                     <div v-if="rv.isUpdated(r)" class="mt-1">
                       <span
-                        class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5
-                              text-[10px] sm:text-xs font-semibold text-blue-700
+                        class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5
+                              text-[10px] font-semibold text-blue-700
                               dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
-                        <span class="material-symbols-outlined text-sm">update</span>
-                        Updated review at: {{ rv.formatTime(r.updatedAt) }}
+                        <span class="material-symbols-outlined text-xs">update</span>
+                        Updated: {{ rv.formatTime(r.updatedAt) }}
                       </span>
                     </div>
                     <br></br>
                   <span class="font-semibold ml-1">Updated Comment: </span>
-                  <span class="whitespace-pre-line">{{ r.updatedText }}</span>
+                  <span class="whitespace-pre-line line-clamp-2">{{ r.updatedText }}</span>
                 </div>
 
                 <!-- Review Photos -->
-                <div v-if="r.images?.length" class="mt-4 flex flex-wrap gap-2 sm:gap-3">
+                <div v-if="r.images?.length" class="mt-2 md:mt-3 flex flex-wrap gap-1.5 md:gap-2">
                   <img v-for="(img, i) in r.images" :key="i" :src="img"
-                    class="h-20 w-20 sm:h-24 sm:w-24 cursor-zoom-in rounded-lg border border-slate-200 object-cover dark:border-slate-700"
+                    class="h-14 w-14 md:h-16 md:w-16 lg:h-20 lg:w-20 cursor-zoom-in rounded-lg border border-slate-200 object-cover dark:border-slate-700"
                     @click="openLightbox(r.images, i)" alt="review photo" />
                 </div>
               </div>
+            </div>
+
+            <!-- View All Reviews Button -->
+            <div v-if="rv.listSorted.length > 4" class="mt-6 flex justify-center">
+              <button @click="showAllReviews = !showAllReviews"
+                class="flex items-center justify-center rounded-lg h-10 px-6 bg-primary/10 dark:bg-primary/20 text-primary text-sm font-bold hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors">
+                {{ showAllReviews ? 'Show Less Reviews' : 'View All Reviews' }}
+              </button>
             </div>
 
             <!-- Lightbox -->
@@ -544,6 +551,7 @@ const uid = route.params.id
 const business = ref(null)
 const allProducts = ref([])
 const showAll = ref(false)
+const showAllReviews = ref(false)
 const loading = ref(true)
 const isFollowing = ref(false)
 const followLoading = ref(false)
@@ -667,6 +675,9 @@ const rv = reactive({
     }
     
     return list
+  }),
+  displayedReviews: computed(() => {
+    return showAllReviews.value ? rv.listSorted : rv.listSorted.slice(0, 4)
   }),
   reset: () => {
     rv.ui.sort = 'newest'
