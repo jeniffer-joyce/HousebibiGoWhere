@@ -623,11 +623,12 @@ function handleClickOutside(event) {
                                                 ? 'bg-blue-500 text-white rounded-br-md'
                                                 : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-md shadow-sm'
                                         ]">
-                                            <p class="text-sm whitespace-pre-wrap break-words">{{ message.text }}</p>
+                                            <p v-if="message.text" class="text-sm whitespace-pre-wrap break-words">{{ message.text }}</p>
 
                                             <!-- File links (NEW) -->
-                                            <div v-if="message.files && message.files.length > 0" class="mt-2 pt-2 border-t border-current border-opacity-20">
-                                            <div v-for="file in message.files" :key="file.url" class="flex items-center gap-2 mb-1">
+                                            <div v-if="message.attachments && message.attachments.length > 0" class="...">
+                                            <div v-for="file in message.attachments" :key="file.url" class="...">
+
                                                 <a 
                                                 :href="file.url" 
                                                 target="_blank"

@@ -141,8 +141,11 @@ export function useMessages(currentUserId) {
     
     // Build message text
     // Build message text (without file names since they show as links)
+    // Build message text
     let finalMessageText = messageText.trim();
-    // Don't add file names to message text - they'll show as clickable links
+
+
+
 
     
     // Create message object with files
