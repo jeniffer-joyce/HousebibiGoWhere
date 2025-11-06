@@ -414,14 +414,9 @@ function handleClickOutside(event) {
 
 <template>
     <div class="flex h-screen bg-slate-50 dark:bg-slate-900">
-        <!-- Sidebar -->
-        <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
+        <!-- Main Content (No Sidebar for Seller) -->
+        <main class="flex-1 flex">
 
-        <!-- Main Content -->
-        <main :class="[
-            'flex-1 flex transition-all duration-300 overflow-hidden',
-            isSidebarCollapsed ? 'ml-20' : 'ml-64'
-        ]">
                 <!-- Conversations List - Minimal width below 768px for full chat visibility even with expanded sidebar -->
                 <div class="w-[15vw] md:w-80 border-r border-slate-200 dark:border-slate-700 flex flex-col bg-white dark:bg-slate-800 flex-shrink-0">
                     <!-- Header -->
