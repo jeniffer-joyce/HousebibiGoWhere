@@ -1,7 +1,9 @@
-const { onRequest } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const cors = require("cors")({ origin: true });
+const { onRequest } = require("firebase-functions/v2/https");
+const functions = require("firebase-functions");
+
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -130,149 +132,15 @@ exports.createCheckoutSession = onRequest(
           billing_address_collection: "required"
         };
 
-        // ✅ CREATE STRIPE SESSION FIRST
+        // ✅ CREATE STRIPE SESSION
         const session = await stripe.checkout.sessions.create(sessionConfig);
 
-        // ✅ GROUP ITEMS BY SELLERID
-        const itemsBySeller = {};
-        items.forEach(item => {
-          if (!itemsBySeller[item.sellerId]) {
-            itemsBySeller[item.sellerId] = [];
-          }
-          itemsBySeller[item.sellerId].push(item);
-        });
+        console.log('✅ Stripe session created:', session.id);
 
-        // ✅ CREATE ORDERS FOR EACH SELLER
-        const orderPromises = Object.entries(itemsBySeller).map(async ([sellerId, sellerItems]) => {
-          // ✅ Validate sellerId is not empty
-          if (!sellerId || sellerId === '') {
-            throw new Error('Invalid sellerId encountered during order creation');
-          }
-
-          const productsTotalPrice = sellerItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
-
-          const orderData = {
-            orderId: '',
-            uid: userId,
-            sellerId: sellerId,
-            sellerUsername: sellerItems[0].sellerUsername || '',
-            shopName: sellerItems[0].shopName || 'Shop',
-            products: sellerItems.map(item => ({
-              productId: item.productId || '',
-              sellerId: item.sellerId || '',
-              item_name: item.item_name || item.name || 'Product',
-              img_url: item.img_url || item.image || '',
-              price: item.price || 0,
-              quantity: item.quantity || 1,
-              size: item.size || null,
-              sizeIndex: item.sizeIndex !== null ? item.sizeIndex : null,
-              sellerUsername: item.sellerUsername || '',
-              shopName: item.shopName || '',
-              totalPrice: (item.price || 0) * (item.quantity || 1)
-            })),
-            shippingAddress: {
-              fullName: deliveryAddress.fullName || '',
-              phoneNumber: deliveryAddress.phoneNumber || '',
-              streetName: deliveryAddress.streetName || '',
-              unitNumber: deliveryAddress.unitNumber || '',
-              postalCode: deliveryAddress.postalCode || ''
-            },
-            totals: {
-              productsTotalPrice: Number(productsTotalPrice.toFixed(2)),
-              shippingFee: Number(shippingFee.toFixed(2)),
-              grandTotal: Number((productsTotalPrice + shippingFee).toFixed(2))
-            },
-            payment: {
-              method: 'card',
-              transactionId: session.id,
-              paidAt: admin.firestore.FieldValue.serverTimestamp()
-            },
-            status: 'to_ship',
-            statusLog: [
-              {
-                status: 'to_pay',
-                time: new Date(),
-                by: 'system'
-              },
-              {
-                status: 'to_ship',
-                time: new Date(),
-                by: 'system'
-              }
-            ],
-            logistics: {
-              shipper: null,
-              trackingNumber: null,
-              shippedAt: null,
-              deliveredAt: null
-            },
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          };
-
-          const orderRef = await admin.firestore().collection("orders").add(orderData);
-          
-          // ✅ Update orderId field with the document ID
-          await orderRef.update({ orderId: orderRef.id });
-
-          console.log(`✅ Order created for seller ${sellerId}:`, orderRef.id);
-          return orderRef.id;
-        });
-
-        // ✅ Wait for all orders to be created
-        const orderIds = await Promise.all(orderPromises);
-        console.log('✅ All orders created:', orderIds);
-
-                // ✅ CLEAR PURCHASED ITEMS FROM CART
-        try {
-          const cartRef = admin.firestore().collection('carts').doc(userId);
-          const cartSnap = await cartRef.get();
-
-          if (cartSnap.exists) {
-            const allItems = cartSnap.data().items || [];
-            
-            console.log('🔍 DEBUG - Current cart has', allItems.length, 'items');
-            console.log('🔍 DEBUG - Purchased items count:', items.length);
-
-            // Get all cartItemIds from checkout
-            const purchasedItemIds = items
-              .filter(item => item.cartItemId)
-              .map(item => item.cartItemId);
-
-            console.log('🔍 DEBUG - Purchased IDs:', purchasedItemIds);
-            console.log('🔍 DEBUG - Cart IDs:', allItems.map(i => i.cartItemId));
-
-            if (purchasedItemIds.length > 0) {
-              // Filter out purchased items
-              const remainingItems = allItems.filter(cartItem => {
-                return !purchasedItemIds.includes(cartItem.cartItemId);
-              });
-
-              console.log('🔍 DEBUG - Remaining items after filter:', remainingItems.length);
-
-              // Update cart
-              await cartRef.update({
-                items: remainingItems,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
-              });
-
-              console.log(`✅ Successfully removed ${purchasedItemIds.length} items from cart`);
-            } else {
-              console.warn('⚠️ No purchased item IDs found');
-            }
-          } else {
-            console.warn('⚠️ Cart does not exist for user:', userId);
-          }
-        } catch (cartError) {
-          console.error('❌ Error clearing cart:', cartError);
-          // Don't fail the order if cart clearing fails
-        }
-
-
+        // ✅ RETURN SESSION DETAILS (NO ORDER CREATION)
         return res.status(200).json({
           sessionId: session.id,
-          url: session.url,
-          orderIds: orderIds
+          url: session.url
         });
 
       } catch (error) {
@@ -285,3 +153,6 @@ exports.createCheckoutSession = onRequest(
     });
   }
 );
+
+
+
