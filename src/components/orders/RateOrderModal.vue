@@ -28,7 +28,7 @@
         </div>
 
         <p class="mb-5 text-sm text-slate-600 dark:text-slate-300">
-          Order <span class="font-medium">#{{ order?.orderId }}</span> · {{ orderShopName }}
+          Order <span class="font-medium">#{{ order?.id }}</span> · {{ orderShopName }}
         </p>
 
         <!-- Edit-mode guidance -->
@@ -318,7 +318,7 @@ async function onPickImages(e, itemIdx) {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
     const uid = auth.currentUser?.uid
-    const orderId = props.order?.id || props.order?.orderId
+    const orderId = props.order?.id || props.order?.id
     for (const f of files) {
       const path = `reviews/${uid}/${orderId}/${Date.now()}_${f.name}`
       const refFile = sRef(storage, path)
@@ -415,7 +415,7 @@ async function submit() {
   submitting.value = true
   try {
     const uid = auth.currentUser?.uid || ''
-    const orderId = String(props.order?.orderId ?? props.order?.id ?? '')
+    const orderId = String(props.order?.id ?? props.order?.id ?? '')
     const sellerId = String(props.order?.products?.[0]?.sellerId ?? props.order?.sellerId ?? '')
 
     if (isEdit.value && existing.value?.id) {
