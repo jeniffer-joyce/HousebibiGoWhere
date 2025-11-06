@@ -36,7 +36,7 @@
         </div>
 
         <p class="mb-5 text-sm text-slate-600 dark:text-slate-300">
-          Order <span class="font-medium">#{{ order?.orderId }}</span> · {{ order?.products?.[0]?.shopName || 'Shop' }}
+          Order <span class="font-medium">#{{ order?.orderId }}</span> · {{ orderShopName }}
         </p>
 
         <!-- Edit-mode guidance -->
@@ -113,7 +113,8 @@
                   placeholder="Write your updated thoughts about quality, fit/sizing, material, value for money…"
                   rows="3"
                 ></textarea>
-              </div><div v-else>
+              </div>
+              <div v-else>
                 <!-- Create mode: normal single textarea -->
                 <textarea
                   v-model.trim="it.text"
@@ -144,7 +145,7 @@
                     >✕</button>
                   </div>
 
-                  <!-- Show the picker only in create mode -->
+                  <!-- Picker only in create mode -->
                   <label
                     v-if="!isEdit"
                     class="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-slate-300 text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300"
@@ -276,50 +277,99 @@ const form = reactive({
   delivery: 0
 })
 
+/* ---------- helpers to tolerate different order shapes ---------- */
+const orderShopName = computed(() =>
+  props.order?.products?.[0]?.shopName
+  || props.order?.shopName
+  || 'Shop'
+)
+
+function pick (...vals) { return vals.find(v => v !== undefined && v !== null && v !== '') }
+function firstImage(obj = {}) {
+  const a = pick(obj.images, obj.photos, obj.photoUrls)
+  if (Array.isArray(a) && a.length) return a[0]
+  return pick(obj.img_url, obj.imageUrl, obj.photoLink, obj.thumbnail, '')
+}
+function normalizeOrderProducts(o) {
+  const arr =
+    (Array.isArray(o?.products)   && o.products)   ||
+    (Array.isArray(o?.items)      && o.items)      ||
+    (Array.isArray(o?.orderItems) && o.orderItems) ||
+    []
+  return arr.map((p, i) => ({
+    key:        `${pick(p.productId, p.id, p.product_id, `idx-${i}`)}-${i}`,
+    productId:  pick(p.productId, p.id, p.product_id, String(i)),
+    size:       pick(p.size, p.variant, p.variation, p.option, null),
+    item_name:  pick(p.item_name, p.name, p.title, p.productName, 'Product'),
+    img_url:    firstImage(p),
+  }))
+}
+
 // Prefill for create / edit
 watch(
   () => [props.order, isEdit.value, existing.value],
   () => {
     const o = props.order
-    if (!o) return
+    if (!o) { form.items = []; form.sellerService = 0; form.delivery = 0; return }
 
     if (isEdit.value && existing.value) {
       const ex = existing.value
+      const fromOrder = normalizeOrderProducts(o)
+
       form.items = (ex.items || []).map((it, i) => {
-        const p = (o.products || []).find(pp => pp.productId === it.productId) || {}
+        const m = fromOrder.find(p =>
+          String(p.productId) === String(it.productId) &&
+          ((p.size ?? null) === (it.size ?? null))
+        ) || {}
         return {
-          key: `${it.productId}-${i}`,
+          key: `${pick(it.productId, `ex-${i}`)}-${i}`,
           productId: it.productId,
-          size: it.size ?? p.size ?? null,
-          item_name: p.item_name || '—',
-          img_url: p.img_url || '',
+          size: pick(it.size, m.size, null),
+          item_name: pick(m.item_name, 'Product'),
+          img_url: pick(firstImage(it), m.img_url, ''),
           rating: Number(it.rating || 0),
-          originalText: (it.text ?? ''),          // <- always a string
-          updatedText: (it.updatedText ?? ''),    // <- starts empty or previous edit
+          originalText: (it.text ?? ''),
+          updatedText:  (it.updatedText ?? ''),
           photoUrls: Array.isArray(it.images) ? [...it.images] : [],
           _anonymousBool: Number(it.anonymous ?? 0) === 1
         }
       })
-      // Stars are locked; we keep them for display but don't validate on them in edit mode
+      // Stars are locked in edit mode
       form.sellerService = Number(ex.sellerService || 0)
       form.delivery      = Number(ex.delivery || 0)
+    } else {
+      // CREATE mode
+      const prods = normalizeOrderProducts(o)
+      form.items = prods.map(p => ({
+        key: p.key,
+        productId: p.productId,
+        size: p.size,
+        item_name: p.item_name,
+        img_url: p.img_url,
+        rating: 0,
+        text: '',
+        photoUrls: [],
+        _anonymousBool: false
+      }))
+      form.sellerService = 0
+      form.delivery      = 0
     }
   },
   { immediate: true }
 )
 
-// Validation: require rating + text for every item + shop scores
+// Validation
 const isFormValid = computed(() => {
   if (isEdit.value) {
-    // At least ONE item has a meaningful updated comment (and different from original)
+    // require at least one changed, non-empty updated comment
     const hasAnyUpdate = form.items.some(i => {
       const prev = (i.originalText ?? '').trim()
-      const next = (i.updatedText ?? '').trim()
+      const next = (i.updatedText  ?? '').trim()
       return next.length > 0 && next !== prev
     })
+    // shop ratings are locked; don't block submission on them
     return form.items.length > 0 && hasAnyUpdate
   }
-
   // Create mode: rating + comment for each item + shop scores
   return (
     form.items.length > 0 &&
@@ -328,6 +378,7 @@ const isFormValid = computed(() => {
     form.delivery > 0
   )
 })
+
 // Upload images
 async function onPickImages(e, itemIdx) {
   try {
@@ -352,78 +403,77 @@ function removePhoto(itemIdx, pidx) {
   form.items[itemIdx].photoUrls.splice(pidx, 1)
 }
 
-// Submit (create or edit)
+// add near submit(): small helpers
+const U = v => (v === undefined ? null : v)            // convert undefined -> null
+const A = v => (Array.isArray(v) ? v : [])             // ensure arrays
+
+// replace your submit() with this one
 const submitting = ref(false)
 async function submit() {
   if (!isFormValid.value || submitting.value) return
   submitting.value = true
   try {
-    const uid = auth.currentUser?.uid
-    const orderId = props.order?.orderId
-    const sellerId = props.order?.products?.[0]?.sellerId
-
-    const payload = {
-      orderId,
-      buyerId: uid,
-      sellerId,
-      // If you also want a top-level anonymous for the whole review, add it here.
-      items: form.items.map(i => ({
-        productId: i.productId,
-        size: i.size,
-        rating: i.rating,
-        text: i.text,
-        images: i.photoUrls,
-        // NEW: 0|1 flag per item
-        anonymous: i._anonymousBool ? 1 : 0
-      })),
-      sellerService: form.sellerService,
-      delivery: form.delivery
-    }
+    const uid = auth.currentUser?.uid || ''
+    const orderId = String(props.order?.orderId ?? props.order?.id ?? '')
+    const sellerId = String(props.order?.products?.[0]?.sellerId ?? props.order?.sellerId ?? '')
 
     if (isEdit.value && existing.value?.id) {
-  const ex = existing.value
-  const exItems = Array.isArray(ex.items) ? ex.items : []
+      const ex = existing.value
+      const exItems = Array.isArray(ex.items) ? ex.items : []
 
-  // Map by productId+size to find the corresponding edited text
-  const lockedItems = exItems.map(exIt => {
-    const match = form.items.find(fi =>
-      String(fi.productId) === String(exIt.productId) &&
-      ((fi.size ?? null) === (exIt.size ?? null))
-    ) || {}
+      const lockedItems = exItems.map(exIt => {
+        // find matching edited row (by productId + size)
+        const match = form.items.find(fi =>
+          String(fi.productId) === String(exIt.productId) &&
+          ((fi.size ?? null) === (exIt.size ?? null))
+        ) || {}
 
-    return {
-      productId: exIt.productId,
-      size: exIt.size ?? null,
-      // 🔒 Keep original ratings/images/anon
-      rating: Number(exIt.rating || 0),
-      images: Array.isArray(exIt.images) ? exIt.images : [],
-      anonymous: Number(exIt.anonymous ?? 0),
-      // 📝 Keep original text; write new into updatedText
-      text: exIt.text ?? '',
-      updatedText: (match.updatedText ?? exIt.updatedText ?? '')
+        return {
+          productId: String(exIt.productId ?? ''),
+          size: U(exIt.size ?? null),
+          rating: Number(exIt.rating || 0),
+          images: A(exIt.images),
+          anonymous: Number(exIt.anonymous ?? 0),
+          text: (exIt.text ?? ''),                       // original stays
+          updatedText: (match.updatedText ?? exIt.updatedText ?? '') // ensure string
+        }
+      })
+
+      await updateDoc(doc(db, 'reviews', existing.value.id), {
+        orderId,
+        buyerId: uid,
+        sellerId,
+        items: lockedItems,
+        sellerService: Number(existing.value.sellerService || 0),
+        delivery: Number(existing.value.delivery || 0),
+        updatedAt: serverTimestamp()
+      })
+    } else {
+      // CREATE — sanitize everything
+      const items = form.items.map(i => ({
+        productId: String(i.productId ?? ''),
+        size: U(i.size ?? null),                          // null instead of undefined
+        rating: Number(i.rating || 0),
+        text: (i.text ?? ''),                             // ensure string
+        images: A(i.photoUrls),                           // ensure array
+        anonymous: i._anonymousBool ? 1 : 0
+      }))
+
+      const payload = {
+        orderId,
+        buyerId: uid,
+        sellerId,
+        items,
+        sellerService: Number(form.sellerService || 0),
+        delivery: Number(form.delivery || 0),
+        createdAt: serverTimestamp()
+      }
+
+      await addDoc(collection(db, 'reviews'), payload)
     }
-  })
-
-  await updateDoc(doc(db, 'reviews', ex.id), {
-    orderId,
-    buyerId: uid,
-    sellerId,
-    items: lockedItems,
-    // 🔒 Keep original shop ratings
-    sellerService: Number(ex.sellerService || 0),
-    delivery: Number(ex.delivery || 0),
-    updatedAt: serverTimestamp()
-  })
-} else {
-  // CREATE — unchanged (no updatedText)
-  await addDoc(collection(db, 'reviews'), {
-    ...payload,
-    createdAt: serverTimestamp()
-  })
-}
 
     emit('submitted')
-    emit('close') 
+    emit('close')
   } catch (err) {
     console.error('⭐ Review submit error:', err)
   } finally {

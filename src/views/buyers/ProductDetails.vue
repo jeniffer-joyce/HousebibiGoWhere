@@ -1140,5 +1140,40 @@ console.log('🔍 ProductDetails Route Info:', {
                 </transition>
             </div>
         </transition>
+        <!-- === Review Photo Lightbox (for images inside reviews) === -->
+        <teleport to="body">
+        <transition
+            enter-active-class="transition-opacity duration-200 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition-opacity duration-150 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div
+            v-if="prLightbox.open"
+            class="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-3"
+            @click="closePrLightbox"
+            >
+            <!-- Close button -->
+            <button
+                type="button"
+                class="absolute right-4 top-4 rounded-lg bg-white/10 px-3 py-1.5 text-white hover:bg-white/20"
+                @click.stop="closePrLightbox"
+                aria-label="Close review image"
+            >
+                Close
+            </button>
+
+            <!-- The image -->
+            <img
+                :src="prLightbox.url"
+                class="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+                alt="Review photo"
+                @click.stop
+            />
+            </div>
+        </transition>
+        </teleport>
     </main>
 </template>
