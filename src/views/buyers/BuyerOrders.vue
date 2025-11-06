@@ -237,7 +237,7 @@
             class="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
           >
             <!-- Header -->
-            <div
+                        <div
               class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-slate-100 p-4 dark:border-slate-700"
             >
               <div class="flex flex-wrap items-center gap-3 text-sm">
@@ -256,6 +256,12 @@
                 >
                   Visit Shop
                 </RouterLink>
+                <button
+                  @click="contactSeller(o)"
+                  class="rounded-lg border border-slate-300 bg-white px-3 py-1 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
+                >
+                  Contact Seller
+                </button>
               </div>
 
               <div class="flex items-center gap-3 text-sm">
