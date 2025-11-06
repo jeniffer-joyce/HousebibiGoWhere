@@ -125,7 +125,7 @@
               />
             </div>
             <h3 class="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">Sean</h3>
-            <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">CTO</p>
+            <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">Designer Lead</p>
           </div>
 
           <!-- Team Member 3 -->
@@ -138,7 +138,7 @@
               />
             </div>
             <h3 class="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">Hong Yao</h3>
-            <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">Design Lead</p>
+            <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">CTO</p>
           </div>
 
           <!-- Team Member 4 -->
