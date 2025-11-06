@@ -71,8 +71,8 @@
               <div class="flex items-center justify-between p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 
                           border border-blue-200 dark:border-blue-800">
                 <div>
-                  <p class="text-sm font-medium text-blue-900 dark:text-blue-100">Multiple Sizes?</p>
-                  <p class="text-xs text-blue-700 dark:text-blue-300">Enable if product has different sizes</p>
+                  <p class="text-sm font-medium text-blue-900 dark:text-blue-100">Multiple Variants?</p>
+                  <p class="text-xs text-blue-700 dark:text-blue-300">Enable if product has different variants (i.e. Sizes, colours, materials)</p>
                 </div>
                 <button
                   type="button"
@@ -125,12 +125,12 @@
               <!-- Multiple Sizes Mode -->
               <div v-else class="space-y-3">
                 <div class="flex items-center justify-between">
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Size Variants</label>
+                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Multiple Variants</label>
                   <button
                     type="button"
                     @click="addSize"
                     class="text-sm text-primary font-medium hover:underline">
-                    + Add Size
+                    + Add Variants
                   </button>
                 </div>
                 <div
@@ -179,7 +179,7 @@
                     type="button"
                     @click="removeSize(idx)"
                     class="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-                    aria-label="Remove size"
+                    aria-label="Remove variants"
                   >
                     <span class="material-symbols-outlined text-base">delete</span>
                   </button>
@@ -396,7 +396,7 @@ const form = reactive({
   description: '',
   price: null,
   quantity: null,
-  sizes: [{ name: 'S', price: 0, quantity: 0 }],
+  sizes: [{ name: '', price: 0, quantity: 0 }],
   img_url: '',              // primary image (derived)
   additional_images: [],    // extra images (derived)
   imageSource: 'unsplash',
@@ -439,7 +439,7 @@ watch(
         const q = Array.isArray(product.quantity) ? product.quantity[0] : product.quantity
         form.price = Number(p) || 0
         form.quantity = Number(q) || 0
-        form.sizes = [{ name: 'S', price: 0, quantity: 0 }]
+        form.sizes = [{ name: '', price: 0, quantity: 0 }]
       }
     } else {
       resetForm(true)
@@ -489,7 +489,7 @@ function setAsPrimary(index) {
 function toggleMultipleSizes() {
   hasMultipleSizes.value = !hasMultipleSizes.value
   if (hasMultipleSizes.value && !form.sizes.length)
-    form.sizes = [{ name: 'S', price: 0, quantity: 0 }]
+    form.sizes = [{ name: '', price: 0, quantity: 0 }]
 }
 function addSize() { form.sizes.push({ name: '', price: 0, quantity: 0 }) }
 function removeSize(idx) { form.sizes.splice(idx, 1) }
@@ -505,7 +505,7 @@ function resetForm(full = false) {
     form.description = ''
     form.price = null
     form.quantity = null
-    form.sizes = [{ name: 'S', price: 0, quantity: 0 }]
+    form.sizes = [{ name: '', price: 0, quantity: 0 }]
     form.img_url = ''
     form.additional_images = []
     form.imageSource = 'unsplash'
