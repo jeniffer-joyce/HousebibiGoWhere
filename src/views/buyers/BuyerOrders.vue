@@ -231,7 +231,7 @@
             class="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
           >
             <!-- Header -->
-            <div
+                        <div
               class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-slate-100 p-4 dark:border-slate-700"
             >
               <div class="flex flex-wrap items-center gap-3 text-sm">
@@ -250,6 +250,12 @@
                 >
                   Visit Shop
                 </RouterLink>
+                <button
+                  @click="contactSeller(o)"
+                  class="rounded-lg border border-slate-300 bg-white px-3 py-1 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
+                >
+                  Contact Seller
+                </button>
               </div>
 
               <div class="flex items-center gap-3 text-sm">
@@ -313,7 +319,7 @@
                 <button
                   v-if="['to_pay','to_ship','to_receive','completed'].includes(statusOf(o))"
                   @click="viewOrderDetails(o)"
-                  class="w-full sm:w-auto rounded-lg bg-blue-500/90 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-600 whitespace-nowrap"
+                  class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors dark:bg-blue-600 dark:hover:bg-blue-700 whitespace-nowrap shadow-sm"
                 >
                   View Order
                 </button>
@@ -322,7 +328,7 @@
                 <button
                   v-if="['to_ship','to_receive','completed'].includes(statusOf(o))"
                   @click="openShippingDetails(o)"
-                  class="w-full sm:w-auto rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-100 whitespace-nowrap"
+                  class="w-full sm:w-auto rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900 whitespace-nowrap"
                 >
                   View Shipping Details
                 </button>
@@ -331,7 +337,7 @@
                 <template v-if="statusOf(o) === 'to_receive'">
                   <button
                     @click="openReceivedConfirm(o)"
-                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 whitespace-nowrap"
+                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors dark:bg-blue-600 dark:hover:bg-blue-700 whitespace-nowrap shadow-sm"
                   >
                     Order Received
                   </button>
@@ -342,21 +348,21 @@
                   <button
                     v-if="!hasReview(o)"
                     @click="rateOrder(o)"
-                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 whitespace-nowrap"
+                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors dark:bg-blue-600 dark:hover:bg-blue-700 whitespace-nowrap shadow-sm"
                   >
                     Rate
                   </button>
                   <button
                     v-else
                     @click="viewRatings(o)"
-                    class="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
+                    class="w-full sm:w-auto rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
                   >
                     View Rating
                   </button>
                   <button
                     v-if="!hasReview(o)"
                     @click="openReturnModal(o)"
-                    class="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
+                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors dark:bg-blue-600 dark:hover:bg-blue-700 whitespace-nowrap shadow-sm"
                   >
                     Request Return/Refund
                   </button>
@@ -366,19 +372,19 @@
                 <template v-else-if="statusOf(o) === 'to_pay'">
                   <button
                     @click="payNow(o)"
-                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 whitespace-nowrap"
+                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors dark:bg-blue-600 dark:hover:bg-blue-700 whitespace-nowrap shadow-sm"
                   >
                     Pay Now
                   </button>
                   <button
                     @click="changePayment(o)"
-                    class="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
+                    class="w-full sm:w-auto rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
                   >
                     Change Payment
                   </button>
                   <button
                     @click="openCancelConfirm(o)"
-                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 whitespace-nowrap"
+                    class="w-full sm:w-auto rounded-lg border border-red-300 bg-white px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors dark:border-red-800 dark:bg-slate-800 dark:text-red-400 dark:hover:bg-red-950 whitespace-nowrap"
                   >
                     Cancel Order
                   </button>
@@ -388,7 +394,7 @@
                 <template v-else-if="statusOf(o) === 'to_ship'">
                   <button
                     @click="openCancelConfirm(o)"
-                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 whitespace-nowrap"
+                    class="w-full sm:w-auto rounded-lg border border-red-300 bg-white px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors dark:border-red-800 dark:bg-slate-800 dark:text-red-400 dark:hover:bg-red-950 whitespace-nowrap"
                   >
                     Cancel Order
                   </button>
@@ -398,7 +404,7 @@
                 <template v-else-if="statusOf(o) === 'cancelled'">
                   <button
                     @click="viewCancelledDetails(o)"
-                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 whitespace-nowrap"
+                    class="w-full sm:w-auto rounded-lg bg-slate-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700 transition-colors dark:bg-slate-700 dark:hover:bg-slate-600 whitespace-nowrap shadow-sm"
                   >
                     Cancelled Details
                   </button>
@@ -408,19 +414,11 @@
                 <template v-else-if="statusOf(o) === 'return_refund'">
                   <button
                     @click="viewReturnDetails(o)"
-                    class="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
+                    class="w-full sm:w-auto rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
                   >
                     View Return/Refund Details
                   </button>
                 </template>
-
-                <!-- Contact Seller -->
-                <button
-                  @click="contactSeller(o)"
-                  class="w-full sm:w-auto rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
-                >
-                  Contact Seller
-                </button>
               </div>
             </div>
           </article>
