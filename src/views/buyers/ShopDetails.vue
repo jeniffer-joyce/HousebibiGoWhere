@@ -427,23 +427,35 @@
                 <p class="mt-2 md:mt-3 text-xs md:text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap line-clamp-3">
                   {{ r.text }}
                 </p>
-                <!-- Updated comment (only when present) -->
-                <div v-if="r.updatedText"
-                      class="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 md:px-3 md:py-2
-                            text-xs md:text-sm text-blue-800 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
-                    <div v-if="rv.isUpdated(r)" class="mt-1">
-                      <span
-                        class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5
-                              text-[10px] font-semibold text-blue-700
-                              dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
-                        <span class="material-symbols-outlined text-xs">update</span>
-                        Updated: {{ rv.formatTime(r.updatedAt) }}
-                      </span>
+
+                <!-- Updated comment (timestamp above, label + text inline, no wrapping under label) -->
+                <div
+                  v-if="r.updatedText"
+                  class="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 md:px-3 md:py-2
+                        text-xs md:text-sm text-blue-800 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
+
+                  <!-- Updated timestamp pill on top -->
+                  <div v-if="rv.isUpdated(r)" class="mb-2">
+                    <span
+                      class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50
+                            px-2.5 py-0.5 text-[10px] md:text-xs font-semibold text-blue-700
+                            dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
+                      <span class="material-symbols-outlined text-xs md:text-sm">update</span>
+                      Updated: {{ rv.formatTime(r.updatedAt) }}
+                    </span>
+                  </div>
+
+                  <!-- Inline label + comment -->
+                  <div class="flex items-baseline gap-1 flex-wrap">
+                    <span class="font-semibold text-blue-800 dark:text-blue-200 whitespace-nowrap">
+                      Updated Comment:
+                    </span>
+                    <div class="flex-1 min-w-0 text-blue-900/90 dark:text-blue-200 break-words">
+                      {{ r.updatedText }}
                     </div>
-                    <br></br>
-                  <span class="font-semibold ml-1">Updated Comment: </span>
-                  <span class="whitespace-pre-line line-clamp-2">{{ r.updatedText }}</span>
+                  </div>
                 </div>
+
 
                 <!-- Review Photos -->
                 <div v-if="r.images?.length" class="mt-2 md:mt-3 flex flex-wrap gap-1.5 md:gap-2">
