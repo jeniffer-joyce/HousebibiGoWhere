@@ -709,7 +709,7 @@
               </div>
 
               <div class="overflow-x-auto">
-                <table class="w-full border-collapse text-xs sm:text-sm min-w-[400px]">
+                <table class="w-full border-collapse text-xs dark:text-white sm:text-sm min-w-[400px]">
                   <thead>
                     <tr class="bg-slate-50 dark:bg-slate-800/60">
                       <th class="border border-slate-200 px-2 py-1 text-left dark:border-slate-700">#</th>
