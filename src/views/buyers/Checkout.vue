@@ -915,7 +915,7 @@ onBeforeUnmount(() => {
 
         <!-- Address Modal -->
         <transition name="fade">
-            <div v-if="showAddressModal" class="fixed inset-0 z-50 flex items-center justify-center p-4"
+            <div v-if="showAddressModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4"
                 @keydown.esc="closeAddressModal">
                 <div class="absolute inset-0 bg-black/40" @click="closeAddressModal"></div>
 
@@ -1046,7 +1046,7 @@ onBeforeUnmount(() => {
         <transition name="fade">
             <div
                 v-if="showCardModal"
-                class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                class="fixed inset-0 z-[100] flex items-center justify-center p-4"
                 @click.self="closeCardModal">
                 <div class="absolute inset-0 bg-black/50"></div>
                 
