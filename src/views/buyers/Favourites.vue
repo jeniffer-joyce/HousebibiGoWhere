@@ -237,35 +237,28 @@ onMounted(() => {
               {{ business.bio || business.description || 'No description available' }}
             </p>
 
-            <!-- Actions: enforce same height on both buttons at all times -->
-            <div class="grid grid-cols-2 gap-2 items-stretch">
-              <!-- Visit Store (same height as message button) -->
-              <RouterLink :to="{ name: 'ShopDetails', params: { id: business.id || business.uid } }" class="min-w-0">
+            <!-- Actions: responsive button layout -->
+            <div class="flex gap-2">
+              <!-- Visit Store Button -->
+              <RouterLink 
+                :to="{ name: 'ShopDetails', params: { id: business.id || business.uid } }" 
+                class="flex-1"
+              >
                 <button
-                  class="w-full h-9 md:h-10 px-3 md:px-4 flex items-center justify-center rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
+                  class="w-full px-3 py-2.5 text-sm font-medium whitespace-nowrap rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
                 >
                   Visit Store
                 </button>
               </RouterLink>
 
-              <div class="min-w-0">
-                <!-- Mobile: icon-only to save space, same height -->
-                <MessageButton
-                  :seller-id="business.id || business.uid"
-                  :seller-name="business.name || business.businessName"
-                  variant="mobile-icon"
-                  size="sm"
-                  class="w-full h-9 md:h-10 md:hidden flex items-center justify-center"
-                />
-                <!-- Desktop/Tablet: full text, same height with no cutoffs -->
-                <MessageButton
-                  :seller-id="business.id || business.uid"
-                  :seller-name="business.name || business.businessName"
-                  variant="secondary"
-                  size="sm"
-                  class="w-full h-9 md:h-10 hidden md:inline-flex items-center justify-center"
-                />
-              </div>
+              <!-- Message Button -->
+              <MessageButton
+                :seller-id="business.id || business.uid"
+                :seller-name="business.name || business.businessName"
+                variant="secondary"
+                size="sm"
+                class="flex-shrink-0"
+              />
             </div>
           </div>
         </div>
