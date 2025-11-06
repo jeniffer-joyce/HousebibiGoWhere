@@ -19,7 +19,7 @@
           <div>
             <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Your Rating</h2>
             <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Order <span class="font-medium">#{{ order?.orderId }}</span>
+              Order <span class="font-medium">#{{ order?.id }}</span>
               · {{ order?.products?.[0]?.shopName || 'Shop' }}
             </p>
              <!-- Review timestamps -->
@@ -231,14 +231,14 @@ const reviews = ref([])
 
 /* Load reviews for this order (by current buyer) */
 async function load() {
-  if (!props.order?.orderId) { reviews.value = []; return }
+  if (!props.order?.id) { reviews.value = []; return }
   loading.value = true
   try {
     const uid = auth.currentUser?.uid
     // one doc per order (as created by RateOrderModal)
     const q = fsQuery(
       collection(db, 'reviews'),
-      where('orderId', '==', props.order.orderId),
+      where('orderId', '==', props.order.id),
       where('buyerId', '==', uid),
       orderBy('createdAt', 'desc'),
       limit(1)
@@ -251,7 +251,7 @@ async function load() {
 }
 
 watch(() => props.visible, v => { if (v) load() })
-watch(() => props.order?.orderId, () => { if (props.visible) load() })
+watch(() => props.order?.id, () => { if (props.visible) load() })
 onMounted(() => { if (props.visible) load() })
 
 /* ---------- Mapping helpers (robust) ---------- */
