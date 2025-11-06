@@ -463,23 +463,34 @@
     </main>
 
     <!-- All modals remain the same... -->
-    <!-- Cancel Confirm Modal -->
-    <div
-      v-if="showCancelConfirm"
-      class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
-      @click="showCancelConfirm=false"
-    >
-      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:mx-4 dark:bg-slate-800" @click.stop>
-        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Cancel this order?</h3>
-        <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
-          Are you sure you want to cancel order <span class="font-medium">{{ orderToCancel?.orderId }}</span>?
-        </p>
-        <div class="mt-5 flex justify-end gap-2">
-          <button @click="showCancelConfirm=false" class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50">No, keep order</button>
-          <button @click="confirmCancel" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Yes, cancel</button>
-        </div>
+      <!-- Cancel Confirm Modal - Fixed Dark Mode -->
+  <div
+    v-if="showCancelConfirm"
+    class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
+    @click="showCancelConfirm=false"
+  >
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:mx-4 dark:bg-slate-800" @click.stop>
+      <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Cancel this order?</h3>
+      <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
+        Are you sure you want to cancel order <span class="font-medium">{{ orderToCancel?.orderId }}</span>?
+      </p>
+      <div class="mt-5 flex justify-end gap-2">
+        <button 
+          @click="showCancelConfirm=false" 
+          class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          No, keep order
+        </button>
+        <button 
+          @click="confirmCancel" 
+          class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 transition-colors dark:bg-blue-600 dark:hover:bg-blue-700"
+        >
+          Yes, cancel
+        </button>
       </div>
     </div>
+  </div>
+
 
     <!-- Order Received Confirm Modal -->
     <div
