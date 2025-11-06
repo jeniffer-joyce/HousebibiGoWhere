@@ -289,7 +289,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                     :to="profileTo"
                     @click="showProfileDropdown = false"
                     class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                    <span class="material-symbols-outlined text-base leading-none">settings</span>
+                    <span class="material-symbols-outlined text-base leading-none">manage_accounts</span>
                     Edit Profile
                   </RouterLink>
 
@@ -398,7 +398,7 @@ const closeMobileNav  = () => { showMobileNav.value = false }
                 :to="profileTo"
                 @click="closeMobileNav"
                 class="mt-1 flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <span class="material-symbols-outlined text-base leading-none">settings</span>
+                <span class="material-symbols-outlined text-base leading-none">manage_accounts</span>  <!-- CHANGE THIS -->
                 Edit Profile
               </RouterLink>
 
