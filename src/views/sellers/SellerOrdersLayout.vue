@@ -15,12 +15,20 @@ import { auth, db } from '@/firebase/firebase_config'
 import { collection, onSnapshot, query as fsQuery, where, orderBy } from 'firebase/firestore'
 import SellerOrdersSidebar from '@/components/layout/SellerOrdersSidebar.vue'
 
-const counts = ref({ toShip: 0, shipping: 0, completed: 0, cancelled: 0, rr: 0 })
+const counts = ref({ 
+  toShip: 0, 
+  shipping: 0, 
+  completed: 0, 
+  cancelled: 0, 
+  rr: 0,
+  inventory: 0
+})
 
 let stopAuth = null
 let stopOrders = null
+let stopProducts = null
 
-function recalc(docs, uid) {
+function recalcOrders(docs, uid) {
   const c = { toShip: 0, shipping: 0, completed: 0, cancelled: 0, rr: 0 }
 
   for (const d of docs) {
@@ -34,33 +42,64 @@ function recalc(docs, uid) {
 
     switch (o?.status) {
       case 'to_ship':       c.toShip++;      break
-      case 'to_receive':    c.shipping++;    break   // <-- this feeds the "Shipping" badge
+      case 'to_receive':    c.shipping++;    break
       case 'completed':     c.completed++;   break
       case 'cancelled':     c.cancelled++;   break
       case 'return_refund': c.rr++;          break
     }
   }
-  counts.value = c
+  
+  // Keep existing inventory count
+  counts.value = { ...c, inventory: counts.value.inventory }
+}
+
+// ⭐ Count products for inventory (READ-ONLY, no watcher initialization)
+function recalcProducts(docs) {
+  counts.value.inventory = docs.length
 }
 
 onMounted(() => {
   stopAuth = auth.onAuthStateChanged(user => {
-    // clean previous listener
+    // clean previous listeners
     stopOrders?.(); stopOrders = null
-    counts.value = { toShip: 0, shipping: 0, completed: 0, cancelled: 0, rr: 0 }
+    stopProducts?.(); stopProducts = null
+    
+    counts.value = { 
+      toShip: 0, 
+      shipping: 0, 
+      completed: 0, 
+      cancelled: 0, 
+      rr: 0,
+      inventory: 0
+    }
+    
     if (!user) return
 
-    // stream only THIS seller's orders (works with new rules)
-    const q = fsQuery(
+    // Stream orders (existing logic)
+    const ordersQuery = fsQuery(
       collection(db, 'orders'),
       where('sellerId', '==', user.uid),
       orderBy('createdAt', 'desc')
     )
-    stopOrders = onSnapshot(q, snap => {
-      recalc(snap.docs, user.uid)
+    stopOrders = onSnapshot(ordersQuery, snap => {
+      recalcOrders(snap.docs, user.uid)
+    })
+
+    // ⭐ Stream products for inventory count ONLY (no inventory_management.js here)
+    // The inventory watcher is initialized in SellerOrdersInventory.vue
+    const productsQuery = fsQuery(
+      collection(db, 'products'),
+      where('sellerId', '==', user.uid)
+    )
+    stopProducts = onSnapshot(productsQuery, snap => {
+      recalcProducts(snap.docs)
     })
   })
 })
 
-onBeforeUnmount(() => { stopOrders?.(); stopAuth?.() })
+onBeforeUnmount(() => { 
+  stopOrders?.()
+  stopProducts?.()
+  stopAuth?.() 
+})
 </script>

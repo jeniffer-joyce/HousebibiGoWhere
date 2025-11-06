@@ -142,9 +142,16 @@
                   <span class="text-sm text-slate-500">{{ (it.rating || 0) }}/5</span>
                 </div>
 
+                <!-- Original comment -->
                 <p v-if="it.text" class="mt-2 text-slate-700 dark:text-slate-300">
                   {{ it.text }}
                 </p>
+                <!-- Updated comment (only if edited) -->
+                <div v-if="it.updatedText" class="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2
+                                                text-sm text-blue-800 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
+                  <span class="font-semibold">Updated Comment: </span>
+                  <span class="whitespace-pre-line">{{ it.updatedText }}</span>
+                </div>
 
                 <!-- Photos -->
                 <div v-if="(it.images || []).length" class="mt-3 flex flex-wrap gap-3">

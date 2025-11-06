@@ -341,13 +341,16 @@ export async function startInventoryWatcherForCurrentSeller() {
   try {
     const user = auth?.currentUser
     if (!user?.uid) return
-    if (_invUnsub) return // already attached
+    if (_invUnsub) {
+      console.log('[seller_product] Watcher already running, skipping start')
+      return // already attached
+    }
 
     const ok = await _ensureInventoryModule()
     if (!ok || !_attachFn) return
 
     _invUnsub = _attachFn({ db, auth, sellerId: user.uid })
-    console.log('[seller_product] Inventory watcher attached for', user.uid)
+    console.log('[seller_product] Inventory watcher started for', user.uid)
   } catch (e) {
     console.error('[seller_product] startInventoryWatcherForCurrentSeller failed:', e)
   }
