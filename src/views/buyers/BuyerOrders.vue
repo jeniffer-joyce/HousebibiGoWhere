@@ -1037,10 +1037,12 @@ onMounted(() => {
       (snap) => {
         const s = new Set()
         snap.forEach(d => {
-          const orderId = d.data().orderId
-          if (orderId) s.add(orderId)
+          const r = d.data() || {}
+          // Normalise to string and include both possibilities for safety
+          const oid = r.orderId != null ? String(r.orderId) : ''
+          if (oid) s.add(oid)
         })
-        reviewedOrders.value = s
+        reviewedOrders.value = s  // replace the Set reference so Vue re-renders
       },
       (err) => console.error('reviews onSnapshot error:', err)
     )
@@ -1048,7 +1050,11 @@ onMounted(() => {
   onBeforeUnmount(() => { stop(); unsub?.() })
 })
 
-const hasReview = (o) => reviewedOrders.value.has(o.id)
+const hasReview = (o) => {
+  const a = String(o?.id ?? '')
+  const b = String(o?.orderId ?? '')
+  return reviewedOrders.value.has(a) || (b && reviewedOrders.value.has(b))
+}
 function viewRatings(o) {
   orderForReviewDetails.value = o
   showReviewDetails.value = true
@@ -1149,6 +1155,12 @@ function closeRateModal() {
   editMode.value = 'create'
 }
 function handleReviewSubmitted() {
+  // optimistic UI: mark this order as reviewed now (Vue needs a new Set ref)
+  const oid = String(orderForRating.value?.id ?? orderForRating.value?.orderId ?? '')
+  if (oid) {
+    reviewedOrders.value = new Set([...reviewedOrders.value, oid])
+  }
+
   showToast({
     type: 'success',
     title: 'Review submitted',
