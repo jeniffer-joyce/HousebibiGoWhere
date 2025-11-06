@@ -276,7 +276,7 @@
           </div>
 
           <!-- 🆕 All item ratings in this review -->
-          <div v-if="r._itemsMerged?.length" class="mb-4">
+          <div v-if="r._itemsMerged?.length > 1" class="mb-4">
             <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 p-3 border border-slate-100 dark:border-slate-700">
               <div class="mb-2 flex items-center gap-2">
                 <span class="material-symbols-outlined text-amber-500 dark:text-amber-400 text-base">grade</span>
