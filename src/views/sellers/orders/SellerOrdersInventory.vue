@@ -601,7 +601,7 @@
                   alt="" 
                   class="h-12 w-12 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" 
                 />
-                <div class="min-w-0 flex-1">
+                <div class="min-w-0 flex-1 overflow-hidden">
                   <div class="text-sm font-medium text-slate-900 dark:text-white">
                     {{ productToDelete.item_name }}
                   </div>
@@ -683,10 +683,14 @@ const deleting = ref(false)
 
 /* ---------------- Inventory Watcher ---------------- */
 let inventoryUnsubscribe = null
+let refreshInterval = null
 
 onMounted(async () => {
   try {
+    // ⭐ Initialize inventory watcher (single instance)
     inventoryUnsubscribe = initInventoryAuthBridge()
+    
+    // Load initial products
     await loadProducts()
   } catch (err) {
     console.error('Failed to initialize inventory:', err)
@@ -695,18 +699,28 @@ onMounted(async () => {
     loading.value = false
   }
 
-  const refreshInterval = setInterval(loadProducts, 10000)
-  
-  onUnmounted(() => {
+  // ⭐ Refresh products every 10 seconds to reflect inventory changes
+  refreshInterval = setInterval(() => {
+    loadProducts()
+  }, 10000)
+})
+
+onUnmounted(() => {
+  // Clean up refresh interval
+  if (refreshInterval) {
     clearInterval(refreshInterval)
-    if (inventoryUnsubscribe) {
-      try {
-        inventoryUnsubscribe()
-      } catch (e) {
-        console.warn('Error unsubscribing inventory watcher:', e)
-      }
+    refreshInterval = null
+  }
+  
+  // Clean up inventory watcher
+  if (inventoryUnsubscribe) {
+    try {
+      inventoryUnsubscribe()
+    } catch (e) {
+      console.warn('Error unsubscribing inventory watcher:', e)
     }
-  })
+    inventoryUnsubscribe = null
+  }
 })
 
 /* ---------------- Data Loading ---------------- */
@@ -727,6 +741,11 @@ async function loadProducts() {
         totalSales: Number(p.totalSales) || 0
       }
     })
+    
+    // Only log during initial load to avoid spam
+    if (loading.value) {
+      console.log(`[Inventory UI] Loaded ${products.length} products`)
+    }
   } catch (err) {
     console.error('Failed to load products:', err)
     if (loading.value) {
@@ -766,13 +785,13 @@ const stockStatusText = (p) => {
   
   if (stock < 10) {
     return {
-      label: `Low Stock - ${stock}`,
+      label: `${stock}`,
       color: 'text-amber-700 dark:text-amber-400'
     }
   }
   
   return {
-    label: `In Stock - ${stock}`,
+    label: `${stock}`,
     color: 'text-emerald-700 dark:text-emerald-400'
   }
 }

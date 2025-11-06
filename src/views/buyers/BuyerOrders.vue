@@ -3,10 +3,10 @@
     <!-- Sidebar (unchanged) -->
     <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
 
-    <!-- Main content is pushed by sidebar; no overlay -->
+    <!-- Main content: do not push content on mobile; only push on md+ to match new BuyerSideBar -->
     <main
-      class="flex-1 transition-all duration-300 py-6 sm:py-8 px-6 sm:px-8"
-      :class="isSidebarCollapsed ? 'ml-20' : 'ml-64'"
+      class="flex-1 transition-all duration-300 py-6 sm:py-8 px-4 sm:px-6 lg:px-8"
+      :class="isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'"
     >
       <!-- Container with max-width that adjusts based on sidebar state -->
       <div class="w-full max-w-7xl mx-auto space-y-8">
@@ -18,7 +18,7 @@
           {{ banner.msg }}
         </div>
 
-        <!-- Title + Search (UX-polished, responsive; logic unchanged) -->
+        <!-- Title + Search (layout-only tweaks; logic unchanged) -->
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 flex-wrap">
           <!-- Title -->
           <div class="flex flex-col flex-1 min-w-[180px]">
@@ -76,8 +76,29 @@
           </div>
         </div>
 
-        <!-- Tabs -->
-        <div class="rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800">
+        <!-- Mobile Dropdown for Tabs (new) -->
+        <div class="md:hidden">
+          <label class="sr-only" for="orders-tab-select">Select order status</label>
+          <select
+            id="orders-tab-select"
+            v-model="active"
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700
+                   focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none
+                   dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27currentColor%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.25em 1.25em; padding-right: 2.25rem;"
+          >
+            <option
+              v-for="t in tabs"
+              :key="t.key"
+              :value="t.key"
+            >
+              {{ t.label }}{{ tabCounts[t.key] > 0 ? ` (${tabCounts[t.key]})` : '' }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Tabs (Desktop and Tablet) -->
+        <div class="hidden md:block rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800">
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
             <button
               v-for="t in tabs"
@@ -100,7 +121,7 @@
           </div>
         </div>
 
-        <!-- Filter Row -->
+        <!-- Filter Row (unchanged logic; layout stays responsive) -->
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
           <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -123,7 +144,7 @@
               <option value="total_asc">Total (Lowest First)</option>
             </select>
 
-            <!-- Price Range (only for tabs with price relevance) -->
+            <!-- Price Range -->
             <select
               v-if="['all', 'to_pay', 'completed'].includes(active)"
               v-model="priceRange"
@@ -139,7 +160,7 @@
               <option value="500+">S$500+</option>
             </select>
 
-            <!-- Date Range (for completed, cancelled, return_refund) -->
+            <!-- Date Range -->
             <select
               v-if="['all', 'completed', 'cancelled', 'return_refund'].includes(active)"
               v-model="dateRange"
@@ -155,7 +176,7 @@
               <option value="1year">Last Year</option>
             </select>
 
-            <!-- Shipping Method (for to_ship, to_receive, completed) -->
+            <!-- Shipping Method -->
             <select
               v-if="['all', 'to_ship', 'to_receive', 'completed'].includes(active)"
               v-model="shippingMethod"
@@ -255,7 +276,7 @@
                   <div>
                     <RouterLink
                       :to="`/product-details/${it.productId}`"
-                      class="font-medium text-slate-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400 transition"
+                      class="font-medium text-slate-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400 transition line-clamp-2"
                     >
                       {{ it.item_name }}
                     </RouterLink>
@@ -276,7 +297,7 @@
               </div>
             </div>
 
-            <!-- Footer -->
+            <!-- Footer: buttons scale proportionally on mobile -->
             <div
               class="flex flex-col gap-3 border-t border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700"
             >
@@ -287,12 +308,12 @@
                 </p>
               </div>
 
-              <div class="flex flex-wrap items-center justify-end gap-2">
+              <div class="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
                 <!-- View Order (to_pay, to_ship, to_receive, completed) -->
                 <button
                   v-if="['to_pay','to_ship','to_receive','completed'].includes(statusOf(o))"
                   @click="viewOrderDetails(o)"
-                  class="rounded-lg bg-blue-500/90 px-4 py-2 text-white hover:bg-blue-600"
+                  class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-500/90 px-4 py-2 text-white hover:bg-blue-600"
                 >
                   View Order
                 </button>
@@ -301,7 +322,7 @@
                 <button
                   v-if="['to_ship','to_receive','completed'].includes(statusOf(o))"
                   @click="openShippingDetails(o)"
-                  class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-blue-700 hover:bg-blue-100"
+                  class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-blue-700 hover:bg-blue-100"
                 >
                   View Shipping Details
                 </button>
@@ -310,7 +331,7 @@
                 <template v-if="statusOf(o) === 'to_receive'">
                   <button
                     @click="openReceivedConfirm(o)"
-                    class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                    class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
                   >
                     Order Received
                   </button>
@@ -320,40 +341,40 @@
                   <button
                     v-if="!hasReview(o)"
                     @click="rateOrder(o)"
-                    class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                    class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
                   >
                     Rate
                   </button>
                   <button
                     v-else
                     @click="viewRatings(o)"
-                    class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                    class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
                   >
                     View Rating
                   </button>
                   <button
                     v-if="!hasReview(o)"
                     @click="openReturnModal(o)"
-                    class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                    class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
                   >
                     Request Return/Refund
                   </button>
                 </template>
 
                 <template v-else-if="statusOf(o) === 'to_pay'">
-                  <button @click="payNow(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Pay Now</button>
-                  <button @click="changePayment(o)" class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50">Change Payment</button>
-                  <button @click="openCancelConfirm(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Cancel Order</button>
+                  <button @click="payNow(o)" class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Pay Now</button>
+                  <button @click="changePayment(o)" class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50">Change Payment</button>
+                  <button @click="openCancelConfirm(o)" class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Cancel Order</button>
                 </template>
 
                 <template v-else-if="statusOf(o) === 'to_ship'">
-                  <button @click="openCancelConfirm(o)" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Cancel Order</button>
+                  <button @click="openCancelConfirm(o)" class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Cancel Order</button>
                 </template>
 
                 <template v-else-if="statusOf(o) === 'cancelled'">
                   <button
                     @click="viewCancelledDetails(o)"
-                    class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                    class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
                   >
                     Cancelled Details
                   </button>
@@ -362,7 +383,7 @@
                 <template v-else-if="statusOf(o) === 'return_refund'">
                   <button
                     @click="viewReturnDetails(o)"
-                    class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                    class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
                   >
                     View Return/Refund Details
                   </button>
@@ -371,7 +392,7 @@
                 <!-- Contact Seller -->
                 <button
                   @click="contactSeller(o)"
-                  class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                  class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
                 >
                   Contact Seller
                 </button>
@@ -379,21 +400,22 @@
             </div>
           </article>
         </div>
-      <!-- Pagination -->
+
+        <!-- Pagination -->
         <div
           v-if="!loading && visibleOrders.length > 0"
           class="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-500 dark:text-slate-400"
         >
           <p class="text-center sm:text-left">
-            Showing {{ page }} of {{ totalPages || 1 }} – 
+            Showing {{ page }} of {{ totalPages || 1 }} –
             <span class="font-medium">{{ pageEnd }}</span> of
             <span class="font-medium">{{ visibleOrders.length }}</span> results
           </p>
-          <div class="flex gap-2">
+          <div class="flex gap-2 w-full sm:w-auto">
             <button
               :disabled="page === 1"
               @click="page--;scrollToTop()"
-              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+              class="flex-1 sm:flex-none rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
                      disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
             >
               Previous
@@ -401,7 +423,7 @@
             <button
               :disabled="page === totalPages || totalPages === 0"
               @click="page++; scrollToTop()"
-              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
+              class="flex-1 sm:flex-none rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700
                      disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
             >
               Next
@@ -957,7 +979,7 @@ function getItemSize(item) {
   return item.selectedSize || item.variation || item.variant || null
 }
 
-/* Firestore live query */
+/* Firestore live query (unchanged) */
 let unsub = null
 onMounted(() => {
   const stop = auth.onAuthStateChanged(async (u) => {

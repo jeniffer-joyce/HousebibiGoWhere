@@ -248,145 +248,82 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="flex min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-        <!-- Sidebar Navigation -->
+    <div class="min-h-screen bg-slate-50 dark:bg-slate-900">
         <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
-
-        <!-- Main Content Area -->
+        
         <main 
-            class="flex-1 p-8 transition-all duration-300"
-            :class="isSidebarCollapsed ? 'ml-20' : 'ml-64'">
-            
-            <!-- Header -->
-            <div class="mb-8">
-                <h1 class="text-4xl font-bold text-slate-900 dark:text-white mb-2">Dashboard</h1>
-                <p class="text-slate-600 dark:text-slate-400">Welcome back! Here's what's happening with your account.</p>
-            </div>
-
-            <!-- Stats Overview -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <!-- Total Orders -->
-                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-shadow border border-slate-200 dark:border-slate-700">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                            <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    <p class="text-3xl font-bold text-slate-900 dark:text-white">{{ stats.totalOrders }}</p>
-                    <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Total Orders</p>
+            class="transition-all duration-300 px-4 sm:px-6 lg:px-8 py-6 lg:py-8 md:ml-64"
+            :class="{ 'md:!ml-20': isSidebarCollapsed }"
+        >
+            <div class="max-w-7xl mx-auto">
+                <!-- Header -->
+                <div class="mb-6 lg:mb-8">
+                    <h1 class="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+                    <p class="text-sm lg:text-base text-slate-600 dark:text-slate-400 mt-1">Welcome back! Here's your overview</p>
                 </div>
 
-                <!-- Pending Orders -->
-                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-shadow border border-slate-200 dark:border-slate-700">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-xl">
-                            <svg class="h-6 w-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    <p class="text-3xl font-bold text-slate-900 dark:text-white">{{ stats.pendingOrders }}</p>
-                    <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Pending Orders</p>
-                </div>
-
-                <!-- Unread Messages -->
-                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-shadow border border-slate-200 dark:border-slate-700">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl">
-                            <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    <p class="text-3xl font-bold text-slate-900 dark:text-white">{{ stats.unreadCount }}</p>
-                    <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Unread Messages</p>
-                </div>
-
-                <!-- Favorites -->
-                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-shadow border border-slate-200 dark:border-slate-700">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 bg-red-100 dark:bg-red-900/30 rounded-xl">
-                            <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    <p class="text-3xl font-bold text-slate-900 dark:text-white">{{ stats.favoriteCount }}</p>
-                    <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Favorite Shops</p>
-                </div>
-            </div>
-
-            <!-- Dashboard Content -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Recent Orders Section -->
-                <div class="lg:col-span-2 space-y-6">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Recent Orders</h2>
-                        <RouterLink to="/buyer-orders/" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1">
-                            View All
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                            </svg>
-                        </RouterLink>
-                    </div>
-
-                    <!-- Loading State -->
-                    <div v-if="loadingOrders" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div v-for="i in 3" :key="i" class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden animate-pulse border border-slate-200 dark:border-slate-700">
-                            <div class="h-40 bg-slate-200 dark:bg-slate-700"></div>
-                            <div class="p-4 space-y-3">
-                                <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                                <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-2/3"></div>
+                <!-- Stats Grid - Mobile: 2 columns, Desktop: 4 columns -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
+                    <!-- Total Orders Card -->
+                    <div class="bg-white dark:bg-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-2 lg:gap-3 mb-2 lg:mb-3">
+                            <div class="p-1.5 sm:p-2 lg:p-3 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                                <svg class="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                                </svg>
                             </div>
                         </div>
+                        <p class="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-400 mb-1">Total Orders</p>
+                        <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">{{ stats.totalOrders }}</p>
                     </div>
 
-                    <!-- Orders Grid -->
-                    <div v-else-if="recentOrders.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div
-                            v-for="order in recentOrders"
-                            :key="order.id"
-                            @click="goToOrder(order.id)"
-                            class="group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500">
-                            <div class="relative overflow-hidden">
-                                <img :src="order.image" :alt="order.title" class="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300" />
-                                <div class="absolute top-3 right-3">
-                                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-white/90 backdrop-blur-sm text-slate-700">
-                                        {{ order.status === 'to_ship' ? 'Processing' : order.status === 'to_receive' ? 'Shipped' : 'Pending' }}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="p-4">
-                                <h3 class="font-semibold text-slate-900 dark:text-white mb-1 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                    {{ order.title }}
-                                </h3>
-                                <p class="text-sm text-slate-500 dark:text-slate-400">Order #{{ order.orderId }}</p>
-                                <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Placed on {{ order.date }}</p>
+                    <!-- Pending Orders Card -->
+                    <div class="bg-white dark:bg-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-2 lg:gap-3 mb-2 lg:mb-3">
+                            <div class="p-1.5 sm:p-2 lg:p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                                <svg class="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
                             </div>
                         </div>
+                        <p class="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-400 mb-1">Pending</p>
+                        <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">{{ stats.pendingOrders }}</p>
                     </div>
 
-                    <!-- Empty State -->
-                    <div v-else class="bg-white dark:bg-slate-800 rounded-2xl p-12 text-center border border-slate-200 dark:border-slate-700">
-                        <svg class="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
-                        </svg>
-                        <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">No orders yet</h3>
-                        <p class="text-slate-600 dark:text-slate-400 mb-4">Start shopping to see your orders here</p>
-                        <RouterLink to="/products/">
-                            <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                                Browse Products
-                            </button>
-                        </RouterLink>
+                    <!-- Unread Messages Card -->
+                    <div class="bg-white dark:bg-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-2 lg:gap-3 mb-2 lg:mb-3">
+                            <div class="p-1.5 sm:p-2 lg:p-3 rounded-lg bg-green-100 dark:bg-green-900/30">
+                                <svg class="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <p class="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-400 mb-1">Unread Messages</p>
+                        <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">{{ stats.unreadCount }}</p>
                     </div>
 
-                    <!-- Favorite Businesses Section -->
-                    <div class="mt-8">
+                    <!-- Favorites Card -->
+                    <div class="bg-white dark:bg-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-2 lg:gap-3 mb-2 lg:mb-3">
+                            <div class="p-1.5 sm:p-2 lg:p-3 rounded-lg bg-red-100 dark:bg-red-900/30">
+                                <svg class="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <p class="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-400 mb-1">Favorite Shops</p>
+                        <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">{{ stats.favoriteCount }}</p>
+                    </div>
+                </div>
+
+                <!-- Main Content Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                    <!-- Recent Orders Section -->
+                    <div class="lg:col-span-2">
                         <div class="flex items-center justify-between mb-4">
-                            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Favorite Businesses</h2>
-                            <RouterLink to="/buyer-favourites/" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1">
+                            <h2 class="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white">Recent Orders</h2>
+                            <RouterLink to="/buyer-orders/" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1">
                                 View All
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -395,98 +332,161 @@ onMounted(() => {
                         </div>
 
                         <!-- Loading State -->
-                        <div v-if="loadingFavorites" class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            <div v-for="i in 6" :key="i" class="flex flex-col items-center">
-                                <div class="w-20 h-20 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse mb-3"></div>
-                                <div class="h-3 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                        <div v-if="loadingOrders" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div v-for="i in 3" :key="i" class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden animate-pulse border border-slate-200 dark:border-slate-700">
+                                <div class="h-40 bg-slate-200 dark:bg-slate-700"></div>
+                                <div class="p-4 space-y-3">
+                                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                    <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-2/3"></div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Favorites Grid -->
-                        <div v-else-if="favoriteBusinesses.length > 0" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        <!-- Orders Grid -->
+                        <div v-else-if="recentOrders.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div
-                                v-for="business in favoriteBusinesses"
-                                :key="business.id"
-                                @click="goToShop(business.id)"
-                                class="flex flex-col items-center cursor-pointer group">
-                                <div class="relative w-20 h-20 rounded-full overflow-hidden mb-3 group-hover:scale-110 transition-transform duration-300 ring-2 ring-transparent group-hover:ring-blue-500 shadow-md">
-                                    <img :src="business.image" :alt="business.name" class="w-full h-full object-cover" />
+                                v-for="order in recentOrders"
+                                :key="order.id"
+                                @click="goToOrder(order.id)"
+                                class="group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500">
+                                <div class="relative overflow-hidden">
+                                    <img :src="order.image" :alt="order.title" class="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300" />
+                                    <div class="absolute top-3 right-3">
+                                        <span class="px-3 py-1 text-xs font-semibold rounded-full bg-white/90 backdrop-blur-sm text-slate-700">
+                                            {{ order.status === 'to_ship' ? 'Processing' : order.status === 'to_receive' ? 'Shipped' : 'Pending' }}
+                                        </span>
+                                    </div>
                                 </div>
-                                <p class="text-sm font-medium text-slate-900 dark:text-white text-center group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 px-1">
-                                    {{ business.name }}
-                                </p>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 text-center mt-1">
-                                    {{ business.ownerName }}
-                                </p>
+                                <div class="p-4">
+                                    <h3 class="font-semibold text-slate-900 dark:text-white mb-1 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                        {{ order.title }}
+                                    </h3>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Order #{{ order.orderId }}</p>
+                                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Placed on {{ order.date }}</p>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Empty State -->
-                        <div v-else class="bg-white dark:bg-slate-800 rounded-2xl p-8 text-center border border-slate-200 dark:border-slate-700">
-                            <svg class="h-12 w-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                        <div v-else class="bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-8 lg:p-12 text-center border border-slate-200 dark:border-slate-700">
+                            <svg class="h-12 w-12 lg:h-16 lg:w-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
                             </svg>
-                            <p class="text-slate-600 dark:text-slate-400">No favorite businesses yet</p>
+                            <h3 class="text-base lg:text-lg font-semibold text-slate-900 dark:text-white mb-2">No orders yet</h3>
+                            <p class="text-sm lg:text-base text-slate-600 dark:text-slate-400 mb-4">Start shopping to see your orders here</p>
+                            <RouterLink to="/products/">
+                                <button class="px-4 lg:px-6 py-2 bg-blue-600 text-white text-sm lg:text-base rounded-lg hover:bg-blue-700 transition-colors">
+                                    Browse Products
+                                </button>
+                            </RouterLink>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Unread Messages Section -->
-                <div class="lg:col-span-1">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Unread Messages</h2>
-                        <RouterLink to="/buyer-messages/" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1">
-                            View All
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                            </svg>
-                        </RouterLink>
-                    </div>
+                        <!-- Favorite Businesses Section -->
+                        <div class="mt-6 lg:mt-8">
+                            <div class="flex items-center justify-between mb-4">
+                                <h2 class="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white">Favorite Businesses</h2>
+                                <RouterLink to="/buyer-favourites/" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1">
+                                    View All
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </RouterLink>
+                            </div>
 
-                    <!-- Loading State -->
-                    <div v-if="loadingMessages" class="space-y-3">
-                        <div v-for="i in 3" :key="i" class="bg-white dark:bg-slate-800 rounded-2xl p-4 animate-pulse border border-slate-200 dark:border-slate-700">
-                            <div class="flex items-start gap-3">
-                                <div class="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700"></div>
-                                <div class="flex-1 space-y-2">
-                                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                                    <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
+                            <!-- Loading State -->
+                            <div v-if="loadingFavorites" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <div v-for="i in 6" :key="i" class="flex flex-col items-center">
+                                    <div class="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse mb-3"></div>
+                                    <div class="h-3 w-20 lg:w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
                                 </div>
+                            </div>
+
+                            <!-- Favorites Grid -->
+                            <div v-else-if="favoriteBusinesses.length > 0" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                <div
+                                    v-for="business in favoriteBusinesses"
+                                    :key="business.id"
+                                    @click="goToShop(business.id)"
+                                    class="flex flex-col items-center cursor-pointer group">
+                                    <div class="relative w-16 h-16 lg:w-20 lg:h-20 rounded-full overflow-hidden mb-3 group-hover:scale-110 transition-transform duration-300 ring-2 ring-transparent group-hover:ring-blue-500 shadow-md">
+                                        <img :src="business.image" :alt="business.name" class="w-full h-full object-cover" />
+                                    </div>
+                                    <p class="text-xs lg:text-sm font-medium text-slate-900 dark:text-white text-center group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 px-1">
+                                        {{ business.name }}
+                                    </p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400 text-center mt-1">
+                                        {{ business.ownerName }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Empty State -->
+                            <div v-else class="bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-6 lg:p-8 text-center border border-slate-200 dark:border-slate-700">
+                                <svg class="h-10 w-10 lg:h-12 lg:w-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                                </svg>
+                                <p class="text-sm lg:text-base text-slate-600 dark:text-slate-400">No favorite businesses yet</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Messages List -->
-                    <div v-else-if="unreadMessages.length > 0" class="space-y-3">
-                        <div
-                            v-for="message in unreadMessages"
-                            :key="message.id"
-                            @click="goToMessage(message.id)"
-                            class="group bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500">
-                            <div class="flex items-start gap-3">
-                                <img :src="message.avatar" :alt="message.business" class="w-12 h-12 rounded-full flex-shrink-0 ring-2 ring-transparent group-hover:ring-blue-500 transition-all" />
-                                <div class="flex-1 min-w-0">
-                                    <h3 class="font-semibold text-slate-900 dark:text-white mb-1 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                        {{ message.business }}
-                                    </h3>
-                                    <p class="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{{ message.message }}</p>
-                                    <div class="flex items-center gap-2 mt-2">
-                                        <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
-                                            <span class="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 animate-pulse"></span>
-                                            New
-                                        </span>
+                    <!-- Unread Messages Section -->
+                    <div class="lg:col-span-1">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white">Unread Messages</h2>
+                            <RouterLink to="/buyer-messages/" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1">
+                                View All
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </RouterLink>
+                        </div>
+
+                        <!-- Loading State -->
+                        <div v-if="loadingMessages" class="space-y-3">
+                            <div v-for="i in 3" :key="i" class="bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-4 animate-pulse border border-slate-200 dark:border-slate-700">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+                                    <div class="flex-1 space-y-2">
+                                        <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                        <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Empty State -->
-                    <div v-else class="bg-white dark:bg-slate-800 rounded-2xl p-8 text-center border border-slate-200 dark:border-slate-700">
-                        <svg class="h-12 w-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
-                        </svg>
-                        <p class="text-slate-600 dark:text-slate-400 text-sm">No new messages</p>
+                        <!-- Messages List -->
+                        <div v-else-if="unreadMessages.length > 0" class="space-y-3">
+                            <div
+                                v-for="message in unreadMessages"
+                                :key="message.id"
+                                @click="goToMessage(message.id)"
+                                class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500">
+                                <div class="flex items-start gap-3">
+                                    <img :src="message.avatar" :alt="message.business" class="w-10 h-10 lg:w-12 lg:h-12 rounded-full flex-shrink-0 ring-2 ring-transparent group-hover:ring-blue-500 transition-all" />
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="font-semibold text-sm lg:text-base text-slate-900 dark:text-white mb-1 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                            {{ message.business }}
+                                        </h3>
+                                        <p class="text-xs lg:text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{{ message.message }}</p>
+                                        <div class="flex items-center gap-2 mt-2">
+                                            <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                                                <span class="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 animate-pulse"></span>
+                                                New
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div v-else class="bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-6 lg:p-8 text-center border border-slate-200 dark:border-slate-700">
+                            <svg class="h-10 w-10 lg:h-12 lg:w-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                            </svg>
+                            <p class="text-sm lg:text-base text-slate-600 dark:text-slate-400">No new messages</p>
+                        </div>
                     </div>
                 </div>
             </div>
