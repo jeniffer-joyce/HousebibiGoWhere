@@ -39,6 +39,15 @@
           Order <span class="font-medium">#{{ order?.orderId }}</span> · {{ order?.products?.[0]?.shopName || 'Shop' }}
         </p>
 
+        <!-- Edit-mode guidance -->
+        <div
+          v-if="isEdit"
+          class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
+          ✍️ You can <span class="font-semibold">update your review comment(s) only</span>.
+          Ratings, photos, and anonymity cannot be changed.
+        </div>
+
         <!-- ===== Product Review Cards ===== -->
         <div
           v-for="(it, idx) in form.items"
@@ -60,6 +69,8 @@
                     type="checkbox"
                     v-model="it._anonymousBool"
                     class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    :disabled="isEdit"
+                    :title="isEdit ? 'Cannot change after submitting' : 'Review anonymously'"
                   />
                   Review anonymously
                 </label>
@@ -71,8 +82,9 @@
                   v-for="n in 5"
                   :key="n"
                   type="button"
-                  @click="it.rating = n"
+                  @click="!isEdit && (it.rating = n)"
                   class="transition"
+                  :disabled="isEdit"
                   :class="n <= it.rating ? 'text-blue-500' : 'text-slate-300'"
                 >
                   <svg class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
@@ -84,13 +96,32 @@
                 <span class="ml-2 text-sm text-slate-500">{{ it.rating ? it.rating + '/5' : 'Tap to rate' }}</span>
               </div>
 
-              <!-- Review text -->
-              <textarea
-                v-model.trim="it.text"
-                class="mt-3 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-                placeholder="Share more about the item: quality, fit/sizing, material, value for money…"
-                rows="3"
-              />
+              <!-- Review text (Edit mode: Original + Updated) -->
+              <div v-if="isEdit">
+                <label class="mt-3 block text-xs font-semibold text-slate-600 dark:text-slate-300">Original comment</label>
+                <textarea
+                  :value="it.originalText"
+                  readonly
+                  class="mt-1 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900/40 dark:text-slate-300"
+                  rows="3"
+                ></textarea>
+
+                <label class="mt-3 block text-xs font-semibold text-slate-600 dark:text-slate-300">Updated comment</label>
+                <textarea
+                  v-model.trim="it.updatedText"
+                  class="mt-1 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  placeholder="Write your updated thoughts about quality, fit/sizing, material, value for money…"
+                  rows="3"
+                ></textarea>
+              </div><div v-else>
+                <!-- Create mode: normal single textarea -->
+                <textarea
+                  v-model.trim="it.text"
+                  class="mt-3 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  placeholder="Share more about the item: quality, fit/sizing, material, value for money…"
+                  rows="3"
+                ></textarea>
+              </div>
 
               <!-- Image upload -->
               <div class="mt-4">
@@ -105,16 +136,17 @@
                   >
                     <img :src="url" class="h-full w-full object-cover" />
                     <button
+                      v-if="!isEdit"
                       type="button"
                       class="absolute right-1 top-1 rounded bg-black/60 p-1 text-white"
                       @click="removePhoto(idx, pidx)"
                       title="Remove"
-                    >
-                      ✕
-                    </button>
+                    >✕</button>
                   </div>
 
+                  <!-- Show the picker only in create mode -->
                   <label
+                    v-if="!isEdit"
                     class="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-slate-300 text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300"
                   >
                     <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
@@ -123,7 +155,13 @@
                       />
                     </svg>
                     <span class="text-xs">Add photos</span>
-                    <input type="file" accept="image/*" class="hidden" multiple @change="onPickImages($event, idx)" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      class="hidden"
+                      multiple
+                      @change="onPickImages($event, idx)"
+                    />
                   </label>
                 </div>
               </div>
@@ -139,15 +177,18 @@
             <!-- Seller service -->
             <div class="flex-1">
               <p class="mb-1 text-sm font-medium text-slate-700 dark:text-slate-200">Seller Service</p>
-              <div class="flex items-center gap-1">
+              <div class="flex items-center gap-1" :class="isEdit ? 'pointer-events-none opacity-60' : ''">
                 <button
                   v-for="n in 5"
                   :key="'seller-'+n"
                   type="button"
-                  @click="form.sellerService = n"
+                  @click="!isEdit && (form.sellerService = n)"
                   class="transition focus:outline-none"
                   :class="n <= form.sellerService ? 'text-blue-500' : 'text-slate-300'"
+                  :disabled="isEdit"
                   aria-label="Seller service star"
+                  :aria-disabled="isEdit ? 'true' : 'false'"
+                  :tabindex="isEdit ? -1 : 0"
                 >
                   <svg class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path
@@ -161,15 +202,18 @@
             <!-- Delivery service -->
             <div class="flex-1">
               <p class="mb-1 text-sm font-medium text-slate-700 dark:text-slate-200">Delivery Service</p>
-              <div class="flex items-center gap-1">
+              <div class="flex items-center gap-1" :class="isEdit ? 'pointer-events-none opacity-60' : ''">
                 <button
                   v-for="n in 5"
                   :key="'delivery-'+n"
                   type="button"
-                  @click="form.delivery = n"
+                  @click="!isEdit && (form.delivery = n)"
                   class="transition focus:outline-none"
                   :class="n <= form.delivery ? 'text-blue-500' : 'text-slate-300'"
+                  :disabled="isEdit"
                   aria-label="Delivery service star"
+                  :aria-disabled="isEdit ? 'true' : 'false'"
+                  :tabindex="isEdit ? -1 : 0"
                 >
                   <svg class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path
@@ -240,52 +284,50 @@ watch(
     if (!o) return
 
     if (isEdit.value && existing.value) {
-      // EDIT: map existing review into the form
       const ex = existing.value
       form.items = (ex.items || []).map((it, i) => {
         const p = (o.products || []).find(pp => pp.productId === it.productId) || {}
         return {
           key: `${it.productId}-${i}`,
           productId: it.productId,
-          size: it.size || p.size || null,
+          size: it.size ?? p.size ?? null,
           item_name: p.item_name || '—',
           img_url: p.img_url || '',
           rating: Number(it.rating || 0),
-          text: it.text || '',
+          originalText: (it.text ?? ''),          // <- always a string
+          updatedText: (it.updatedText ?? ''),    // <- starts empty or previous edit
           photoUrls: Array.isArray(it.images) ? [...it.images] : [],
-          _anonymousBool: (Number(it.anonymous ?? 0) === 1)
+          _anonymousBool: Number(it.anonymous ?? 0) === 1
         }
       })
+      // Stars are locked; we keep them for display but don't validate on them in edit mode
       form.sellerService = Number(ex.sellerService || 0)
       form.delivery      = Number(ex.delivery || 0)
-    } else {
-      // CREATE: build items from order products
-      form.items = (o.products || []).map((p, i) => ({
-        key: `${p.productId}-${i}`,
-        productId: p.productId,
-        size: p.size || null,
-        item_name: p.item_name,
-        img_url: p.img_url,
-        rating: 0,
-        text: '',
-        photoUrls: [],
-        _anonymousBool: false
-      }))
-      form.sellerService = 0
-      form.delivery      = 0
     }
   },
   { immediate: true }
 )
 
 // Validation: require rating + text for every item + shop scores
-const isFormValid = computed(() =>
-  form.items.length > 0 &&
-  form.items.every(i => i.rating > 0 && i.text.trim()) &&
-  form.sellerService > 0 &&
-  form.delivery > 0
-)
+const isFormValid = computed(() => {
+  if (isEdit.value) {
+    // At least ONE item has a meaningful updated comment (and different from original)
+    const hasAnyUpdate = form.items.some(i => {
+      const prev = (i.originalText ?? '').trim()
+      const next = (i.updatedText ?? '').trim()
+      return next.length > 0 && next !== prev
+    })
+    return form.items.length > 0 && hasAnyUpdate
+  }
 
+  // Create mode: rating + comment for each item + shop scores
+  return (
+    form.items.length > 0 &&
+    form.items.every(i => i.rating > 0 && (i.text ?? '').trim()) &&
+    form.sellerService > 0 &&
+    form.delivery > 0
+  )
+})
 // Upload images
 async function onPickImages(e, itemIdx) {
   try {
@@ -339,18 +381,46 @@ async function submit() {
     }
 
     if (isEdit.value && existing.value?.id) {
-      // Update existing review doc
-      await updateDoc(doc(db, 'reviews', existing.value.id), {
-        ...payload,
-        updatedAt: serverTimestamp()
-      })
-    } else {
-      // Create a new review doc
-      await addDoc(collection(db, 'reviews'), {
-        ...payload,
-        createdAt: serverTimestamp()
-      })
+  const ex = existing.value
+  const exItems = Array.isArray(ex.items) ? ex.items : []
+
+  // Map by productId+size to find the corresponding edited text
+  const lockedItems = exItems.map(exIt => {
+    const match = form.items.find(fi =>
+      String(fi.productId) === String(exIt.productId) &&
+      ((fi.size ?? null) === (exIt.size ?? null))
+    ) || {}
+
+    return {
+      productId: exIt.productId,
+      size: exIt.size ?? null,
+      // 🔒 Keep original ratings/images/anon
+      rating: Number(exIt.rating || 0),
+      images: Array.isArray(exIt.images) ? exIt.images : [],
+      anonymous: Number(exIt.anonymous ?? 0),
+      // 📝 Keep original text; write new into updatedText
+      text: exIt.text ?? '',
+      updatedText: (match.updatedText ?? exIt.updatedText ?? '')
     }
+  })
+
+  await updateDoc(doc(db, 'reviews', ex.id), {
+    orderId,
+    buyerId: uid,
+    sellerId,
+    items: lockedItems,
+    // 🔒 Keep original shop ratings
+    sellerService: Number(ex.sellerService || 0),
+    delivery: Number(ex.delivery || 0),
+    updatedAt: serverTimestamp()
+  })
+} else {
+  // CREATE — unchanged (no updatedText)
+  await addDoc(collection(db, 'reviews'), {
+    ...payload,
+    createdAt: serverTimestamp()
+  })
+}
 
     emit('submitted')
     emit('close') 

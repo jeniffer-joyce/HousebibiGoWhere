@@ -371,16 +371,6 @@
                       <p class="font-semibold text-sm sm:text-base text-slate-900 dark:text-white">{{ rv.displayName(r)
                       }}</p>
                       <p class="text-xs text-slate-500 dark:text-slate-400">{{ rv.formatTime(r.createdAt) }}</p>
-                      <!-- Updated pill (only when edited) -->
-                    <div v-if="rv.isUpdated(r)" class="mt-1">
-                        <span
-                          class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5
-                                text-[10px] sm:text-xs font-semibold text-blue-700
-                                dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
-                          <span class="material-symbols-outlined text-sm">update</span>
-                          Updated review at: {{ rv.formatTime(r.updatedAt) }}
-                        </span>
-                      </div>
                     </div>
                   </div>
 
@@ -438,6 +428,23 @@
                 <p class="mt-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
                   {{ r.text }}
                 </p>
+                <!-- Updated comment (only when present) -->
+                <div v-if="r.updatedText"
+                      class="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2
+                            text-sm text-blue-800 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
+                    <div v-if="rv.isUpdated(r)" class="mt-1">
+                      <span
+                        class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5
+                              text-[10px] sm:text-xs font-semibold text-blue-700
+                              dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
+                        <span class="material-symbols-outlined text-sm">update</span>
+                        Updated review at: {{ rv.formatTime(r.updatedAt) }}
+                      </span>
+                    </div>
+                    <br></br>
+                  <span class="font-semibold ml-1">Updated Comment: </span>
+                  <span class="whitespace-pre-line">{{ r.updatedText }}</span>
+                </div>
 
                 <!-- Review Photos -->
                 <div v-if="r.images?.length" class="mt-4 flex flex-wrap gap-2 sm:gap-3">
@@ -931,6 +938,7 @@ onMounted(async () => {
           size: it.size || null,
           rating: Number(it.rating || 0),
           text: it.text || "",
+          updatedText: it.updatedText || null,
           images: Array.isArray(it.images) ? it.images : [],
           anonymous: Number(it.anonymous ?? 0),
           buyerName: null,
