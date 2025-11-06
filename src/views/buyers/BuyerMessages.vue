@@ -421,13 +421,13 @@ function handleClickOutside(event) {
 </script>
 
 <template>
-    <div class="flex h-screen bg-slate-50 dark:bg-slate-900">
+    <div class="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden">
         <!-- Sidebar -->
         <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
 
         <!-- Main Content -->
         <main :class="[
-            'flex-1 flex transition-all duration-300 overflow-hidden',
+            'flex-1 flex transition-all duration-300 overflow-hidden h-screen',
             isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'
         ]">
             <!-- Conversations List -->
@@ -521,7 +521,7 @@ function handleClickOutside(event) {
 
             <!-- Chat Area -->
             <div v-if="activeConversationId" :class="[
-                'flex-1 flex flex-col bg-slate-50 dark:bg-slate-900',
+                'flex-1 flex flex-col bg-slate-50 dark:bg-slate-900 relative h-full',
                 showMobileChat ? 'flex' : 'hidden md:flex'
             ]">
                 <!-- Chat Header -->
@@ -591,7 +591,7 @@ function handleClickOutside(event) {
                 <!-- Messages -->
                 <div 
                     ref="messagesContainer"
-                    class="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-900">
+                    class="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-900 pb-32 md:pb-36">
                     <div v-if="!messages || messages.length === 0" class="flex items-center justify-center h-full">
                         <div class="text-center">
                             <svg class="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -661,8 +661,12 @@ function handleClickOutside(event) {
                     </div>
                 </div>
 
-                <!-- Message Input -->
-                <div class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-3 sm:p-4">
+                <!-- Message Input - Fixed to viewport bottom -->
+                <div :class="[
+                    'fixed bottom-0 z-[60] bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-3 sm:p-4 transition-all duration-300',
+                    showMobileChat ? 'left-0 right-0' : 'left-0 right-0 md:left-auto',
+                    isSidebarCollapsed ? 'md:left-[calc(5rem+20rem)] md:right-0 lg:left-[calc(5rem+24rem)]' : 'md:left-[calc(16rem+20rem)] md:right-0 lg:left-[calc(16rem+24rem)]'
+                ]">
                     <!-- Selected Files Preview -->
                     <div v-if="selectedFiles.length > 0" class="mb-3 flex flex-wrap gap-2">
                         <div
