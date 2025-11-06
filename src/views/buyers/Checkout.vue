@@ -8,6 +8,7 @@ import { getFunctions, httpsCallable } from "firebase/functions"
 import { stripePromise } from '@/firebase/services/stripe'
 import Loading from '@/components/status/Loading.vue'
 import { useToast } from '@/composables/useToast.js'
+import ConfirmationModal from '@/components/modals/ConfirmationModal.vue'
 
 const router = useRouter()
 const currentUser = ref(null)
@@ -69,6 +70,10 @@ const cardTouched = ref({
 })
 const savingCard = ref(false)
 const cardFormError = ref('')
+
+// ✅ CONFIRMATION MODAL STATE
+const showDeleteConfirmation = ref(false)
+const addressToDelete = ref(null)
 
 // Auth state
 onAuthStateChanged(auth, (user) => {
@@ -436,12 +441,19 @@ async function saveAddress() {
     }
 }
 
-async function deleteAddress(index) {
-    if (!currentUser.value || !confirm('Delete this address?')) return
+// ✅ SHOW DELETE CONFIRMATION
+function confirmDeleteAddress(index) {
+    addressToDelete.value = index
+    showDeleteConfirmation.value = true
+}
+
+// ✅ HANDLE DELETE CONFIRMATION
+async function handleDeleteConfirm() {
+    if (!currentUser.value || addressToDelete.value === null) return
 
     try {
         const addresses = [...userDetails.value.addresses]
-        addresses.splice(index, 1)
+        addresses.splice(addressToDelete.value, 1)
 
         await updateDoc(doc(db, 'users', currentUser.value.uid), { addresses })
         userDetails.value.addresses = addresses
@@ -454,7 +466,16 @@ async function deleteAddress(index) {
     } catch (error) {
         console.error('Error deleting address:', error)
         useToast().error('Failed to delete address')
+    } finally {
+        showDeleteConfirmation.value = false
+        addressToDelete.value = null
     }
+}
+
+// ✅ HANDLE DELETE CANCEL
+function handleDeleteCancel() {
+    showDeleteConfirmation.value = false
+    addressToDelete.value = null
 }
 
 // ✅ CARD MODAL FUNCTIONS
@@ -695,7 +716,7 @@ onBeforeUnmount(() => {
                                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
                                     </button>
-                                    <button @click.stop="deleteAddress(index)"
+                                    <button @click.stop="confirmDeleteAddress(index)"
                                         class="text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-500">
                                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1150,6 +1171,18 @@ onBeforeUnmount(() => {
                 </div>
             </div>
         </transition>
+
+        <!-- ✅ DELETE CONFIRMATION MODAL -->
+        <ConfirmationModal
+            :show="showDeleteConfirmation"
+            type="danger"
+            title="Delete Address"
+            message="Are you sure you want to delete this address? This action cannot be undone."
+            confirmText="Delete"
+            cancelText="Cancel"
+            @confirm="handleDeleteConfirm"
+            @cancel="handleDeleteCancel"
+        />
     </main>
 </template>
 
