@@ -1,5 +1,5 @@
 <template>
-    <footer class="z-50 bg-secondary dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800">
+    <footer v-if="!isMessagesPage" class="z-50 bg-secondary dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800">
         <div class="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col items-center gap-8">
                 <p class="text-center text-sm text-gray-500 dark:text-slate-400">@2025 HousebibiGoWhere. All rights reserved.</p>
@@ -7,3 +7,14 @@
         </div>
     </footer>
 </template>
+
+<script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
+const isMessagesPage = computed(() => {
+    return route.path.includes('messages') || route.name === 'SellerMessages'
+})
+</script>
