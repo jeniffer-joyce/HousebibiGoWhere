@@ -17,6 +17,8 @@
 //   • totalSales is now always retrieved from Firestore products collection
 //   • Defaults to 0 if field doesn't exist
 //   • createProduct now initializes totalSales: 0
+//   • createProduct now initializes rating: 0
+//   • getSellerProducts now includes rating field (defaults to 0)
 // ============================================================================
 
 import { auth, db } from '@/firebase/firebase_config'
@@ -149,8 +151,9 @@ export async function getSellerProducts() {
         img_url: thumbnail,
         imageSource: data.imageSource || '',
 
-        // ⭐ ALWAYS retrieve totalSales from Firestore
+        // Metrics
         totalSales: Number(data.totalSales) || 0,
+        rating: Number(data.rating) || 0,  // ⭐ NEW: Include rating field
       })
     })
 
@@ -203,6 +206,7 @@ export async function createProduct(productData = {}) {
       images,
       img_url: thumbnail, // keep single for legacy consumers
       totalSales: 0, // ⭐ Initialize totalSales to 0
+      rating: 0,     // ⭐ NEW: Initialize rating to 0
     }
 
     if (typeof payload.item_name === 'string') payload.item_name = payload.item_name.trim()
@@ -246,7 +250,8 @@ export async function getMyProduct(productId) {
   return { 
     id: snap.id, 
     ...data,
-    totalSales: Number(data.totalSales) || 0  // ⭐ Ensure totalSales is included
+    totalSales: Number(data.totalSales) || 0,  // ⭐ Ensure totalSales is included
+    rating: Number(data.rating) || 0,          // ⭐ NEW: Ensure rating is included
   }
 }
 
@@ -269,6 +274,11 @@ export async function updateMyProduct(productId, patch = {}) {
   // ⭐ Allow totalSales to be updated (though usually managed by inventory system)
   if ('totalSales' in patch) {
     clean.totalSales = Number(patch.totalSales) || 0
+  }
+
+  // ⭐ NEW: Allow rating to be updated
+  if ('rating' in patch) {
+    clean.rating = Number(patch.rating) || 0
   }
 
   // Images: accept either (img_url + additional_images) or productImages[]

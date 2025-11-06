@@ -297,7 +297,7 @@
               </div>
             </div>
 
-            <!-- Footer: buttons scale proportionally on mobile -->
+            <!-- Footer: ensure consistent button sizes on mobile and visible text in dark mode -->
             <div
               class="flex flex-col gap-3 border-t border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700"
             >
@@ -308,82 +308,107 @@
                 </p>
               </div>
 
-              <div class="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
-                <!-- View Order (to_pay, to_ship, to_receive, completed) -->
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                <!-- View Order -->
                 <button
                   v-if="['to_pay','to_ship','to_receive','completed'].includes(statusOf(o))"
                   @click="viewOrderDetails(o)"
-                  class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-500/90 px-4 py-2 text-white hover:bg-blue-600"
+                  class="w-full sm:w-auto rounded-lg bg-blue-500/90 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-600 whitespace-nowrap"
                 >
                   View Order
                 </button>
 
-                <!-- View Shipping Details: show for to_ship, to_receive, completed -->
+                <!-- View Shipping Details -->
                 <button
                   v-if="['to_ship','to_receive','completed'].includes(statusOf(o))"
                   @click="openShippingDetails(o)"
-                  class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-blue-700 hover:bg-blue-100"
+                  class="w-full sm:w-auto rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-100 whitespace-nowrap"
                 >
                   View Shipping Details
                 </button>
 
-                <!-- Existing logic -->
+                <!-- To Receive -->
                 <template v-if="statusOf(o) === 'to_receive'">
                   <button
                     @click="openReceivedConfirm(o)"
-                    class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 whitespace-nowrap"
                   >
                     Order Received
                   </button>
                 </template>
 
+                <!-- Completed -->
                 <template v-else-if="statusOf(o) === 'completed'">
                   <button
                     v-if="!hasReview(o)"
                     @click="rateOrder(o)"
-                    class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 whitespace-nowrap"
                   >
                     Rate
                   </button>
                   <button
                     v-else
                     @click="viewRatings(o)"
-                    class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                    class="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
                   >
                     View Rating
                   </button>
                   <button
                     v-if="!hasReview(o)"
                     @click="openReturnModal(o)"
-                    class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                    class="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
                   >
                     Request Return/Refund
                   </button>
                 </template>
 
+                <!-- To Pay -->
                 <template v-else-if="statusOf(o) === 'to_pay'">
-                  <button @click="payNow(o)" class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Pay Now</button>
-                  <button @click="changePayment(o)" class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50">Change Payment</button>
-                  <button @click="openCancelConfirm(o)" class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Cancel Order</button>
+                  <button
+                    @click="payNow(o)"
+                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 whitespace-nowrap"
+                  >
+                    Pay Now
+                  </button>
+                  <button
+                    @click="changePayment(o)"
+                    class="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
+                  >
+                    Change Payment
+                  </button>
+                  <button
+                    @click="openCancelConfirm(o)"
+                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 whitespace-nowrap"
+                  >
+                    Cancel Order
+                  </button>
                 </template>
 
+                <!-- To Ship -->
                 <template v-else-if="statusOf(o) === 'to_ship'">
-                  <button @click="openCancelConfirm(o)" class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Cancel Order</button>
+                  <button
+                    @click="openCancelConfirm(o)"
+                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 whitespace-nowrap"
+                  >
+                    Cancel Order
+                  </button>
                 </template>
 
+                <!-- Cancelled -->
                 <template v-else-if="statusOf(o) === 'cancelled'">
                   <button
                     @click="viewCancelledDetails(o)"
-                    class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                    class="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 whitespace-nowrap"
                   >
                     Cancelled Details
                   </button>
                 </template>
 
+                <!-- Return/Refund -->
                 <template v-else-if="statusOf(o) === 'return_refund'">
                   <button
                     @click="viewReturnDetails(o)"
-                    class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                    class="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
                   >
                     View Return/Refund Details
                   </button>
@@ -392,7 +417,7 @@
                 <!-- Contact Seller -->
                 <button
                   @click="contactSeller(o)"
-                  class="w-full sm:w-auto flex-1 sm:flex-none rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                  class="w-full sm:w-auto rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 whitespace-nowrap"
                 >
                   Contact Seller
                 </button>
@@ -1278,7 +1303,7 @@ function buildShippingView(o) {
         time: t.time,
         timeStr: fmt(t.time),
         title: t.label || t.key || 'Shipment update',
-        text:  t.text  || t.label || t.key,
+        text:  t.text  || t.label  || t.key,
         subtitle: t.text && t.label ? t.text : ''
       })
     }
