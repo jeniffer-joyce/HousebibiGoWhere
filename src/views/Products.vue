@@ -305,11 +305,11 @@ onBeforeUnmount(() => {
 
   <div class="flex flex-col lg:flex-row gap-8">
     <!-- Sidebar filters -->
-    <aside class="w-full lg:w-1/4 overflow-visible">
-      <div class="sticky top-28 overflow-visible">
+    <aside class="w-full lg:w-1/4 overflow-visible relative z-30">
+      <div class="sticky top-28 overflow-visible z-30">
         <h2 class="text-2xl font-bold mb-6">Products</h2>
         <div class="space-y-6">
-          <div>
+          <div class="relative z-40">
             <h3 class="font-bold mb-3 flex justify-between items-center">
               Filters
               <button v-if="selectedFilterArray.length" @click="clearAllFilters" class="text-sm text-primary hover:underline">Clear All</button>
@@ -325,8 +325,8 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Filter Dropdowns -->
-            <div class="flex flex-wrap gap-2">
-              <div v-for="(options, key) in dropdownOptions" :key="key" class="relative filter-dropdown">
+            <div class="flex flex-wrap gap-2 relative z-50">
+              <div v-for="(options, key) in dropdownOptions" :key="key" class="relative filter-dropdown z-50">
                 <button 
                   :ref="el => { if (el) dropdownButtonRefs[key] = el }"
                   @click.stop="toggleDropdown(key)" 
@@ -336,7 +336,7 @@ onBeforeUnmount(() => {
                         :class="{ 'rotate-180': openFilter === key }">expand_more</span>
                 </button>
 
-                <div v-if="openFilter === key" class="absolute mt-2 bg-background-light dark:bg-background-dark border rounded-lg shadow-lg z-[9999] w-40 top-full left-0">
+                <div v-if="openFilter === key" class="absolute mt-2 bg-background-light dark:bg-background-dark border rounded-lg shadow-xl z-[100] w-40 top-full left-0">
                   <div v-for="option in options" :key="option" @click="selectOption(key, option)"
                       class="px-4 py-2 hover:bg-primary/10 dark:hover:bg-primary/20 cursor-pointer">
                     {{ option }}
@@ -366,7 +366,7 @@ onBeforeUnmount(() => {
     </aside>
 
     <!-- Products Grid -->
-    <div class="flex-1 min-h-[60vh]">
+    <div class="flex-1 min-h-[60vh] relative z-10">
       <!-- Loading -->
       <div v-if="loading" class="text-center py-16">
         <span class="text-gray-500 dark:text-gray-400">Loading products...</span>
