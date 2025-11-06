@@ -307,13 +307,15 @@
         <!-- Product Info -->
         <div class="flex gap-3 mb-3">
           <img :src="thumbnail(o)" alt="" class="h-16 w-16 sm:h-20 sm:w-20 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700 flex-shrink-0" />
-          <div class="min-w-0 flex-1">
-            <div class="font-medium text-sm sm:text-base leading-tight text-slate-900 dark:text-white mb-1">
+          <div class="min-w-0 flex-1 overflow-hidden">
+            <div class="font-medium text-sm sm:text-base leading-tight text-slate-900 dark:text-white mb-1 break-words">
               {{ titleLine(o) }}
             </div>
             <div class="text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
-              <div>Order #{{ o.id }}</div>
-              <div>Buyer: {{ o.buyer?.name || o.shippingAddress?.fullName || '—' }}</div>
+              <div class="truncate" :title="'Order #' + o.id">Order #{{ o.id }}</div>
+              <div class="truncate" :title="'Buyer: ' + (o.buyer?.name || o.shippingAddress?.fullName || '—')">
+                Buyer: {{ o.buyer?.name || o.shippingAddress?.fullName || '—' }}
+              </div>
               <div>{{ fmtDate(o.createdAt) }}</div>
             </div>
           </div>

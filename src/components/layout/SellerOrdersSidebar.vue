@@ -2,11 +2,13 @@
 <template>
   <aside
     class="shrink-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900
-          transition-all duration-300"
-    :class="isCollapsed ? 'w-16' : 'w-60'"
+          transition-all duration-300 overflow-hidden"
+    :class="[
+      isCollapsed ? 'w-14 sm:w-16 min-w-[3.5rem] sm:min-w-[4rem]' : 'w-52 sm:w-60 min-w-[13rem] sm:min-w-[15rem]'
+    ]"
   >
-    <div class="h-full">
-      <div class="flex items-center justify-between gap-2 px-2 pt-3 pb-2">
+    <div class="h-full overflow-hidden">
+      <div class="flex items-center justify-between gap-2 px-1.5 sm:px-2 pt-3 pb-2">
         <h3 v-show="!isCollapsed" class="px-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           My Orders
         </h3>
@@ -24,7 +26,7 @@
         </button>
       </div>
 
-      <nav class="px-2 pb-4 space-y-1">
+      <nav class="px-1.5 sm:px-2 pb-4 space-y-1 overflow-hidden">
         <RouterLink
           v-for="i in items"
           :key="i.to.name"
@@ -35,7 +37,7 @@
             : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'">
 
           <div
-            class="mr-2 inline-flex h-8 w-8 flex-none items-center justify-center rounded-md transition-colors"
+            class="mr-1.5 sm:mr-2 inline-flex h-7 w-7 sm:h-8 sm:w-8 flex-none items-center justify-center rounded-md transition-colors"
             :class="route.name === i.to.name 
               ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
               : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'"
@@ -88,7 +90,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 const props = defineProps({
@@ -103,7 +105,16 @@ const hasExternal = computed(() => props.collapsed !== undefined)
 const localCollapsed = ref(loadLS())
 
 function loadLS() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || 'false') } catch { return false }
+  // Check if screen is mobile-sized
+  const isMobile = window.innerWidth < 768
+  try { 
+    const saved = localStorage.getItem(LS_KEY)
+    // If mobile and no saved preference, default to collapsed
+    if (isMobile && !saved) return true
+    return JSON.parse(saved || 'false') 
+  } catch { 
+    return isMobile // Default to collapsed on mobile
+  }
 }
 function saveLS(v) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(!!v)) } catch {}
@@ -120,6 +131,32 @@ function toggle(){ isCollapsed.value = !isCollapsed.value }
 
 watch(() => props.collapsed, v => {
   if (hasExternal.value) localCollapsed.value = !!v
+})
+
+// Auto-collapse on mobile, auto-expand on desktop
+onMounted(() => {
+  const handleResize = () => {
+    const isMobile = window.innerWidth < 768
+    
+    if (!hasExternal.value) {
+      if (isMobile && !localCollapsed.value) {
+        // Auto-collapse on mobile when currently expanded
+        localCollapsed.value = true
+      } else if (!isMobile && localCollapsed.value) {
+        // Auto-expand on desktop when currently collapsed
+        localCollapsed.value = false
+      }
+    }
+  }
+  
+  // Check on mount
+  handleResize()
+  
+  // Listen for window resize
+  window.addEventListener('resize', handleResize)
+  
+  // Cleanup
+  return () => window.removeEventListener('resize', handleResize)
 })
 
 /** counts normalizer */
