@@ -473,6 +473,7 @@ watch(
                         size: it.size || null,
                         rating: Number(it.rating || 0),
                         text: it.text || '',
+                        updatedText: it.updatedText || '',  
                         images: Array.isArray(it.images) ? it.images : [],
                         anonymous: Number(it.anonymous ?? 0),
 
@@ -538,7 +539,8 @@ function prTsToSeconds(ts) {
 function prIsUpdated(r) {
   const c = prTsToSeconds(r?.createdAt)
   const u = prTsToSeconds(r?.updatedAt)
-  return u > c
+  const hasTextUpdate = (r.updatedText ?? '').trim() && (r.updatedText ?? '').trim() !== (r.text ?? '').trim()
+  return hasTextUpdate || u > c
 }
 
 // Sizes present in reviews
@@ -1038,25 +1040,25 @@ console.log('🔍 ProductDetails Route Info:', {
                             </template>
                             <span class="ml-1 text-[10px] sm:text-xs text-gray-500">{{ r.rating }}/5</span>
                         </div>
-
-                        <!-- Original / Updated timestamp pills -->
-                        <div class="mt-2 flex flex-wrap items-center gap-2 pl-0 sm:pl-15">
-                          <!-- Updated pill (only when updatedAt exists and is newer) -->
-                          <span
-                            v-if="prIsUpdated(r)"
-                            class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
-                            <span class="material-symbols-outlined text-sm">update</span>
-                            Updated review at: {{ prFormatTime(r.updatedAt) }}
-                          </span>
-                          <!-- (Optional) If you want to show an 'edited' badge even if equal timestamps, remove prIsUpdated and use r.updatedAt -->
-                        </div>
                     </div>
 
-                    <!-- Review Text -->
-                    <p
-                        class="mt-3 text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap pl-0 sm:pl-15">
-                        {{ r.text }}
-                    </p>
+                    <!-- Review Text (shows updated section if present) -->
+                    <div v-if="r.updatedText"
+                        class="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2
+                                text-sm text-blue-800 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
+                    <div v-if="prIsUpdated(r)" class="mt-1">
+                        <span
+                        class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5
+                                text-[10px] sm:text-xs font-semibold text-blue-700
+                                dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
+                        <span class="material-symbols-outlined text-sm">update</span>
+                        Updated review at: {{ prFormatTime(r.updatedAt) }}
+                        </span>
+                    </div>
+                    <br />
+                    <span class="font-semibold ml-1">Updated Comment: </span>
+                    <span class="whitespace-pre-line">{{ r.updatedText }}</span>
+                    </div>
 
                     <!-- Photos -->
                     <div v-if="r.images?.length" class="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-3 pl-0 sm:pl-15">
