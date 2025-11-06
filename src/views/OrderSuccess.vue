@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { db, auth } from '@/firebase/firebase_config'
-import { doc, setDoc, getDoc, updateDoc, serverTimestamp, collection } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, where, getDocs } from 'firebase/firestore'
 import { useToast } from '@/composables/useToast.js'
 
 const router = useRouter()
@@ -11,8 +11,16 @@ const sessionId = ref('')
 const loading = ref(true)
 const orderCreated = ref(false)
 const error = ref(false)
+const orderProcessingStarted = ref(false)
 
 onMounted(async () => {
+  // ✅ CHECK 1: Already processing
+  if (orderProcessingStarted.value) {
+    console.log('⏭️ Already processing, skipping...')
+    return
+  }
+  orderProcessingStarted.value = true
+
   sessionId.value = route.query.session_id || ''
   
   if (!sessionId.value) {
@@ -23,35 +31,170 @@ onMounted(async () => {
   }
 
   try {
-    // ✅ Just wait for orders to exist (created by cloud function)
     const currentUser = auth.currentUser
     if (!currentUser) {
       throw new Error('User not authenticated')
     }
 
-    // Optional: Poll Firestore to verify orders were created
-    // or just assume cloud function succeeded
-    await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds for cloud function
+    // ✅ CHECK 2: SessionStorage empty = already created
+    const checkoutItemsStr = sessionStorage.getItem('checkoutItems')
+    if (!checkoutItemsStr) {
+      console.log('⏭️ SessionStorage empty (orders already created), showing success...')
+      orderCreated.value = true
+      loading.value = false
+      return
+    }
 
-    // Clear session storage
+    const checkoutItems = JSON.parse(checkoutItemsStr || '[]')
+    if (checkoutItems.length === 0) {
+      throw new Error('No items found in checkout')
+    }
+
+    console.log('✅ checkoutItems from sessionStorage:', checkoutItems)
+
+    // ✅ CHECK 3: Orders already exist for this transaction
+    console.log('🔍 Checking for existing orders...')
+    const ordersSnapshot = await getDocs(
+      query(
+        collection(db, 'orders'),
+        where('uid', '==', currentUser.uid),
+        where('payment.transactionId', '==', sessionId.value)
+      )
+    )
+
+    if (ordersSnapshot.size > 0) {
+      console.log(`⏭️ ${ordersSnapshot.size} order(s) already exist for this transaction, skipping creation...`)
+      sessionStorage.removeItem('checkoutItems')
+      orderCreated.value = true
+      loading.value = false
+      return
+    }
+
+    // ✅ STEP 1: Get user data
+    const userDocRef = doc(db, 'users', currentUser.uid)
+    const userDocSnap = await getDoc(userDocRef)
+    
+    if (!userDocSnap.exists()) {
+      throw new Error('User data not found')
+    }
+
+    const userData = userDocSnap.data()
+    const SHIPPING_FEE = 1.99
+
+    // ✅ STEP 2: Group items by seller
+    const itemsBySeller = {}
+    checkoutItems.forEach(item => {
+      if (!itemsBySeller[item.sellerId]) {
+        itemsBySeller[item.sellerId] = []
+      }
+      itemsBySeller[item.sellerId].push(item)
+    })
+
+    console.log('✅ Items grouped by seller:', Object.keys(itemsBySeller))
+
+    // ✅ STEP 3: Create orders (sequential to avoid race conditions)
+    const orderIds = []
+    for (const [sellerId, sellerItems] of Object.entries(itemsBySeller)) {
+      try {
+        const productsTotalPrice = sellerItems.reduce((sum, item) => 
+          sum + ((item.price || 0) * (item.quantity || 1)), 0
+        )
+
+        const orderData = {
+          orderId: '', // Will be updated after creation
+          uid: currentUser.uid,
+          sellerId: sellerId,
+          sellerUsername: sellerItems[0].sellerUsername || '',
+          shopName: sellerItems[0].shopName || 'Shop',
+          products: sellerItems.map(item => ({
+            productId: item.productId || '',
+            sellerId: item.sellerId || '',
+            item_name: item.item_name || item.name || 'Product',
+            img_url: item.img_url || item.image || '',
+            price: item.price || 0,
+            quantity: item.quantity || 1,
+            size: item.size || null,
+            sizeIndex: item.sizeIndex !== null ? item.sizeIndex : null,
+            sellerUsername: item.sellerUsername || '',
+            shopName: item.shopName || '',
+            totalPrice: (item.price || 0) * (item.quantity || 1)
+          })),
+          shippingAddress: {
+            fullName: userData.addresses?.[0]?.fullName || '',
+            phoneNumber: userData.addresses?.[0]?.phone || '',
+            streetName: userData.addresses?.[0]?.streetName || '',
+            unitNumber: userData.addresses?.[0]?.unitNumber || '',
+            postalCode: userData.addresses?.[0]?.postalCode || ''
+          },
+          totals: {
+            productsTotalPrice: Number(productsTotalPrice.toFixed(2)),
+            shippingFee: Number(SHIPPING_FEE.toFixed(2)),
+            grandTotal: Number((productsTotalPrice + SHIPPING_FEE).toFixed(2))
+          },
+          payment: {
+            method: 'card',
+            transactionId: sessionId.value,
+            paidAt: serverTimestamp()
+          },
+          status: 'to_ship',
+          statusLog: [
+            { status: 'to_pay', time: new Date(), by: 'system' },
+            { status: 'to_ship', time: new Date(), by: 'system' }
+          ],
+          logistics: {
+            shipper: null,
+            trackingNumber: null,
+            shippedAt: null,
+            deliveredAt: null
+          },
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }
+
+        const ordersRef = collection(db, 'orders')
+        const orderDocRef = await addDoc(ordersRef, orderData)
+        
+        console.log(`✅ Order created for seller ${sellerId}:`, orderDocRef.id)
+
+        // Try to update orderId (non-critical)
+        try {
+          await updateDoc(orderDocRef, { orderId: orderDocRef.id })
+        } catch (updateErr) {
+          console.warn(`⚠️ OrderId update failed (non-critical):`, updateErr.message)
+        }
+        
+        orderIds.push(orderDocRef.id)
+      } catch (sellerErr) {
+        console.error(`❌ Failed to create order for seller ${sellerId}:`, sellerErr)
+        throw sellerErr
+      }
+    }
+
+    console.log('✅ All orders created successfully:', orderIds)
+
+    // ✅ STEP 4: Clean up sessionStorage
     sessionStorage.removeItem('checkoutItems')
+    console.log('✅ SessionStorage cleaned')
 
+    // ✅ STEP 5: Show success
     orderCreated.value = true
     loading.value = false
+
     useToast().success('Order confirmed! Check your email for details.')
 
   } catch (err) {
-    console.error('Error:', err)
+    console.error('=== ERROR ===')
+    console.error('Message:', err.message)
+    console.error('Code:', err.code)
+    
     error.value = true
     loading.value = false
     useToast().error(`Error: ${err.message}`)
   }
 })
 
-
 function continueShopping() {
   router.push('/')
-  // Scroll to top after navigation
   setTimeout(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, 100)
@@ -94,7 +237,6 @@ function viewOrders() {
 
     <!-- Success Content -->
     <div v-else-if="orderCreated" class="text-center py-12">
-      <!-- Success Icon -->
       <div class="mb-6 flex justify-center">
         <div class="rounded-full bg-green-100 dark:bg-green-900/20 p-6">
           <svg class="h-16 w-16 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,7 +245,6 @@ function viewOrders() {
         </div>
       </div>
 
-      <!-- Success Message -->
       <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white mb-4">
         Payment Successful! 🎉
       </h1>
@@ -116,7 +257,6 @@ function viewOrders() {
         Your order has been confirmed and will be processed shortly.
       </p>
 
-      <!-- Order Details Card -->
       <div class="max-w-md mx-auto mb-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-left">
         <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Order Details</h2>
         
@@ -146,7 +286,6 @@ function viewOrders() {
         </div>
       </div>
 
-      <!-- Action Buttons -->
       <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
         <button 
           @click="viewOrders"
@@ -161,16 +300,11 @@ function viewOrders() {
         </button>
       </div>
 
-      <!-- Additional Info -->
       <div class="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
         <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">What's Next?</h3>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-
-          <!-- Step 1: Order Confirmation -->
           <div class="flex items-start gap-4">
-            <!-- Step number -->
             <span class="inline-block w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center mt-1">1</span>
-            <!-- Icon + text centered -->
             <div class="flex flex-col items-center">
               <img src="https://img.icons8.com/ios-filled/50/000000/task-completed.png" alt="Order Confirmation" class="w-8 h-8 mb-1">
               <p class="text-sm font-medium text-slate-900 dark:text-white">Order Confirmation</p>
@@ -178,7 +312,6 @@ function viewOrders() {
             </div>
           </div>
           
-          <!-- Step 2: Processing -->
           <div class="flex items-start gap-4">
             <span class="inline-block w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center mt-1">2</span>
             <div class="flex flex-col items-center">
@@ -188,7 +321,6 @@ function viewOrders() {
             </div>
           </div>
           
-          <!-- Step 3: Delivery -->
           <div class="flex items-start gap-4">
             <span class="inline-block w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center mt-1">3</span>
             <div class="flex flex-col items-center">
@@ -197,10 +329,8 @@ function viewOrders() {
               <p class="text-xs text-slate-500 dark:text-slate-400 text-center">Track your shipment</p>
             </div>
           </div>
-
         </div>
       </div>
-
     </div>
   </main>
 </template>

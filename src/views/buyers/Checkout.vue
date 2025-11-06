@@ -545,122 +545,86 @@ function formatPrice(price) {
 
 // STRIPE PAYMENT INTEGRATION
 async function proceedToPayment() {
-  if (!selectedAddress.value) {
-    useToast().error('Please select a delivery address')
-    return
-  }
-
-  if (selectedCartItems.value.length === 0) {
-    useToast().error('No items selected for checkout')
-    return
-  }
-
-  if (hasStockWarnings.value) {
-    useToast().error('Please resolve stock availability issues before proceeding')
-    return
-  }
-
-  processingPayment.value = true
-
   try {
-    const items = selectedCartItems.value.map(item => {
-        let sizeName = item.size || null
-        if (
-            !sizeName &&
-            item.sizeIndex !== null &&
-            item.sizeIndex !== undefined &&
-            item.availableSizes &&
-            item.availableSizes.length > 0
-        ) {
-            sizeName = item.availableSizes[item.sizeIndex] || null
-        }
-
-        return {
-            cartItemId: item.cartItemId,  // ✅ ADD THIS
-            item_name: item.item_name,    // ✅ Use item_name not name
-            price: item.price,
-            quantity: item.quantity,
-            img_url: item.img_url || null, // ✅ Use img_url not image
-            size: sizeName,
-            sizeIndex: item.sizeIndex !== undefined ? item.sizeIndex : null,
-            productId: item.productId,
-            sellerId: item.sellerId || '',  // ✅ Default to empty string
-            sellerUsername: item.sellerUsername || '',
-            shopName: item.shopName || '',
-            availableSizes: item.availableSizes || null  // ✅ Add this
-        }
-        })
-
-
-    const itemsTotal = selectedCartItems.value.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
+    processingPayment.value = true
+    
+    console.log('=== DEBUG BEFORE CLEAR ===')
+    console.log('selectedItems (Set):', selectedItems.value)
+    console.log('cartItems:', cartItems.value)
+    
+    // ✅ STEP 1: Get selected items directly from cartItems
+    const selectedItemIds = Array.from(selectedItems.value)
+    const itemsToSend = cartItems.value.filter(item =>
+      selectedItemIds.includes(item.cartItemId)
     )
-    const grandTotal = itemsTotal + SHIPPING_FEE
-
-    console.log('🛒 Checkout Data:', {
-      items,
-      itemsTotal,
-      shippingFee: SHIPPING_FEE,
-      grandTotal,
-      deliveryAddress: selectedAddress.value,
-      savedCard: selectedCard.value ? {
-            last4: selectedCard.value.last4 || '',
-            cardholderName: selectedCard.value.cardholderName || ''
-          } : null
-    })
-
-    const baseUrl = window.location.origin
-    const token = await auth.currentUser.getIdToken()
-
-    // ✅ FIX: Don't include full items array in metadata
-    const paymentData = {
-      items, // Pass items separately (not in metadata)
-      shippingFee: SHIPPING_FEE,
-      totalAmount: grandTotal,
-      deliveryAddress: selectedAddress.value,
-      successUrl: `${baseUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${baseUrl}/checkout`,
-      // ✅ METADATA: Only essential info that won't exceed 500 chars
-      metadata: {
-        itemCount: selectedCartItems.value.length,
-        subtotal: itemsTotal.toFixed(2),
-        total: grandTotal.toFixed(2),
-        userId: auth.currentUser.uid
-      }
+    
+    console.log('selectedItemIds:', selectedItemIds)
+    console.log('itemsToSend:', itemsToSend)
+    
+    if (itemsToSend.length === 0) {
+      throw new Error('No items selected')
     }
-
-    if (selectedCard.value) {
-      paymentData.savedCard = {
-        last4: selectedCard.value.last4 || '',
-        cardholderName: selectedCard.value.cardholderName || ''
-      }
-    }
-
-    const functionUrl = 'https://us-central1-craftconnect-3b52c.cloudfunctions.net/createCheckoutSession'
-
-    const response = await fetch(functionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(paymentData)
+    
+    // ✅ STEP 2: Clear cart
+    const cartRef = doc(db, 'carts', currentUser.value.uid)
+    const remainingItems = cartItems.value.filter(item => 
+      !selectedItemIds.includes(item.cartItemId)
+    )
+    
+    await updateDoc(cartRef, {
+      items: remainingItems
     })
+    console.log('✅ Cart cleared at checkout')
+    
+    // ✅ STEP 3: Store checkout items
+    sessionStorage.setItem('checkoutItems', JSON.stringify(itemsToSend))
 
+    
+    // ✅ STEP 4: Get auth token
+    const token = await currentUser.value.getIdToken()
+    
+    const response = await fetch(
+      'https://us-central1-craftconnect-3b52c.cloudfunctions.net/createCheckoutSession',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          items: itemsToSend,
+          shippingFee: SHIPPING_FEE,
+          totalAmount: orderTotal.value,
+          deliveryAddress: selectedAddress.value,
+          successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/cart`
+        })
+      }
+    )
+    
     if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Payment failed')
+      const error = await response.text()
+      throw new Error(`HTTP ${response.status}: ${error}`)
     }
-
-    const data = await response.json()
-    window.location.href = data.url
+    
+    const { sessionId, url } = await response.json()
+    
+    // ✅ STEP 5: Prevent back button
+    window.history.pushState(null, null, window.location.href)
+    window.addEventListener('popstate', () => {
+      window.history.pushState(null, null, window.location.href)
+    })
+    
+    // ✅ STEP 6: Redirect to Stripe
+    window.location.href = url
+    
   } catch (error) {
-    console.error('Payment error:', error)
-    useToast().error(error.message || 'Payment failed. Please try again.')
+    console.error('Checkout error:', error)
+    useToast().error('Checkout failed: ' + error.message)
     processingPayment.value = false
   }
 }
+
 
 // Cleanup
 onBeforeUnmount(() => {
@@ -943,7 +907,7 @@ onBeforeUnmount(() => {
                     </button>
 
                     <p class="text-xs text-center text-slate-500 dark:text-slate-400 mt-4">
-                        By placing this order, you agree to our Terms & Conditions
+                        Complete your payment. <br></br>Leaving this page will clear your cart.
                     </p>
                 </div>
             </div>
