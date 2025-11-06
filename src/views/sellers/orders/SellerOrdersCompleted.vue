@@ -469,23 +469,24 @@
           <!-- Printable area -->
           <div id="invoice-print-area" class="overflow-auto p-4 sm:p-6 flex-1">
             <div class="mx-auto max-w-3xl">
-              <div class="rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm dark:border-slate-700">
+              <!-- Invoice card -->
+              <div class="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 shadow-sm bg-white dark:bg-slate-900">
                 <div class="mb-4">
                   <h1 class="m-0 text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white">Invoice</h1>
                   <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Order #{{ activeId }}</div>
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 text-xs sm:text-sm">
-                  <div>
-                    <div><span class="font-medium">Completed:</span> {{ activeCompleted }}</div>
-                    <div><span class="font-medium">Payment:</span> {{ activePayment }}</div>
+                  <div class="text-slate-700 dark:text-slate-300">
+                    <div><span class="font-medium text-slate-900 dark:text-white">Completed:</span> {{ activeCompleted }}</div>
+                    <div><span class="font-medium text-slate-900 dark:text-white">Payment:</span> {{ activePayment }}</div>
                   </div>
                   <div>
                     <div class="font-medium text-slate-900 dark:text-white">Bill To</div>
                     <div class="text-slate-700 dark:text-slate-200">{{ activeBuyer.name }}</div>
-                    <div class="text-slate-500 dark:text-slate-400">{{ activeBuyer.addr1 }}</div>
-                    <div class="text-slate-500 dark:text-slate-400">{{ activeBuyer.addr2 }}</div>
-                    <div v-if="activeBuyer.phone" class="text-slate-500 dark:text-slate-400">{{ activeBuyer.phone }}</div>
+                    <div class="text-slate-600 dark:text-slate-400">{{ activeBuyer.addr1 }}</div>
+                    <div class="text-slate-600 dark:text-slate-400">{{ activeBuyer.addr2 }}</div>
+                    <div v-if="activeBuyer.phone" class="text-slate-600 dark:text-slate-400">{{ activeBuyer.phone }}</div>
                   </div>
                 </div>
 
@@ -515,12 +516,9 @@
                           <td class="px-2 sm:px-3 py-2 text-slate-800 dark:text-slate-200">
                             {{ p.item_name || '—' }}
                           </td>
-
-                          <!-- Variant / Size column -->
                           <td class="px-2 sm:px-3 py-2 text-slate-700 dark:text-slate-300">
                             {{ p.size || p.variant || '-' }}
                           </td>
-
                           <td class="px-2 sm:px-3 py-2 text-center text-slate-700 dark:text-slate-300">
                             {{ Number(p?.quantity ?? 1) }}
                           </td>
@@ -541,18 +539,18 @@
                   <div></div>
                   <div class="space-y-1 text-xs sm:text-sm">
                     <div class="flex items-center justify-between">
-                      <div class="text-slate-600 dark:text-slate-300">Products Subtotal:</div>
+                      <div class="text-slate-600 dark:text-slate-400">Products Subtotal:</div>
                       <div class="text-slate-900 dark:text-white">{{ fmtCurrency(activeSubtotal) }}</div>
                     </div>
                     <div class="flex items-center justify-between">
-                      <div class="text-slate-600 dark:text-slate-300">Shipping:</div>
+                      <div class="text-slate-600 dark:text-slate-400">Shipping:</div>
                       <div class="text-slate-900 dark:text-white">{{ fmtCurrency(activeShipping) }}</div>
                     </div>
                     <div class="flex items-center justify-between">
-                      <div class="text-slate-600 dark:text-slate-300">Discount:</div>
+                      <div class="text-slate-600 dark:text-slate-400">Discount:</div>
                       <div class="text-slate-900 dark:text-white">- {{ fmtCurrency(activeDiscount) }}</div>
                     </div>
-                    <div class="mt-1 flex items-center justify-between border-t border-slate-200 pt-2 dark:border-slate-700">
+                    <div class="mt-1 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-2">
                       <div class="font-semibold text-slate-900 dark:text-white">Grand Total:</div>
                       <div class="font-semibold text-slate-900 dark:text-white">{{ fmtCurrency(activeGrand) }}</div>
                     </div>

@@ -7,19 +7,20 @@
           <div
             v-if="i > 0"
             class="flex-1 h-1"
-            :class="i <= activeIndex ? 'bg-green-500' : 'bg-slate-200'"
+            :class="i <= activeIndex ? 'bg-green-500 dark:bg-green-600' : 'bg-slate-200 dark:bg-slate-700'"
           />
           <!-- node -->
           <li class="shrink-0 flex flex-col items-center">
             <div
               class="relative flex items-center justify-center h-14 w-14 rounded-full border-2"
-              :class="i <= activeIndex ? 'bg-white border-green-500' : 'bg-white border-slate-300'"
+              :class="i <= activeIndex ? 'bg-white dark:bg-slate-800 border-green-500 dark:border-green-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'"
             >
               <!-- inline SVGs -->
               <svg
                 v-if="s.key==='placed'"
                 viewBox="0 0 24 24"
                 class="h-7 w-7"
+                :class="i <= activeIndex ? 'text-green-600 dark:text-green-500' : 'text-slate-400 dark:text-slate-500'"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.8"
@@ -32,6 +33,7 @@
                 v-else-if="s.key==='preparing'"
                 viewBox="0 0 24 24"
                 class="h-7 w-7"
+                :class="i <= activeIndex ? 'text-green-600 dark:text-green-500' : 'text-slate-400 dark:text-slate-500'"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.8"
@@ -44,6 +46,7 @@
                 v-else-if="s.key==='transit'"
                 viewBox="0 0 24 24"
                 class="h-7 w-7"
+                :class="i <= activeIndex ? 'text-green-600 dark:text-green-500' : 'text-slate-400 dark:text-slate-500'"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.8"
@@ -58,6 +61,7 @@
                 v-else
                 viewBox="0 0 24 24"
                 class="h-7 w-7"
+                :class="i <= activeIndex ? 'text-green-600 dark:text-green-500' : 'text-slate-400 dark:text-slate-500'"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.8"
@@ -72,11 +76,11 @@
             <div class="mt-3 text-center">
               <div
                 class="text-sm font-semibold"
-                :class="i <= activeIndex ? 'text-slate-900' : 'text-slate-500'"
+                :class="i <= activeIndex ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'"
               >
                 {{ s.label }}
               </div>
-              <div class="text-xs text-slate-500">{{ s.timeText }}</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400">{{ s.timeText }}</div>
             </div>
           </li>
 
@@ -84,7 +88,7 @@
           <div
             v-if="i < steps.length - 1"
             class="flex-1 h-1"
-            :class="i < activeIndex ? 'bg-green-500' : 'bg-slate-200'"
+            :class="i < activeIndex ? 'bg-green-500 dark:bg-green-600' : 'bg-slate-200 dark:bg-slate-700'"
           />
         </template>
       </ol>
@@ -214,8 +218,3 @@ const steps = computed(() => ([
   { key:'delivered',  label:'Delivered',         timeText: toText(times.value.delivered) }
 ]))
 </script>
-
-<style scoped>
-/* keep icons neutral; ring/border color shows progress */
-svg { color: rgb(148 163 184); } /* slate-400 */
-</style>
