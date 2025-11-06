@@ -681,63 +681,76 @@
 
           <!-- Printable area -->
           <div id="waybill-print-area" class="overflow-auto p-4 sm:p-6 flex-1">
-            <div class="sheet border border-slate-200 p-4 sm:p-6 dark:border-slate-700">
-              <div class="mb-3 flex flex-col sm:flex-row items-start justify-between gap-3 text-xs sm:text-[13px] text-slate-600 dark:text-slate-300">
-                <div><strong class="text-slate-900 dark:text-white">{{ shopName(waybillOrder) }}</strong><br/>Waybill / Air Waybill</div>
-                <div class="sm:text-right">
-                  <div>Order: <strong>{{ waybillOrder?.id }}</strong></div>
-                  <div>AWB: <strong>{{ awb }}</strong></div>
-                  <div>Channel: <strong>HouseBiBi Express</strong></div>
-                  <div class="mt-1 font-mono border border-black inline-block px-2 py-1">{{ barcode }}</div>
+            <div class="sheet border border-slate-200 p-4 sm:p-6 dark:border-slate-700 bg-white dark:bg-slate-800/60 rounded-lg">
+              <!-- Header Section -->
+              <div class="mb-3 flex flex-col sm:flex-row items-start justify-between gap-3 text-xs sm:text-[13px]">
+                <div>
+                  <strong class="text-slate-900 dark:text-white text-sm block mb-1">{{ shopName(waybillOrder) }}</strong>
+                  <span class="text-slate-600 dark:text-slate-300">Waybill / Air Waybill</span>
+                </div>
+                <div class="sm:text-right space-y-1">
+                  <div class="text-slate-700 dark:text-slate-200">Order: <strong class="text-slate-900 dark:text-white">{{ waybillOrder?.id }}</strong></div>
+                  <div class="text-slate-700 dark:text-slate-200">AWB: <strong class="text-slate-900 dark:text-white">{{ awb }}</strong></div>
+                  <div class="text-slate-700 dark:text-slate-200">Channel: <strong class="text-slate-900 dark:text-white">HouseBiBi Express</strong></div>
+                  <div class="mt-1 font-mono border-2 border-slate-800 dark:border-slate-300 inline-block px-2 py-1 text-slate-900 dark:text-white">{{ barcode }}</div>
                 </div>
               </div>
 
-              <div class="mb-2 rounded-lg border border-dashed border-slate-300 p-3 dark:border-slate-600">
-                <div class="text-sm font-semibold text-slate-900 dark:text-white">Ship To:</div>
-                <div class="text-xs sm:text-sm text-slate-800 dark:text-slate-200">{{ shipToName(waybillOrder) }}</div>
-                <div class="text-xs sm:text-sm text-slate-800 dark:text-slate-200">{{ shipToAddr(waybillOrder) }}</div>
+              <!-- Ship To Section -->
+              <div class="mb-2 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-3 bg-slate-50 dark:bg-slate-700/40">
+                <div class="text-sm font-semibold text-slate-900 dark:text-white mb-1">Ship To:</div>
+                <div class="text-xs sm:text-sm text-slate-800 dark:text-slate-100 font-medium">{{ shipToName(waybillOrder) }}</div>
+                <div class="text-xs sm:text-sm text-slate-700 dark:text-slate-200">{{ shipToAddr(waybillOrder) }}</div>
               </div>
 
-              <div class="mb-2 rounded-lg border border-dashed border-slate-300 p-3 dark:border-slate-600">
-                <div class="text-xs sm:text-sm text-slate-800 dark:text-slate-200">
-                  <strong>Shipping Method:</strong> {{ waybillOpts?.method?.toUpperCase?.() || 'DROPOFF' }}
+              <!-- Shipping Method Section -->
+              <div class="mb-3 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-3 bg-slate-50 dark:bg-slate-700/40">
+                <div class="text-xs sm:text-sm text-slate-800 dark:text-slate-100">
+                  <strong class="text-slate-900 dark:text-white">Shipping Method:</strong> 
+                  <span class="text-slate-900 dark:text-white font-medium">{{ waybillOpts?.method?.toUpperCase?.() || 'DROPOFF' }}</span>
                 </div>
-                <div v-if="waybillOpts?.method==='pickup'" class="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
-                  Pickup Date: {{ waybillOpts?.pickup?.date || '' }} • Timeslot: {{ waybillOpts?.pickup?.slot || '' }}
+                <div v-if="waybillOpts?.method==='pickup'" class="text-xs sm:text-sm text-slate-700 dark:text-slate-200 mt-1">
+                  Pickup Date: <span class="font-medium">{{ waybillOpts?.pickup?.date || '' }}</span> • Timeslot: <span class="font-medium">{{ waybillOpts?.pickup?.slot || '' }}</span>
                 </div>
-                <div v-else class="text-xs sm:text-sm text-slate-700 dark:text-slate-300">Drop-off: Please drop within 3 days at partner counter</div>
+                <div v-else class="text-xs sm:text-sm text-slate-700 dark:text-slate-200 mt-1">
+                  Drop-off: Please drop within 3 days at partner counter
+                </div>
               </div>
 
+              <!-- Products Table -->
               <div class="overflow-x-auto">
                 <table class="w-full border-collapse text-xs dark:text-white sm:text-sm min-w-[400px]">
                   <thead>
-                    <tr class="bg-slate-50 dark:bg-slate-800/60">
-                      <th class="border border-slate-200 px-2 py-1 text-left dark:border-slate-700">#</th>
-                      <th class="border border-slate-200 px-2 py-1 text-left dark:border-slate-700">Item</th>
-                      <th class="border border-slate-200 px-2 py-1 text-left dark:border-slate-700">Variant</th>
-                      <th class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">Qty</th>
-                      <th class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">Unit Price</th>
+                    <tr class="bg-slate-100 dark:bg-slate-700">
+                      <th class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-left text-slate-900 dark:text-white font-semibold">#</th>
+                      <th class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-left text-slate-900 dark:text-white font-semibold">Item</th>
+                      <th class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-left text-slate-900 dark:text-white font-semibold">Variant</th>
+                      <th class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-right text-slate-900 dark:text-white font-semibold">Qty</th>
+                      <th class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-right text-slate-900 dark:text-white font-semibold">Unit Price</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(p,i) in (waybillOrder?.products||[])" :key="i">
-                      <td class="border border-slate-200 px-2 py-1 dark:border-slate-700">{{ i+1 }}</td>
-                      <td class="border border-slate-200 px-2 py-1 dark:border-slate-700">{{ p.item_name || p.name }}</td>
-                      <td class="border border-slate-200 px-2 py-1 dark:border-slate-700">{{ p.size || '-' }}</td>
-                      <td class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">{{ p.quantity ?? p.qty ?? 1 }}</td>
-                      <td class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">{{ money(p.price || 0) }}</td>
+                    <tr v-for="(p,i) in (waybillOrder?.products||[])" :key="i" class="bg-white dark:bg-slate-800/40">
+                      <td class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-slate-800 dark:text-slate-200">{{ i+1 }}</td>
+                      <td class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-slate-800 dark:text-slate-100">{{ p.item_name || p.name }}</td>
+                      <td class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-slate-700 dark:text-slate-200">{{ p.size || '-' }}</td>
+                      <td class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-right text-slate-800 dark:text-slate-200">{{ p.quantity ?? p.qty ?? 1 }}</td>
+                      <td class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-right text-slate-900 dark:text-white font-medium">{{ money(p.price || 0) }}</td>
                     </tr>
                   </tbody>
                   <tfoot>
-                    <tr>
-                      <th colspan="4" class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">Total</th>
-                      <th class="border border-slate-200 px-2 py-1 text-right dark:border-slate-700">{{ money(total(waybillOrder)) }}</th>
+                    <tr class="bg-slate-100 dark:bg-slate-700">
+                      <th colspan="4" class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-right text-slate-900 dark:text-white font-semibold">Total</th>
+                      <th class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-right text-slate-900 dark:text-white font-bold text-base">{{ money(total(waybillOrder)) }}</th>
                     </tr>
                   </tfoot>
                 </table>
               </div>
 
-              <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">Generated by HousebibiGoWhere – attach this page to the parcel.</div>
+              <!-- Footer -->
+              <div class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                Generated by HousebibiGoWhere – attach this page to the parcel.
+              </div>
             </div>
           </div>
         </div>

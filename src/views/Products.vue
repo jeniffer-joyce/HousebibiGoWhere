@@ -380,7 +380,7 @@ onBeforeUnmount(() => {
       <!-- Products -->
       <div
         v-else
-        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"
       >
         <div
           v-for="item in paginatedProducts"
@@ -403,12 +403,12 @@ onBeforeUnmount(() => {
             ></div>
 
             <!-- Product Info -->
-            <div class="pt-3">
-              <h3 class="font-bold text-base truncate">{{ item.item_name }}</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400 truncate">
+            <div class="pt-2 md:pt-3 px-1 md:px-0">
+              <h3 class="font-bold text-sm md:text-base truncate">{{ item.item_name }}</h3>
+              <p class="text-xs md:text-sm text-gray-600 dark:text-gray-400 truncate">
                 {{ item.sellerName }}
               </p>
-              <p class="font-bold mt-1">
+              <p class="font-bold mt-1 text-sm md:text-base">
                 {{
                   (() => {
                     if (!item.sizes || !item.sizes.length) return '$0'
@@ -424,7 +424,7 @@ onBeforeUnmount(() => {
               <div class="flex items-center mt-1">
                 <template v-if="item.rating > 0">
                   <!-- Stars -->
-                  <span v-for="n in 5" :key="n" class="text-yellow-500 text-sm">
+                  <span v-for="n in 5" :key="n" class="text-yellow-500 text-xs md:text-sm">
                     <span v-if="n <= Math.floor(item.rating)">★</span>
                     <span v-else-if="n === Math.ceil(item.rating) && item.rating % 1 !== 0" class="relative inline-block">
                       <span class="text-gray-300 dark:text-gray-600">★</span>
@@ -433,14 +433,14 @@ onBeforeUnmount(() => {
                     <span v-else class="text-gray-300 dark:text-gray-600">★</span>
                   </span>
                   <!-- Rating number -->
-                  <span class="ml-2 text-xs text-gray-600 dark:text-gray-400">
+                  <span class="ml-1 md:ml-2 text-xs text-gray-600 dark:text-gray-400">
                     {{ item.rating.toFixed(1) }}/5
                   </span>
                 </template>
                 <template v-else>
                   <!-- No rating yet -->
-                  <span v-for="n in 5" :key="n" class="text-gray-300 dark:text-gray-600 text-sm">★</span>
-                  <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">No rating</span>
+                  <span v-for="n in 5" :key="n" class="text-gray-300 dark:text-gray-600 text-xs md:text-sm">★</span>
+                  <span class="ml-1 md:ml-2 text-xs text-gray-400 dark:text-gray-500">No rating</span>
                 </template>
               </div>
             </div>
@@ -449,11 +449,11 @@ onBeforeUnmount(() => {
           <!-- Favorite button now OUTSIDE the link -->
           <button
             @click="toggleProductFavorite(item)"
-            class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors z-20"
+            class="absolute top-2 right-2 md:top-3 md:right-3 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors z-20"
           >
             <svg
               :class="[
-                'h-6 w-6 transition-colors',
+                'h-5 w-5 md:h-6 md:w-6 transition-colors',
                 favoriteProducts.some(p => p.id === item.id && p.isFavorite)
                   ? 'text-red-500 fill-current'
                   : 'text-gray-400'
@@ -474,12 +474,12 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 🔹 Enhanced Pagination Controls -->
-      <div class="flex flex-wrap justify-center items-center gap-2 mt-8 text-sm">
+      <div class="flex flex-wrap justify-center items-center gap-1 md:gap-2 mt-8 text-xs md:text-sm px-2">
         <!-- Prev -->
         <button
           @click="prevPage"
           :disabled="currentPage === 1"
-          class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40"
+          class="px-2 md:px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40 text-xs md:text-sm"
         >
           ‹ Prev
         </button>
@@ -490,7 +490,7 @@ onBeforeUnmount(() => {
             v-if="page !== '...'"
             @click="goToPage(page)"
             :class="[
-              'px-3 py-1 rounded transition',
+              'px-2 md:px-3 py-1 rounded transition text-xs md:text-sm',
               currentPage === page
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
@@ -498,14 +498,14 @@ onBeforeUnmount(() => {
           >
             {{ page }}
           </button>
-          <span v-else class="px-2 select-none">…</span>
+          <span v-else class="px-1 md:px-2 select-none">…</span>
         </template>
 
         <!-- Next -->
         <button
           @click="nextPage"
           :disabled="currentPage === totalPages"
-          class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40"
+          class="px-2 md:px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40 text-xs md:text-sm"
         >
           Next ›
         </button>
@@ -514,18 +514,18 @@ onBeforeUnmount(() => {
         <button
           @click="goToPage(totalPages)"
           :disabled="currentPage === totalPages"
-          class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40"
+          class="px-2 md:px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-40 text-xs md:text-sm"
         >
           Last »
         </button>
 
         <!-- Go to page dropdown -->
-        <div class="ml-4 flex items-center gap-2">
-          <label for="goto" class="text-gray-600 dark:text-gray-300">Go to page:</label>
+        <div class="ml-2 md:ml-4 flex items-center gap-1 md:gap-2">
+          <label for="goto" class="text-gray-600 dark:text-gray-300 hidden md:inline text-xs md:text-sm">Go to page:</label>
           <select
             id="goto"
             v-model.number="currentPage"
-            class="border rounded px-2 py-1 bg-gray-100 dark:bg-gray-800"
+            class="border rounded px-1 md:px-2 py-1 bg-gray-100 dark:bg-gray-800 text-xs md:text-sm"
           >
             <option
               v-for="n in totalPages"

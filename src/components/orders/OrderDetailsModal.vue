@@ -100,15 +100,15 @@
 
         <!-- Footer buttons -->
         <div class="mt-6 flex items-center justify-between">
+          <!-- CHANGED: Replace Buy Again with View Invoice -->
           <button
             class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
-            @click="$emit('buy-again', order)"
+            @click="openInvoice"
           >
-            Buy Again
+            View Invoice
           </button>
 
           <div class="flex items-center gap-2">
-            <!-- was: v-if="lastStatus !== 'cancelled'" -->
             <button
               v-if="lastStatus === 'return_refund'"
               class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
@@ -128,10 +128,147 @@
       </div>
     </div>
   </teleport>
+  <!-- NEW: Invoice Modal -->
+  <teleport to="body">
+    <div
+      v-if="invoiceOpen"
+      class="fixed inset-0 z-[130] flex items-center justify-center bg-black/40 p-4"
+      @click.self="closeInvoice"
+    >
+      <div class="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 flex flex-col">
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-slate-200 px-4 sm:px-5 py-4 dark:border-slate-800 flex-shrink-0">
+          <div>
+            <h3 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">Invoice</h3>
+            <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              Order <span class="font-medium">#{{ order?.orderId }}</span>
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button 
+              class="rounded-md border px-3 py-2 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800/60 touch-manipulation" 
+              @click="printInvoice"
+            >
+              Print
+            </button>
+            <button 
+              class="rounded-md bg-blue-600 px-3 py-2 text-sm text-white touch-manipulation" 
+              @click="closeInvoice"
+            >
+              Back
+            </button>
+          </div>
+        </div>
+
+        <!-- Printable area -->
+        <div id="invoice-print-area" class="overflow-auto p-4 sm:p-6 flex-1">
+          <div class="mx-auto max-w-3xl">
+            <!-- Invoice card -->
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 shadow-sm bg-white dark:bg-slate-900">
+              <div class="mb-4">
+                <h1 class="m-0 text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white">Invoice</h1>
+                <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Order #{{ order?.orderId }}</div>
+              </div>
+
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 text-xs sm:text-sm">
+                <div class="text-slate-700 dark:text-slate-300">
+                  <div><span class="font-medium text-slate-900 dark:text-white">Order Date:</span> {{ fmt(order?.createdAt) }}</div>
+                  <div><span class="font-medium text-slate-900 dark:text-white">Payment:</span> {{ order?.payment?.method || 'Card' }}</div>
+                </div>
+                <div>
+                  <div class="font-medium text-slate-900 dark:text-white">Bill To</div>
+                  <div class="text-slate-700 dark:text-slate-200">{{ order?.shippingAddress?.fullName || '—' }}</div>
+                  <div class="text-slate-600 dark:text-slate-400">{{ order?.shippingAddress?.streetName || '' }}</div>
+                  <div class="text-slate-600 dark:text-slate-400">
+                    {{ order?.shippingAddress?.unitNumber ? `#${order?.shippingAddress?.unitNumber}` : '' }}
+                    {{ order?.shippingAddress?.postalCode ? `Singapore ${order?.shippingAddress?.postalCode}` : '' }}
+                  </div>
+                  <div v-if="order?.shippingAddress?.phoneNumber" class="text-slate-600 dark:text-slate-400">
+                    {{ order?.shippingAddress?.phoneNumber }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Items -->
+              <div class="mt-6 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+                <div class="overflow-x-auto">
+                  <table class="w-full border-collapse text-xs sm:text-sm min-w-[500px]">
+                    <thead class="bg-slate-50 dark:bg-slate-800/60">
+                      <tr>
+                        <th class="px-2 sm:px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">Product</th>
+                        <th class="px-2 sm:px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">Variant</th>
+                        <th class="px-2 sm:px-3 py-2 text-center font-semibold text-slate-700 dark:text-slate-200">Qty</th>
+                        <th class="px-2 sm:px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Unit Price</th>
+                        <th class="px-2 sm:px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-if="(order?.products || []).length === 0">
+                        <td colspan="5" class="px-3 py-3 text-center text-slate-500 dark:text-slate-400">No items</td>
+                      </tr>
+
+                      <tr
+                        v-for="(p, i) in order?.products"
+                        :key="i"
+                        class="border-t border-slate-100 dark:border-slate-800"
+                      >
+                        <td class="px-2 sm:px-3 py-2 text-slate-800 dark:text-slate-200">
+                          {{ p.item_name || '—' }}
+                        </td>
+                        <td class="px-2 sm:px-3 py-2 text-slate-700 dark:text-slate-300">
+                          {{ p.size || p.variant || '-' }}
+                        </td>
+                        <td class="px-2 sm:px-3 py-2 text-center text-slate-700 dark:text-slate-300">
+                          {{ Number(p?.quantity ?? 1) }}
+                        </td>
+                        <td class="px-2 sm:px-3 py-2 text-right text-slate-900 dark:text-white">
+                          S${{ unitPrice(p).toFixed(2) }}
+                        </td>
+                        <td class="px-2 sm:px-3 py-2 text-right text-slate-900 dark:text-white">
+                          S${{ lineTotal(p).toFixed(2) }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Totals -->
+              <div class="mt-4 grid grid-cols-1 justify-end sm:grid-cols-2">
+                <div></div>
+                <div class="space-y-1 text-xs sm:text-sm">
+                  <div class="flex items-center justify-between">
+                    <div class="text-slate-600 dark:text-slate-400">Products Subtotal:</div>
+                    <div class="text-slate-900 dark:text-white">S${{ (order?.totals?.productsTotalPrice ?? 0).toFixed(2) }}</div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <div class="text-slate-600 dark:text-slate-400">Shipping:</div>
+                    <div class="text-slate-900 dark:text-white">S${{ (order?.totals?.shippingFee ?? 0).toFixed(2) }}</div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <div class="text-slate-600 dark:text-slate-400">Discount:</div>
+                    <div class="text-slate-900 dark:text-white">- S${{ (order?.totals?.discount ?? 0).toFixed(2) }}</div>
+                  </div>
+                  <div class="mt-1 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-2">
+                    <div class="font-semibold text-slate-900 dark:text-white">Grand Total:</div>
+                    <div class="font-semibold text-slate-900 dark:text-white">S${{ grand.toFixed(2) }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <p class="mt-6 text-xs text-slate-500 dark:text-slate-400">
+                Thank you for your business. Generated on {{ generatedAt }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </teleport>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -204,4 +341,48 @@ const refundQtyByProduct = computed(() => {
   }
   return map
 })
+
+const invoiceOpen = ref(false)
+
+const openInvoice = () => {
+  invoiceOpen.value = true
+}
+const closeInvoice = () => {
+  invoiceOpen.value = false
+}
+const printInvoice = () => {
+  window.print()
+}
+
+/* Invoice helpers */
+const unitPrice = (p) => {
+  const qty = Number(p?.quantity ?? 1)
+  const total = p?.totalPrice
+  if (total != null && qty > 0) return Number(total) / qty
+  return Number(p?.price || 0)
+}
+
+const lineTotal = (p) => {
+  const qty = Number(p?.quantity ?? 1)
+  const total = p?.totalPrice
+  if (total != null) return Number(total)
+  return Number(p?.price || 0) * qty
+}
+
+const generatedAt = computed(() => new Date().toLocaleString('en-SG'))
 </script>
+
+<style>
+/* Print only the invoice area */
+@media print {
+  body * { visibility: hidden !important; }
+  #invoice-print-area, #invoice-print-area * { visibility: visible !important; }
+  #invoice-print-area { 
+    position: absolute; 
+    inset: 0; 
+    margin: 0; 
+    padding: 0.5in; 
+    background: white; 
+  }
+}
+</style>
