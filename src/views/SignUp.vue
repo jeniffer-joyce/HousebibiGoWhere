@@ -259,32 +259,33 @@
               <input v-model.trim="displayName" type="text"
                      class="w-full rounded-lg px-4 py-3 border bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400
                             dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
-                     placeholder="Full Name" autocomplete="name" />
+                     placeholder="Display Name" autocomplete="name" />
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <select
   v-model="gender"
-  class="w-full rounded-lg px-4 py-3 pr-10 border bg-gray-50 border-gray-200 text-gray-700
+  class="w-full rounded-lg px-4 py-3 pr-10 border bg-gray-50 border-gray-200 text-gray-700 text-sm sm:text-base
          appearance-none relative
          dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
   style="background-image: linear-gradient(45deg, transparent 50%, gray 50%), linear-gradient(135deg, gray 50%, transparent 50%);
          background-position: right 1rem center, right 0.75rem center;
          background-size: 6px 6px, 6px 6px;
          background-repeat: no-repeat;">
-  <option value="" disabled selected>Gender</option>
-  <option value="Female">Female</option>
-  <option value="Male">Male</option>
-  <option value="Prefer not to say">Prefer not to say</option>
+  <option value="" disabled selected class="text-sm sm:text-base">Gender</option>
+  <option value="Female" class="text-sm sm:text-base">Female</option>
+  <option value="Male" class="text-sm sm:text-base">Male</option>
+  <option value="Prefer not to say" class="text-sm sm:text-base">Prefer not to say</option>
 </select>
 
 
 
 
-              <div>
+              <div class="relative">
                 <input v-model="birthday" type="date"
-                       class="w-full rounded-lg px-4 py-3 border bg-gray-50 border-gray-200
-                              dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                       class="w-full rounded-lg px-4 py-3 border bg-gray-50 border-gray-200 text-sm sm:text-base
+                              dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100
+                              date-input" 
                        placeholder="Birthday" />
                 <p v-if="birthday && !birthdayValid" class="text-xs text-red-500 mt-1">You must be at least 18</p>
               </div>
@@ -813,5 +814,25 @@ function mapError(err){
 
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* Fix date input calendar icon visibility in dark mode */
+.date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0);
+  cursor: pointer;
+}
+
+.dark .date-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+/* Style date input for better mobile UX */
+input[type="date"] {
+  position: relative;
+}
+
+input[type="date"]::-webkit-datetime-edit {
+  padding: 0;
 }
 </style>
