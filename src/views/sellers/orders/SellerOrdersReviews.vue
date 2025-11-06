@@ -275,12 +275,12 @@
             </div>
           </div>
 
-          <!-- 🆕 All item ratings in this review -->
+          <!-- All item ratings (only show if multiple items) -->
           <div v-if="r._itemsMerged?.length > 1" class="mb-4">
             <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 p-3 border border-slate-100 dark:border-slate-700">
               <div class="mb-2 flex items-center gap-2">
                 <span class="material-symbols-outlined text-amber-500 dark:text-amber-400 text-base">grade</span>
-                <p class="text-xs font-semibold text-slate-600 dark:text-slate-300">All Ratings</p>
+                <p class="text-xs font-semibold text-slate-600 dark:text-slate-300">All Item Ratings</p>
               </div>
               <div class="space-y-2">
                 <div
@@ -307,16 +307,46 @@
             </div>
           </div>
 
-          <!-- Review Comment -->
-          <div v-if="(r._text || r.text || r.comment || r.reviewText || r.content || r.message)" class="mb-4">
+                    <!-- Review Comments Section -->
+          <div v-if="r._text || r._itemComments?.length" class="mb-4">
             <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 p-3 sm:p-4 border border-slate-100 dark:border-slate-700">
-              <div class="mb-2 flex items-center gap-2">
-                <span class="material-symbols-outlined text-slate-500 dark:text-slate-400 text-base">chat</span>
-                <p class="text-xs font-semibold text-slate-600 dark:text-slate-300">Review Comment</p>
+              <!-- Show item-specific comments directly when there are multiple items -->
+              <div v-if="r._itemComments?.length > 1">
+                <div class="mb-2 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-slate-500 dark:text-slate-400 text-base">chat_bubble</span>
+                  <p class="text-xs font-semibold text-slate-600 dark:text-slate-300">Item-Specific Comments</p>
+                </div>
+                <div class="space-y-3">
+                  <div v-for="(ic, i) in r._itemComments" :key="`ic-${r.id}-${i}`" class="flex items-start gap-2 pl-2">
+                    <span class="mt-1 material-symbols-outlined text-slate-400 dark:text-slate-500 text-sm flex-shrink-0">subdirectory_arrow_right</span>
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2 mb-1 flex-wrap">
+                        <p class="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                          {{ ic.item_name || 'Item' }}
+                        </p>
+                        <span v-if="ic.size"
+                              class="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                          <span class="material-symbols-outlined text-[11px]">straighten</span>{{ ic.size }}
+                        </span>
+                      </div>
+                      <p class="text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">
+                        {{ ic.comment }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p class="text-sm sm:text-base leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">
-                {{ r._text || r.text || r.comment || r.reviewText || r.content || r.message }}
-              </p>
+
+              <!-- Show simple review comment when there's only one item -->
+              <div v-else-if="r._text">
+                <div class="mb-2 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-slate-500 dark:text-slate-400 text-base">chat</span>
+                  <p class="text-xs font-semibold text-slate-600 dark:text-slate-300">Review Comment</p>
+                </div>
+                <p class="text-sm sm:text-base leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">
+                  {{ r._text }}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -326,7 +356,7 @@
             <div class="flex items-start gap-2">
               <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-lg flex-shrink-0 mt-0.5">edit_note</span>
               <div class="flex-1 min-w-0">
-                <div class="flex flex-wrap items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
                   <span v-if="updatedAtOf(r)"
                         class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg
                                 bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800
@@ -335,11 +365,10 @@
                     {{ formatDate(updatedAtOf(r)) }}
                   </span>
                   <span class="font-semibold text-sm text-blue-900 dark:text-blue-100">Updated Comment</span>
-                  <span class="text-blue-700/70 dark:text-blue-300/70">:</span>
-                  <span class="text-sm leading-relaxed text-blue-800 dark:text-blue-200 break-words flex-1 min-w-[8rem]">
-                    {{ r._updatedText || r.updatedText || r.updated_comment || r.editedText || r.editText || r.commentUpdated }}
-                  </span>
                 </div>
+                <p class="text-sm leading-relaxed text-blue-800 dark:text-blue-200 break-words whitespace-pre-wrap">
+                  {{ r._updatedText || r.updatedText || r.updated_comment || r.editedText || r.editText || r.commentUpdated }}
+                </p>
               </div>
             </div>
           </div>
@@ -428,6 +457,7 @@ async function getOrder(orderId) {
   orderCache.set(orderId, val)
   return val
 }
+
 function pickFirst(...vals) {
   for (const v of vals) {
     if (v === undefined || v === null) continue
@@ -436,10 +466,9 @@ function pickFirst(...vals) {
   }
   return null
 }
-function asTs(v) {
-  return v || null
-}
-// join review.items with order.products to get item_name/img_url
+function asTs(v) { return v || null }
+
+/** join review.items with order.products and normalize comments */
 async function hydrateReview(r) {
   const order = await getOrder(r.orderId)
   const products = Array.isArray(order?.products) ? order.products : []
@@ -454,34 +483,42 @@ async function hydrateReview(r) {
     }
   })
 
-  // normalize common comment fields
-  const baseText = pickFirst(r.text, r.comment, r.reviewText, r.content, r.message)
+  // collect item-level comments (common keys)
+  const itemComments = mergedItems
+    .map(it => {
+      const c = pickFirst(it.comment, it.text, it.reviewText, it.message, it.note)
+      return c ? { item_name: it.item_name, size: it.size, comment: String(c).trim() } : null
+    })
+    .filter(Boolean)
+
+  // normalize top-level comment + fallback to first item comment
+    const baseTextTop = pickFirst(r.text, r.comment, r.reviewText, r.content, r.message)
+    const itemText = Array.isArray(r.items) && r.items.length > 0 ? pickFirst(r.items[0].text, r.items[0].comment) : null
+    const baseText = baseTextTop ?? itemText ?? (itemComments[0]?.comment ?? null)
+
+  // normalize updated comment
   const updText  = pickFirst(r.updatedText, r.updated_comment, r.editedText, r.editText, r.commentUpdated)
 
   // normalize updatedAt-ish fields
   const updAt = pickFirst(
-    r.updatedAt,
-    r.updatedTextUpdatedAt,
-    r.updatedAtTime,
-    r.updatedOn,
-    r.lastUpdatedAt,
-    r.modifiedAt,
-    r.editedAt,
-    r.updateTime
+    r.updatedAt, r.updatedTextUpdatedAt, r.updatedAtTime, r.updatedOn,
+    r.lastUpdatedAt, r.modifiedAt, r.editedAt, r.updateTime
   )
 
-  return {
+  const enriched = {
     ...r,
     _orderShort: order?.orderId || order?.id || r.orderId || '',
     _itemsMerged: mergedItems,
     _primaryItem: mergedItems[0] || {},
     _moreCount: Math.max(0, mergedItems.length - 1),
+    _itemComments: itemComments,
 
-    // normalized fields used in template
     _text: typeof baseText === 'string' ? baseText.trim() : baseText,
     _updatedText: typeof updText === 'string' ? updText.trim() : updText,
     _updatedAt: asTs(updAt)
   }
+
+  return enriched
 }
 
 function updatedAtOf(r) {
@@ -615,6 +652,18 @@ onMounted(() => {
     unsub = onSnapshot(qRef, async (snap) => {
       const base = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       const enriched = await Promise.all(base.map(hydrateReview))
+
+      // quick visibility to confirm retrieval shapes
+      if (enriched.length) {
+        const r0 = enriched[0]
+        console.debug('[Reviews] sample fields:', {
+          id: r0.id,
+          topText: r0._text ?? r0.text ?? r0.comment ?? r0.reviewText ?? r0.content ?? r0.message ?? null,
+          hasItemComments: Array.isArray(r0._itemComments) && r0._itemComments.length,
+          itemComments: (r0._itemComments || []).slice(0, 2)
+        })
+      }
+
       reviews.value = enriched
       loading.value = false
     }, () => { loading.value = false })
