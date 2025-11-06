@@ -1042,7 +1042,13 @@ console.log('🔍 ProductDetails Route Info:', {
                         </div>
                     </div>
 
-                    <!-- Review Text (shows updated section if present) -->
+                    <!-- Review Text -->
+                    <!-- 1) Always show ORIGINAL comment -->
+                    <div class="mt-3 text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap pl-0 sm:pl-15">
+                    <span class="whitespace-pre-line">{{ r.text || '—' }}</span>
+                    </div>
+
+                    <!-- 2) If there is an UPDATED comment, show it in the blue box below -->
                     <div v-if="r.updatedText"
                         class="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2
                                 text-sm text-blue-800 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
