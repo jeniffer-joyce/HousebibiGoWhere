@@ -201,18 +201,49 @@ export const getUserDetails = async (userId) => {
 export async function sendMessageWithMetadata(conversationId, messageData) {
   try {
     const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+    const conversationRef = doc(db, 'conversations', conversationId);
 
     const docData = {
-      text: messageData.text,
       senderId: messageData.senderId,
       createdAt: serverTimestamp(),
-      read: false,
-      files: messageData.files  // Store file metadata
+      read: false
     };
+    
+    if (messageData.text && messageData.text.trim()) {
+      docData.text = messageData.text;
+    }
+    
+    if (messageData.files && messageData.files.length > 0) {
+      docData.attachments = messageData.files;
+    }
+    
+    if (!docData.text && !docData.attachments) {
+      throw new Error('Message must contain either text or attachments');
+    }
 
+    // Add message
     await addDoc(messagesRef, docData);
+
+    // Update conversation with lastMessage info
+    const conversationDoc = await getDoc(conversationRef);
+    const conversationData = conversationDoc.data();
+    const receiverId = conversationData.participants.find(id => id !== messageData.senderId);
+
+    // Use text or file name for lastMessage
+    const lastMessageText = docData.text || 
+      (docData.attachments && docData.attachments.length > 0 ? '📎 ' + docData.attachments[0].name : 'Message');
+
+    await updateDoc(conversationRef, {
+      lastMessage: lastMessageText,
+      lastMessageTime: serverTimestamp(),
+      lastMessageSenderId: messageData.senderId,
+      [`unreadCount_${receiverId}`]: increment(1)
+    });
+
   } catch (error) {
     console.error('Error sending message with metadata:', error);
     throw error;
   }
 }
+
+
