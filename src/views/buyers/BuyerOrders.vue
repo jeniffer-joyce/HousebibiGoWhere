@@ -1,7 +1,7 @@
 <template>
   <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
     <!-- Sidebar (unchanged) -->
-    <BuyerSideBar />
+    <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
 
     <!-- Main content: do not push content on mobile; only push on md+ to match new BuyerSideBar -->
     <main
@@ -711,7 +711,6 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
-import { uiState } from '@/store/ui.js'
 
 import { auth, db } from '@/firebase/firebase_config'
 import {
@@ -730,7 +729,12 @@ import ShippingDetailsModal from '@/components/orders/ShippingDetailsModal.vue'
 
 /* UI states */
 const banner = ref({ show:false, msg:'' })
-const isSidebarCollapsed = computed(() => uiState.isSidebarCollapsed.value)
+const isSidebarCollapsed = ref(false)
+
+function handleSidebarToggle(collapsed) {
+  isSidebarCollapsed.value = collapsed
+}
+
 const loading = ref(true)
 const active = ref('all')
 const queryStr = ref('')

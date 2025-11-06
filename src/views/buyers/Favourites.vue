@@ -4,7 +4,6 @@ import BuyerSideBar from '@/components/layout/BuyerSideBar.vue'
 import MessageButton from '@/components/messageButton.vue'
 import { useFavorites } from '@/composables/useFavorites.js'
 import { useToast } from '@/composables/useToast.js'
-import { uiState } from '@/store/ui.js'
 import { auth, db } from '@/firebase/firebase_config'
 import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -17,7 +16,11 @@ const {
   toggleProductFavorite
 } = useFavorites()
 
-const isSidebarCollapsed = computed(() => uiState.isSidebarCollapsed.value)
+const isSidebarCollapsed = ref(false)
+
+function handleSidebarToggle(collapsed) {
+  isSidebarCollapsed.value = collapsed
+}
 
 const searchQuery = ref('')
 
@@ -90,7 +93,7 @@ onMounted(() => {
 <template>
   <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
     <!-- Sidebar Navigation -->
-    <BuyerSideBar />
+    <BuyerSideBar @sidebar-toggle="handleSidebarToggle" />
 
     <!-- Main Content Area -->
     <main
