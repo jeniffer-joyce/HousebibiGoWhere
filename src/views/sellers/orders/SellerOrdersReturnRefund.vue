@@ -91,7 +91,7 @@
                   </div>
 
                   <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                    Order #{{ r.orderId }}
+                    Order #{{ r.id }}
                   </div>
 
                   <!-- View items -->
@@ -270,7 +270,7 @@
                 {{ findProductName(r) }}
               </div>
               <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Order #{{ r.orderId }}
+                Order #{{ r.id }}
               </div>
               <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                 Products: {{ (r.products || []).length }}
@@ -461,7 +461,7 @@
               <div class="mt-1 flex flex-wrap items-center gap-2 text-xs sm:text-sm">
                 <span class="rounded-full bg-slate-100 px-2.5 py-0.5 font-medium text-slate-700
                               dark:bg-slate-700/60 dark:text-slate-200 truncate">
-                  Order: {{ selectedDecision?.orderId }}
+                  Order: {{ selectedDecision?.id }}
                 </span>
               </div>
             </div>
@@ -529,7 +529,7 @@
                 <p class="truncate text-sm font-medium text-slate-900 dark:text-white">
                   {{ findProductName(selectedDecision) }}
                 </p>
-                <p class="text-xs text-slate-500 dark:text-slate-400">Order: {{ selectedDecision?.orderId }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Order: {{ selectedDecision?.id }}</p>
               </div>
             </div>
             <div class="text-sm font-semibold text-slate-900 dark:text-white flex-shrink-0">
@@ -587,7 +587,7 @@
               </h3>
               <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
                 <span class="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                  Order: {{ selectedBuyer?.orderId }}
+                  Order: {{ selectedBuyer?.id }}
                 </span>
                 <span
                   class="rounded-full px-2 py-0.5 font-medium"
@@ -1287,7 +1287,7 @@ const filtered = computed(() => {
   if (q) {
     list = list.filter(r => {
       const names = (r.products || []).map(p => p.item_name || p.name || '').join(' ').toLowerCase()
-      return (r.orderId || '').toLowerCase().includes(q) || names.includes(q)
+      return (r.id || '').toLowerCase().includes(q) || names.includes(q)
     })
   }
 
