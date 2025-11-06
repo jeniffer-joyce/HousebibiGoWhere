@@ -1,7 +1,8 @@
 <template>
+<Teleport to="body">
   <div
     v-if="visible"
-    class="fixed inset-0 z-[80] flex items-center justify-center bg-black/40"
+    class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40"
     @click="$emit('close')"
   >
     <!-- Scrollable dialog -->
@@ -101,6 +102,7 @@
       </div>
     </div>
   </div>
+</Teleport>
 </template>
 
 <script setup>
