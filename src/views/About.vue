@@ -119,7 +119,7 @@
           <div class="flex flex-col items-center">
             <div class="mb-4 h-28 w-28 sm:h-32 sm:w-32 overflow-hidden rounded-full bg-gradient-to-br from-[#10A9C7] to-[#0891b2] shadow-lg">
               <img 
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400" 
+                src="/src/assets/SeanMugshot.jpg" 
                 alt="Sean"
                 class="h-full w-full object-cover max-w-full"
               />
