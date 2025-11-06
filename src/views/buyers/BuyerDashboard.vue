@@ -3,11 +3,13 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import BuyerSideBar from '@/components/layout/BuyerSideBar.vue';
 import { auth, db } from '@/firebase/firebase_config';
-import { collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, doc, getDoc, getCountFromServer } from 'firebase/firestore';
 import { useMessages } from '@/composables/useMessages';
 import { useFavorites } from '@/composables/useFavorites';
 
 const router = useRouter();
+const totalOrdersCount = ref(0);
+const pendingOrdersCount = ref(0);
 
 // Sidebar collapsed state
 const isSidebarCollapsed = ref(false);
@@ -34,6 +36,31 @@ const favoritesComposable = useFavorites();
 // Custom fetch for favorite businesses since the composable fetches from wrong collection
 const customFavoriteBusinesses = ref([]);
 const loadingFavorites = ref(false);
+
+async function fetchOrderCounts() {
+  const userId = auth.currentUser?.uid;
+  if (!userId) { totalOrdersCount.value = 0; pendingOrdersCount.value = 0; return; }
+
+  const ordersRef = collection(db, 'orders');
+
+  // All orders for this buyer
+  const totalSnap = await getCountFromServer(query(ordersRef, where('uid', '==', userId)));
+  totalOrdersCount.value = totalSnap.data().count;
+
+  // Pending-style orders (choose the statuses you consider “pending”)
+  // Option A: single 'in' query (needs index)
+  try {
+    const pendingSnap = await getCountFromServer(
+      query(ordersRef, where('uid', '==', userId), where('status', 'in', ['to_ship', 'pending']))
+    );
+    pendingOrdersCount.value = pendingSnap.data().count;
+  } catch {
+    // Option B: two queries if 'in' is inconvenient
+    const toShip = await getCountFromServer(query(ordersRef, where('uid','==',userId), where('status','==','to_ship')));
+    const pending = await getCountFromServer(query(ordersRef, where('uid','==',userId), where('status','==','pending')));
+    pendingOrdersCount.value = toShip.data().count + pending.data().count;
+  }
+}
 
 async function fetchFavoriteBusinessesCustom() {
     try {
@@ -162,10 +189,10 @@ const loadingMessages = computed(() => messaging.loading.value);
 
 // Stats
 const stats = computed(() => ({
-    totalOrders: recentOrders.value.length,
-    pendingOrders: recentOrders.value.filter(o => o.status === 'to_ship' || o.status === 'pending').length,
-    unreadCount: unreadMessages.value.length,
-    favoriteCount: favoriteBusinesses.value.length
+  totalOrders: totalOrdersCount.value,
+  pendingOrders: pendingOrdersCount.value,
+  unreadCount: unreadMessages.value.length,
+  favoriteCount: favoriteBusinesses.value.length
 }));
 
 // Fetch recent orders (last 3)
@@ -241,9 +268,10 @@ function goToShop(businessId) {
 
 // Initialize data on mount
 onMounted(() => {
-    fetchRecentOrders();
-    messaging.loadConversations(); // Load conversations using the composable
-    fetchFavoriteBusinessesCustom(); // Custom fetch for favorites
+  fetchRecentOrders();            
+  fetchOrderCounts();             
+  messaging.loadConversations();
+  fetchFavoriteBusinessesCustom();
 });
 </script>
 
@@ -286,7 +314,7 @@ onMounted(() => {
                                 </svg>
                             </div>
                         </div>
-                        <p class="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-400 mb-1">Pending</p>
+                        <p class="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-400 mb-1">Pending Shipping Orders</p>
                         <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">{{ stats.pendingOrders }}</p>
                     </div>
 
@@ -312,7 +340,7 @@ onMounted(() => {
                                 </svg>
                             </div>
                         </div>
-                        <p class="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-400 mb-1">Favorite Shops</p>
+                        <p class="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-400 mb-1">Favorite Businesses</p>
                         <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">{{ stats.favoriteCount }}</p>
                     </div>
                 </div>

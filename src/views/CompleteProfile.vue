@@ -47,7 +47,7 @@
           </div>
         </section>
         <section>
-          <h2 class="text-base font-semibold">Business Information</h2>
+          <h2 class="text-base font-semibold text-slate-900 dark:text-white">Business Information</h2>
           <p class="mt-1 text-sm text-background-dark/70 dark:text-background-light/70">
             Please provide your business details for verification. All details will be verified via SingPass and ACRA.
           </p>
@@ -55,7 +55,7 @@
           <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <!-- NRIC/FIN -->
             <div>
-              <label class="block text-sm font-medium mb-1">NRIC/FIN</label>
+              <label class="block text-sm font-medium mb-1 text-slate-900 dark:text-white">NRIC/FIN</label>
               <input
                 type="text"
                 v-model.trim="nric"
@@ -63,18 +63,18 @@
                 @blur="t.nric=true"
                 placeholder="e.g., S1234567A"
                 maxlength="9"
-                class="w-full rounded-lg border px-3 py-2"
-                :class="t.nric && !nricValid ? 'border-red-400' : ''"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+                :class="t.nric && !nricValid ? 'border-red-400 dark:border-red-500' : ''"
               />
               <div class="flex justify-between text-xs mt-1">
-                <span v-if="t.nric && !nricValid" class="text-red-600">Enter a valid NRIC/FIN.</span>
+                <span v-if="t.nric && !nricValid" class="text-red-600 dark:text-red-400">Enter a valid NRIC/FIN.</span>
                 <span class="text-background-dark/60 dark:text-background-light/60">{{ (nric||'').length }}/9</span>
               </div>
             </div>
 
             <!-- Registered Company Name -->
             <div>
-              <label class="block text-sm font-medium mb-1">Registered Company Name</label>
+              <label class="block text-sm font-medium mb-1 text-slate-900 dark:text-white">Registered Company Name</label>
               <input
                 type="text"
                 v-model.trim="companyName"
@@ -82,18 +82,18 @@
                 @blur="t.companyName=true"
                 placeholder="Company Name"
                 maxlength="100"
-                class="w-full rounded-lg border px-3 py-2"
-                :class="t.companyName && !companyNameValid ? 'border-red-400' : ''"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+                :class="t.companyName && !companyNameValid ? 'border-red-400 dark:border-red-500' : ''"
               />
               <div class="flex justify-between text-xs mt-1">
-                <span v-if="t.companyName && !companyNameValid" class="text-red-600">Company name is required.</span>
+                <span v-if="t.companyName && !companyNameValid" class="text-red-600 dark:text-red-400">Company name is required.</span>
                 <span class="text-background-dark/60 dark:text-background-light/60">{{ (companyName||'').length }}/100</span>
               </div>
             </div>
 
             <!-- UEN -->
             <div>
-              <label class="block text-sm font-medium mb-1">Business License Number/UEN</label>
+              <label class="block text-sm font-medium mb-1 text-slate-900 dark:text-white">Business License Number/UEN</label>
               <input
                 type="text"
                 v-model.trim="uen"
@@ -101,11 +101,11 @@
                 @blur="t.uen=true"
                 placeholder="UEN"
                 maxlength="20"
-                class="w-full rounded-lg border px-3 py-2"
-                :class="t.uen && !uenValid ? 'border-red-400' : ''"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+                :class="t.uen && !uenValid ? 'border-red-400 dark:border-red-500' : ''"
               />
               <div class="flex justify-between text-xs mt-1">
-                <span v-if="t.uen && !uenValid" class="text-red-600">UEN is required.</span>
+                <span v-if="t.uen && !uenValid" class="text-red-600 dark:text-red-400">UEN is required.</span>
                 <span class="text-background-dark/60 dark:text-background-light/60">{{ (uen||'').length }}/20</span>
               </div>
             </div>
@@ -113,7 +113,7 @@
 
           <!-- Address (SELLER ONLY) -->
           <div class="mt-4">
-            <h3 class="text-sm font-semibold">Registered Company Address</h3>
+            <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Registered Company Address</h3>
             <div class="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <input
@@ -124,10 +124,10 @@
                   @blur="t.postalCode=true"
                   placeholder="Postal Code (e.g. 123456)"
                   maxlength="6"
-                  class="w-full rounded-lg border px-3 py-2"
-                  :class="t.postalCode && !postalValid ? 'border-red-400' : ''"
+                  class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+                  :class="t.postalCode && !postalValid ? 'border-red-400 dark:border-red-500' : ''"
                 />
-                <p v-if="t.postalCode && !postalValid" class="text-xs text-red-600 mt-1">Enter a 6-digit postal code.</p>
+                <p v-if="t.postalCode && !postalValid" class="text-xs text-red-600 dark:text-red-400 mt-1">Enter a 6-digit postal code.</p>
               </div>
               <div class="sm:col-span-2">
                 <input
@@ -135,17 +135,17 @@
                   v-model.trim="addressLine"
                   @blur="t.addressLine=true"
                   placeholder="Address (e.g., BLK 123A GREENLAND DRIVE 10)"
-                  class="w-full rounded-lg border px-3 py-2"
-                  :class="t.addressLine && !addressLineValid ? 'border-red-400' : ''"
+                  class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+                  :class="t.addressLine && !addressLineValid ? 'border-red-400 dark:border-red-500' : ''"
                 />
-                <p v-if="t.addressLine && !addressLineValid" class="text-xs text-red-600 mt-1">Address is required.</p>
+                <p v-if="t.addressLine && !addressLineValid" class="text-xs text-red-600 dark:text-red-400 mt-1">Address is required.</p>
               </div>
               <div class="sm:col-span-3">
                 <input
                   type="text"
                   v-model.trim="unitNo"
                   placeholder="Unit No (e.g., #10-234)"
-                  class="w-full rounded-lg border px-3 py-2"
+                  class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -153,11 +153,11 @@
 
           <!-- License -->
           <div class="mt-4">
-            <h3 class="text-sm font-semibold">Business License Document</h3>
+            <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Business License Document</h3>
             <div class="mt-2 flex items-center gap-3">
               <label class="inline-flex items-center">
                 <input type="file" accept=".pdf,.jpg,.jpeg,.png" @change="onPickLicense" class="hidden" ref="fileInput" />
-                <button type="button" @click="$refs.fileInput.click()" class="px-3 py-2 rounded-lg border">+ Upload</button>
+                <button type="button" @click="$refs.fileInput.click()" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">+ Upload</button>
               </label>
               <span class="text-sm" v-if="licenseFileName">{{ licenseFileName }}</span>
             </div>
@@ -175,22 +175,22 @@
 
         <!-- Account Details -->
         <section>
-          <h2 class="text-base font-semibold mt-2">Account Details</h2>
+          <h2 class="text-base font-semibold mt-2 text-slate-900 dark:text-white">Account Details</h2>
           <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="sm:col-span-2">
               <input
                 v-model.trim="username"
                 @blur="t.username=true"
                 placeholder="Username"
-                class="rounded-lg border px-3 py-2 w-full"
-                :class="t.username && !usernameValid ? 'border-red-400' : ''" />
-              <p v-if="t.username && !usernameValid" class="text-xs text-red-600 mt-1">
+                class="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+                :class="t.username && !usernameValid ? 'border-red-400 dark:border-red-500' : ''" />
+              <p v-if="t.username && !usernameValid" class="text-xs text-red-600 dark:text-red-400 mt-1">
                 Username must be 8–20 letters or numbers.
               </p>
             </div>
 
             <div>
-              <input v-model.trim="email" placeholder="Email" class="w-full rounded-lg border px-3 py-2 bg-gray-100 opacity-80 cursor-not-allowed" disabled />
+              <input v-model.trim="email" placeholder="Email" class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 bg-gray-100 dark:bg-slate-700 text-slate-900 dark:text-slate-400 opacity-80 cursor-not-allowed" disabled />
             </div>
 
             <div>
@@ -198,13 +198,13 @@
                 v-model.trim="displayName"
                 @blur="t.displayName=true"
                 placeholder="Full Name"
-                class="rounded-lg border px-3 py-2 w-full"
-                :class="t.displayName && !displayNameValid ? 'border-red-400' : ''" />
-              <p v-if="t.displayName && !displayNameValid" class="text-xs text-red-600 mt-1">Full name is required.</p>
+                class="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+                :class="t.displayName && !displayNameValid ? 'border-red-400 dark:border-red-500' : ''" />
+              <p v-if="t.displayName && !displayNameValid" class="text-xs text-red-600 dark:text-red-400 mt-1">Full name is required.</p>
             </div>
 
-            <select v-model="gender" class="rounded-lg border px-3 py-2">
-              <option value="" disabled>Gender</option>
+            <select v-model="gender" class="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="" disabled class="text-slate-400 dark:text-slate-500">Gender</option>
               <option>Female</option>
               <option>Male</option>
               <option>Prefer not to say</option>
@@ -215,9 +215,10 @@
               type="date"
               v-model="birthday"
               @blur="t.birthday=true"
-              class="rounded-lg border px-3 py-2"
-              :class="t.birthday && !birthdayValid ? 'border-red-400' : ''" />
-            <p v-if="t.birthday && !birthdayValid" class="text-xs text-red-600 sm:col-span-2 -mt-2">
+              placeholder="mm/dd/yyyy"
+              class="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary [color-scheme:light] dark:[color-scheme:dark]"
+              :class="t.birthday && !birthdayValid ? 'border-red-400 dark:border-red-500' : ''" />
+            <p v-if="t.birthday && !birthdayValid" class="text-xs text-red-600 dark:text-red-400 sm:col-span-2 -mt-2">
               You must be at least 18 years old.
             </p>
 
@@ -225,9 +226,9 @@
               v-model.trim="phone"
               @blur="t.phone=true"
               placeholder="SG Phone Number"
-              class="rounded-lg border px-3 py-2 sm:col-span-2"
-              :class="t.phone && phone && !phoneValid ? 'border-red-400' : ''" />
-            <p v-if="t.phone && phone && !phoneValid" class="text-xs text-red-600 -mt-3 sm:col-span-2">
+              class="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 sm:col-span-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+              :class="t.phone && phone && !phoneValid ? 'border-red-400 dark:border-red-500' : ''" />
+            <p v-if="t.phone && phone && !phoneValid" class="text-xs text-red-600 dark:text-red-400 -mt-3 sm:col-span-2">
               Use SG format (+65 optional), starting with 8 or 9 (8 digits).
             </p>
           </div>
@@ -254,7 +255,7 @@
 
       <!-- BUYER -->
       <form v-else class="mt-6 space-y-6" @submit.prevent="onSubmit">
-        <h2 class="text-base font-semibold">Account Details</h2>
+        <h2 class="text-base font-semibold text-slate-900 dark:text-white">Account Details</h2>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="sm:col-span-2">
@@ -262,15 +263,15 @@
               v-model.trim="username"
               @blur="t.username=true"
               placeholder="Username"
-              class="rounded-lg border px-3 py-2 w-full"
-              :class="t.username && !usernameValid ? 'border-red-400' : ''" />
-            <p v-if="t.username && !usernameValid" class="text-xs text-red-600 mt-1">
+              class="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+              :class="t.username && !usernameValid ? 'border-red-400 dark:border-red-500' : ''" />
+            <p v-if="t.username && !usernameValid" class="text-xs text-red-600 dark:text-red-400 mt-1">
               Username must be 8–20 letters or numbers.
             </p>
           </div>
 
           <div class="sm:col-span-2">
-            <input v-model.trim="email" placeholder="Email" class="w-full rounded-lg border px-3 py-2 bg-gray-100 opacity-80 cursor-not-allowed" disabled />
+            <input v-model.trim="email" placeholder="Email" class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 bg-gray-100 dark:bg-slate-700 text-slate-900 dark:text-slate-400 opacity-80 cursor-not-allowed" disabled />
           </div>
 
           <div class="sm:col-span-2">
@@ -278,13 +279,13 @@
               v-model.trim="displayName"
               @blur="t.displayName=true"
               placeholder="Full Name"
-              class="rounded-lg border px-3 py-2 w-full"
-              :class="t.displayName && !displayNameValid ? 'border-red-400' : ''" />
-            <p v-if="t.displayName && !displayNameValid" class="text-xs text-red-600 mt-1">Full name is required.</p>
+              class="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+              :class="t.displayName && !displayNameValid ? 'border-red-400 dark:border-red-500' : ''" />
+            <p v-if="t.displayName && !displayNameValid" class="text-xs text-red-600 dark:text-red-400 mt-1">Full name is required.</p>
           </div>
 
-          <select v-model="gender" class="rounded-lg border px-3 py-2">
-            <option value="" disabled>Gender</option>
+          <select v-model="gender" class="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="" disabled class="text-slate-400 dark:text-slate-500">Gender</option>
             <option>Female</option>
             <option>Male</option>
             <option>Prefer not to say</option>
@@ -295,9 +296,10 @@
             type="date"
             v-model="birthday"
             @blur="t.birthday=true"
-            class="rounded-lg border px-3 py-2"
-            :class="t.birthday && !birthdayValid ? 'border-red-400' : ''" />
-          <p v-if="t.birthday && !birthdayValid" class="text-xs text-red-600 sm:col-span-2 -mt-2">
+            placeholder="mm/dd/yyyy"
+            class="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary [color-scheme:light] dark:[color-scheme:dark]"
+            :class="t.birthday && !birthdayValid ? 'border-red-400 dark:border-red-500' : ''" />
+          <p v-if="t.birthday && !birthdayValid" class="text-xs text-red-600 dark:text-red-400 sm:col-span-2 -mt-2">
             You must be at least 18 years old.
           </p>
 
@@ -305,9 +307,9 @@
             v-model.trim="phone"
             @blur="t.phone=true"
             placeholder="SG Phone Number"
-            class="rounded-lg border px-3 py-2 sm:col-span-2"
-            :class="t.phone && phone && !phoneValid ? 'border-red-400' : ''" />
-          <p v-if="t.phone && phone && !phoneValid" class="text-xs text-red-600 -mt-3 sm:col-span-2">
+            class="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 sm:col-span-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+            :class="t.phone && phone && !phoneValid ? 'border-red-400 dark:border-red-500' : ''" />
+          <p v-if="t.phone && phone && !phoneValid" class="text-xs text-red-600 dark:text-red-400 -mt-3 sm:col-span-2">
             Use SG format (+65 optional), starting with 8 or 9 (8 digits).
           </p>
         </div>
