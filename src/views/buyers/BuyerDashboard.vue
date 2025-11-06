@@ -340,7 +340,7 @@ onMounted(() => {
                                 </svg>
                             </div>
                         </div>
-                        <p class="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-400 mb-1">Favorite Shops</p>
+                        <p class="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-400 mb-1">Favorite Businesses</p>
                         <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">{{ stats.favoriteCount }}</p>
                     </div>
                 </div>
