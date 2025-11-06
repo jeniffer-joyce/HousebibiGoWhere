@@ -428,6 +428,7 @@
                   {{ r.text }}
                 </p>
 
+                <!-- Updated comment (timestamp above, text inline) -->
                 <!-- Updated comment (timestamp above, label + text inline, no wrapping under label) -->
                 <div
                   v-if="r.updatedText"
