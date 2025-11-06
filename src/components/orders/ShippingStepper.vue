@@ -1,25 +1,25 @@
 <template>
   <div class="w-full overflow-x-auto">
-    <div class="min-w-[720px] px-2">
-      <ol class="flex items-center justify-between gap-2">
+    <div class="min-w-full px-2 sm:px-4">
+      <ol class="flex items-center justify-between gap-1 sm:gap-2">
         <template v-for="(s, i) in steps" :key="s.key">
           <!-- left connector -->
           <div
             v-if="i > 0"
-            class="flex-1 h-1"
+            class="flex-1 h-1 min-w-[12px] sm:min-w-[20px]"
             :class="i <= activeIndex ? 'bg-green-500 dark:bg-green-600' : 'bg-slate-200 dark:bg-slate-700'"
           />
           <!-- node -->
           <li class="shrink-0 flex flex-col items-center">
             <div
-              class="relative flex items-center justify-center h-14 w-14 rounded-full border-2"
+              class="relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-full border-2"
               :class="i <= activeIndex ? 'bg-white dark:bg-slate-800 border-green-500 dark:border-green-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'"
             >
               <!-- inline SVGs -->
               <svg
                 v-if="s.key==='placed'"
                 viewBox="0 0 24 24"
-                class="h-7 w-7"
+                class="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7"
                 :class="i <= activeIndex ? 'text-green-600 dark:text-green-500' : 'text-slate-400 dark:text-slate-500'"
                 fill="none"
                 stroke="currentColor"
@@ -32,7 +32,7 @@
               <svg
                 v-else-if="s.key==='preparing'"
                 viewBox="0 0 24 24"
-                class="h-7 w-7"
+                class="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7"
                 :class="i <= activeIndex ? 'text-green-600 dark:text-green-500' : 'text-slate-400 dark:text-slate-500'"
                 fill="none"
                 stroke="currentColor"
@@ -45,7 +45,7 @@
               <svg
                 v-else-if="s.key==='transit'"
                 viewBox="0 0 24 24"
-                class="h-7 w-7"
+                class="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7"
                 :class="i <= activeIndex ? 'text-green-600 dark:text-green-500' : 'text-slate-400 dark:text-slate-500'"
                 fill="none"
                 stroke="currentColor"
@@ -60,7 +60,7 @@
               <svg
                 v-else
                 viewBox="0 0 24 24"
-                class="h-7 w-7"
+                class="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7"
                 :class="i <= activeIndex ? 'text-green-600 dark:text-green-500' : 'text-slate-400 dark:text-slate-500'"
                 fill="none"
                 stroke="currentColor"
@@ -73,21 +73,23 @@
               </svg>
             </div>
 
-            <div class="mt-3 text-center">
+            <div class="mt-2 sm:mt-3 text-center max-w-[70px] sm:max-w-[90px] md:max-w-none">
               <div
-                class="text-sm font-semibold"
+                class="text-[10px] sm:text-xs md:text-sm font-semibold leading-tight"
                 :class="i <= activeIndex ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'"
               >
                 {{ s.label }}
               </div>
-              <div class="text-xs text-slate-500 dark:text-slate-400">{{ s.timeText }}</div>
+              <div class="text-[9px] sm:text-[10px] md:text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
+                {{ s.timeText }}
+              </div>
             </div>
           </li>
 
           <!-- right connector -->
           <div
             v-if="i < steps.length - 1"
-            class="flex-1 h-1"
+            class="flex-1 h-1 min-w-[12px] sm:min-w-[20px]"
             :class="i < activeIndex ? 'bg-green-500 dark:bg-green-600' : 'bg-slate-200 dark:bg-slate-700'"
           />
         </template>

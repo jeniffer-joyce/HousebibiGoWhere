@@ -2,23 +2,48 @@
 <template>
   <main class="flex-grow">
     <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      <!-- 2-col layout; both columns stretch to same height -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-        <!-- =============== Sidebar =============== -->
-        <aside class="lg:col-span-3">
-          <!-- Desktop sidebar -->
+      <div class="flex gap-6 items-start">
+        <!-- =============== Collapsible Sidebar =============== -->
+        <aside 
+          :class="[
+            'sticky top-4 transition-all duration-300 ease-in-out',
+            'hidden sm:block',
+            isCollapsed ? 'w-16' : 'w-64'
+          ]"
+        >
           <nav
             aria-label="Account sections"
-            class="hidden lg:block rounded-xl border border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark p-2 h-full"
+            class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden"
             role="tablist"
             aria-orientation="vertical"
           >
-            <h3 class="mb-3 px-2 text-sm font-semibold tracking-wide text-slate-500 dark:text-slate-400">
-              Account Settings
-            </h3>
+            <!-- Toggle Button -->
+            <div 
+              :class="[
+                'flex items-center border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50',
+                isCollapsed ? 'justify-center p-3' : 'justify-between p-4'
+              ]"
+            >
+              <h3 
+                v-if="!isCollapsed"
+                class="text-sm font-semibold text-slate-700 dark:text-slate-300"
+              >
+                Account Settings
+              </h3>
+              <button
+                @click="toggleSidebar"
+                class="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                :aria-label="isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+              >
+                <span class="material-symbols-outlined text-lg text-slate-600 dark:text-slate-400">
+                  {{ isCollapsed ? 'menu' : 'menu_open' }}
+                </span>
+              </button>
+            </div>
 
-            <ul class="space-y-1">
-              <li v-for="t in tabs" :key="t.key">
+            <!-- Navigation Items -->
+            <ul class="p-2">
+              <li v-for="t in tabs" :key="t.key" class="mb-1">
                 <RouterLink
                   :to="toFor(t)"
                   custom
@@ -30,48 +55,97 @@
                     role="tab"
                     :aria-selected="isActive(t)"
                     @click="navigate"
-                    :class="tabClass(t)"
+                    :class="[
+                      'w-full flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                      'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
+                      isCollapsed ? 'justify-center' : 'gap-3',
+                      isActive(t)
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ]"
+                    :title="isCollapsed ? t.label : ''"
                   >
-                    <span class="material-symbols-outlined text-base">{{ t.icon }}</span>
-                    <span class="truncate">{{ t.label }}</span>
+                    <span class="material-symbols-outlined text-xl shrink-0">
+                      {{ t.icon }}
+                    </span>
+                    <span 
+                      v-if="!isCollapsed" 
+                      class="truncate text-left"
+                    >
+                      {{ t.label }}
+                    </span>
                   </button>
                 </RouterLink>
               </li>
             </ul>
           </nav>
-
-          <!-- Mobile top tab bar -->
-          <div class="lg:hidden -mt-2">
-            <div
-              role="tablist"
-              aria-orientation="horizontal"
-              class="flex gap-2 overflow-x-auto no-scrollbar rounded-xl border border-slate-200 dark:border-slate-800
-                     bg-background-light dark:bg-background-dark p-2"
-            >
-              <RouterLink
-                v-for="t in tabs"
-                :key="t.key"
-                :to="toFor(t)"
-                custom
-                v-slot="{ navigate }"
-              >
-                <button
-                  @click="navigate"
-                  :aria-selected="isActive(t)"
-                  :class="mobileTabClass(t)"
-                >
-                  <span class="material-symbols-outlined text-base">{{ t.icon }}</span>
-                  <span class="truncate">{{ t.label }}</span>
-                </button>
-              </RouterLink>
-            </div>
-          </div>
         </aside>
 
-        <!-- =============== Content =============== -->
-        <section class="lg:col-span-9">
-          <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark p-6 h-full">
-            <!-- Child pages render here -->
+        <!-- =============== Main Content =============== -->
+        <section class="flex-1 min-w-0">
+          <!-- Mobile Navigation -->
+          <div class="sm:hidden mb-6">
+            <div class="relative">
+              <button
+                @click="showMobileMenu = !showMobileMenu"
+                class="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="material-symbols-outlined text-primary">
+                    {{ currentTab?.icon }}
+                  </span>
+                  <span class="font-medium text-slate-900 dark:text-slate-100">
+                    {{ currentTab?.label }}
+                  </span>
+                </div>
+                <span class="material-symbols-outlined text-slate-500">
+                  {{ showMobileMenu ? 'expand_less' : 'expand_more' }}
+                </span>
+              </button>
+
+              <!-- Mobile Dropdown Menu -->
+              <Transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="opacity-0 translate-y-1"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="opacity-100 translate-y-0"
+                leave-to-class="opacity-0 translate-y-1"
+              >
+                <div
+                  v-if="showMobileMenu"
+                  class="absolute z-10 mt-2 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg overflow-hidden"
+                >
+                  <RouterLink
+                    v-for="t in tabs"
+                    :key="t.key"
+                    :to="toFor(t)"
+                    custom
+                    v-slot="{ navigate }"
+                  >
+                    <button
+                      @click="() => { navigate(); showMobileMenu = false }"
+                      :class="[
+                        'w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors',
+                        'border-b border-slate-100 dark:border-slate-800 last:border-b-0',
+                        isActive(t)
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      ]"
+                    >
+                      <span class="material-symbols-outlined text-xl">
+                        {{ t.icon }}
+                      </span>
+                      <span>{{ t.label }}</span>
+                    </button>
+                  </RouterLink>
+                </div>
+              </Transition>
+            </div>
+          </div>
+
+          <!-- Content Area -->
+          <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
             <RouterView />
           </div>
         </section>
@@ -81,49 +155,67 @@
 </template>
 
 <script setup>
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 
-/** If you pass username as a prop via the route, you can keep this.
-    It's optional — we read route.params.username below anyway. */
 defineProps({ username: { type: String, required: false } })
 
 const route = useRoute()
 
-/** Tabs model — names MUST match your index.js child route names */
+/** Tabs configuration */
 const tabs = [
-  { key: 'my-profile',      label: 'My Profile',        icon: 'person',        routeName: 'edit-profile.my-profile' },
-  { key: 'my-business',     label: 'My Business',       icon: 'storefront',    routeName: 'edit-profile.my-business' },
-  { key: 'change-password', label: 'Change Password',   icon: 'key',           routeName: 'edit-profile.change-password' },
-  { key: 'delete-account',  label: 'Delete Account',    icon: 'delete_forever',routeName: 'edit-profile.delete-account' },
+  { key: 'my-profile',      label: 'My Profile',        icon: 'person',         routeName: 'edit-profile.my-profile' },
+  { key: 'my-business',     label: 'My Business',       icon: 'storefront',     routeName: 'edit-profile.my-business' },
+  { key: 'change-password', label: 'Change Password',   icon: 'key',            routeName: 'edit-profile.change-password' },
+  { key: 'delete-account',  label: 'Delete Account',    icon: 'delete_forever', routeName: 'edit-profile.delete-account' },
 ]
 
-/** Is this tab active? (based on the current named child route) */
+/** State */
+const isCollapsed = ref(false)
+const showMobileMenu = ref(false)
+const userCollapsedManually = ref(false)
+
+/** Current active tab */
+const currentTab = computed(() => tabs.find(t => t.routeName === route.name))
+
+/** Check if tab is active */
 const isActive = (t) => route.name === t.routeName
 
-/** Router target helper (preserves :username from the URL) */
+/** Router target helper */
 const toFor = (t) => ({ name: t.routeName, params: { username: route.params.username } })
 
-/** Shared button classes + active/hover styles (desktop) */
-const baseTabBtn =
-  'w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary'
-const tabClass = (t) =>
-  (isActive(t)
-    ? 'bg-primary/10 text-primary dark:bg-primary/20'
-    : 'text-slate-700 dark:text-slate-300 hover:bg-primary/5 dark:hover:bg-primary/10 hover:ring-2 hover:ring-primary/40'
-  ) + ' ' + baseTabBtn
+/** Toggle sidebar manually */
+const toggleSidebar = () => {
+  isCollapsed.value = !isCollapsed.value
+  userCollapsedManually.value = true
+}
 
-/** Mobile tab button styles */
-const baseMobileBtn =
-  'shrink-0 inline-flex items-center gap-2 px-3 py-2 text-xs sm:text-sm rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary'
-const mobileTabClass = (t) =>
-  (isActive(t)
-    ? 'bg-primary/10 text-primary dark:bg-primary/20'
-    : 'text-slate-700 dark:text-slate-300 hover:bg-primary/5 dark:hover:bg-primary/10 hover:ring-2 hover:ring-primary/40'
-  ) + ' ' + baseMobileBtn
+/** Auto-collapse based on screen size */
+const handleResize = () => {
+  // If user hasn't manually toggled, auto-collapse based on screen size
+  if (!userCollapsedManually.value) {
+    if (window.innerWidth < 1024) { // lg breakpoint
+      isCollapsed.value = true
+    } else if (window.innerWidth >= 1280) { // xl breakpoint
+      isCollapsed.value = false
+    }
+  }
+}
+
+/** Setup */
+onMounted(() => {
+  handleResize()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+})
 </script>
 
 <style scoped>
-/* Hide scrollbar on the mobile tab bar */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+/* Smooth transitions */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
 </style>

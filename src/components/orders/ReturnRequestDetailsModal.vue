@@ -217,8 +217,21 @@
                   alt="Product image"
                 />
                 <div class="min-w-0">
-                  <p class="truncate font-medium text-slate-900 dark:text-white">{{ si.item_name }}</p>
-                  <p class="text-xs text-slate-500 dark:text-slate-400">#{{ si.productId }}</p>
+                  <p class="truncate font-medium text-slate-900 dark:text-white">
+                    {{ si.item_name }}
+                  </p>
+
+                  <!-- ⬇️ ID that adapts to width: wraps on tight, truncates on wide -->
+                  <span
+                    class="mt-0.5 inline-block max-w-full break-all text-[10px] font-mono
+                          text-slate-500 dark:text-slate-400
+                          sm:break-normal sm:truncate sm:whitespace-nowrap sm:max-w-[18rem]
+                          rounded bg-slate-100/70 px-1.5 py-0.5
+                          dark:bg-slate-900/40"
+                    :title="si.productId"
+                  >
+                    #{{ si.productId }}
+                  </span>
                 </div>
               </div>
 
