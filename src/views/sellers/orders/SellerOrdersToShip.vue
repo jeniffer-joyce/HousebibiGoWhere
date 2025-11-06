@@ -719,7 +719,7 @@
 
               <!-- Products Table -->
               <div class="overflow-x-auto">
-                <table class="w-full border-collapse text-xs dark:text-white sm:text-sm min-w-[400px]">
+                <table class="w-full border-collapse text-xs sm:text-sm min-w-[400px]">
                   <thead>
                     <tr class="bg-slate-100 dark:bg-slate-700">
                       <th class="border-2 border-slate-300 dark:border-slate-600 px-2 py-2 text-left text-slate-900 dark:text-white font-semibold">#</th>
