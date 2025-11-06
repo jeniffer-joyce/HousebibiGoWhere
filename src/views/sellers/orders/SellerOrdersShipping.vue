@@ -248,14 +248,14 @@
         <!-- Product Info -->
         <div class="flex gap-3">
           <img :src="thumbnail(o)" alt="" class="h-16 w-16 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700 flex-shrink-0" />
-          <div class="min-w-0 flex-1">
+          <div class="min-w-0 flex-1 overflow-hidden">
             <div class="font-medium text-sm leading-tight text-slate-900 dark:text-white break-words">
               {{ titleLine(o) }}
             </div>
-            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate" :title="'Order #' + (o.orderId || o.id)">
               Order #{{ o.orderId || o.id }}
             </div>
-            <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <div class="mt-0.5 text-xs text-slate-500 dark:text-slate-400 truncate" :title="'Buyer: ' + (o.buyer?.name || o.shippingAddress?.fullName || '—')">
               Buyer: {{ o.buyer?.name || o.shippingAddress?.fullName || '—' }}
             </div>
           </div>

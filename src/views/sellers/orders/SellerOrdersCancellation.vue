@@ -199,14 +199,14 @@
       <div v-else v-for="o in paged" :key="o.id" class="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4">
         <div class="flex gap-3 mb-3">
           <img :src="thumbnail(o)" alt="" class="h-16 w-16 flex-shrink-0 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
-          <div class="min-w-0 flex-1">
+          <div class="min-w-0 flex-1 overflow-hidden">
             <div class="font-medium text-slate-900 dark:text-white leading-tight break-words">
               {{ titleLine(o) }}
             </div>
             <div class="mt-1 inline-flex items-center rounded-full
-                       bg-blue-50 text-blue-700
-                       dark:bg-blue-950/40 dark:text-blue-300
-                       px-2 py-0.5 text-xs font-medium">
+                      bg-blue-50 text-blue-700
+                      dark:bg-blue-950/40 dark:text-blue-300
+                      px-2 py-0.5 text-xs font-medium">
               {{ (o.products || []).length }} product{{ (o.products || []).length !== 1 ? 's' : '' }}
             </div>
           </div>
