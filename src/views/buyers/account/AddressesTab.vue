@@ -33,32 +33,32 @@
       <div
         v-for="(addr, idx) in addresses"
         :key="idx"
-        class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 transition-all"
+        class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 transition-all flex flex-col"
       >
-        <div class="mb-2 flex items-center justify-between">
-          <span class="text-sm font-semibold capitalize text-slate-800 dark:text-slate-200">{{ addr.type }}</span>
+        <div class="mb-2 flex items-center justify-between gap-2">
+          <span class="text-sm font-semibold capitalize text-slate-800 dark:text-slate-200 truncate">{{ addr.type }}</span>
           <span
             v-if="addr.default === 1"
-            class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+            class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 flex-shrink-0"
           >
             Default
           </span>
         </div>
 
-        <div class="space-y-1 text-sm text-slate-700 dark:text-slate-300">
-          <p class="font-medium">{{ addr.fullName }}</p>
-          <p>{{ addr.phoneNumber }}</p>
-          <p>
+        <div class="space-y-1 text-sm text-slate-700 dark:text-slate-300 flex-1 min-w-0">
+          <p class="font-medium break-words">{{ addr.fullName }}</p>
+          <p class="break-words">{{ addr.phoneNumber }}</p>
+          <p class="break-words">
             {{ addr.streetName }}
             <span v-if="addr.unitNumber">, #{{ addr.unitNumber }}</span>,
             Singapore {{ addr.postalCode }}
           </p>
         </div>
 
-        <div class="mt-3 flex items-center gap-2">
+        <div class="mt-3 flex flex-wrap items-center gap-2">
           <button
             @click="openModal(idx)"
-            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700 flex-shrink-0"
           >
             Modify
           </button>
@@ -66,14 +66,14 @@
           <button
             v-if="addr.default !== 1"
             @click="setDefault(idx)"
-            class="rounded-lg border border-primary px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
+            class="rounded-lg border border-primary px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 flex-shrink-0 whitespace-nowrap"
           >
             Set Default
           </button>
 
           <button
             @click="removeAddress(idx)"
-            class="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+            class="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20 flex-shrink-0"
           >
             Delete
           </button>
